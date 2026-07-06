@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "StackNest — Tab Manager",
+  "version": "1.0.0",
+  "description": "A calm command center for your tabs and bookmarks, on every new tab. Group open tabs, stash them into folders, and curate your library without clutter.",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": ["tabs", "bookmarks", "favicon", "storage", "identity"],
+  "host_permissions": [
+    "https://www.googleapis.com/*",
+    "https://api.coingecko.com/*",
+    "https://open.er-api.com/*"
+  ],
+  "oauth2": {
+    "client_id": "REPLACE_WITH_YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.appdata",
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
