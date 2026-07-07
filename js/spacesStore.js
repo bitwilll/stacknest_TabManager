@@ -14,10 +14,11 @@ export const SPACES_KEY = 'stacknest:spaces';            // collections
 export const WORKSPACES_KEY = 'stacknest:workspaces';    // spaces / environments
 export const ACTIVE_WS_KEY = 'stacknest:activeWorkspace';
 
-// collection dot palette (from the Stash design)
-export const DOT_COLORS = ['#6366f1', '#3b82f6', '#f59e0b', '#f43f5e', '#14b8a6', '#8b5cf6', '#22c55e'];
-// space/environment palette
-export const WS_COLORS = ['#5b52ec', '#22c55e', '#f59e0b', '#3b82f6', '#f43f5e', '#14b8a6', '#8b5cf6'];
+// Identity-dot palette — muted, dusty tones so the user's own colour reads as
+// intentional against the monochrome "Nothing" chrome (still distinguishable).
+export const DOT_COLORS = ['#6b73a8', '#5583a0', '#b28a54', '#a86b7e', '#57897f', '#86749f', '#6e8f60'];
+// space/environment palette (same family, reordered so Personal ≠ first collection)
+export const WS_COLORS = ['#6b73a8', '#6e8f60', '#b28a54', '#5583a0', '#a86b7e', '#57897f', '#86749f'];
 
 function makeId() {
   try { return crypto.randomUUID(); }

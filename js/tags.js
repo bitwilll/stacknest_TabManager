@@ -10,7 +10,8 @@ import { loadSpaces, loadWorkspaces } from './spacesStore.js';
 export const TAGS_KEY = 'stacknest:tags';
 
 const tagKey = (url) => normalizeUrl(url);
-export const tagColor = (name) => `hsl(${hueOf(name.toLowerCase())} 62% 52%)`;
+// muted saturation keeps tag dots calm alongside the monochrome chrome
+export const tagColor = (name) => `hsl(${hueOf(name.toLowerCase())} 44% 55%)`;
 
 function dedupe(tags) {
   const seen = new Set();

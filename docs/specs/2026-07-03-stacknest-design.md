@@ -366,6 +366,24 @@ dark, 1280–1320px): tile toggle + persistence; tag add/remove + graph + filter
   explanatory tooltip when nothing is ticked (a link must survive) or when everything is ticked
   (nothing to remove). Rows show a COLLECTION/BOOKMARK kind tag; the view scrolls
   (`overflow-y: auto`). Collection removals keep their undo.
+- **"Nothing" monochrome redesign (2026-07-08)**: the whole visual system moved from a saturated
+  indigo/blue accent to a monochrome **ink-on-paper (light) / chalk-on-ink (dark)** palette. Colour
+  is now reserved almost entirely for the user's own data (Space / collection identity dots + tag
+  dots), which were themselves re-tinted to a muted, dusty palette so they read as intentional
+  against the greyscale chrome. Key moves, all token-driven:
+  - `--accent` **is** ink (near-black light / near-white dark), so the primary action inverts
+    between themes — a solid black "Stash window" / "Keep one of each" button in light becomes solid
+    white in dark. The monochrome signature.
+  - All coloured glow shadows removed (`--shadow-btn: none`, flat logo tile, flat column wells with
+    hairline borders instead of `backdrop-filter: blur`). Engineered, not glassy.
+  - Added a real **4px spacing scale** (`--s1..--s9`) and **radius scale** (`--r1..--r6`).
+  - BROWSE nav dots → consistent thin **line icons** (matching the Settings gear); every marker —
+    icon rows, dot rows, Settings — now shares one 16px optical slot so all labels sit on one rail.
+  - Section micro-labels (BROWSE/SPACES/WINDOWS/COLLECTIONS) retuned to engineered mono: 10.5px,
+    0.14em tracking, muted. Generous vertical rhythm between groups.
+  - The `rise` view-entrance animation is already gated behind `prefers-reduced-motion`.
+  Verified across all five views (board, library, tags, duplicates, settings) in both themes with
+  zero console errors and zero horizontal overflow.
 - **Interface-size zoom no longer overflows the viewport (2026-07-07)**: the size setting applies
   CSS `zoom` on the root, which multiplies every rendered length — including `.app { height:
   100vh }` — so at Comfortable (1.08) / Large (1.2) the app painted 8–20% taller than the window
