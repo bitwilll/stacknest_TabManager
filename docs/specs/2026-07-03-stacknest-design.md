@@ -359,14 +359,35 @@ dark, 1280–1320px): tile toggle + persistence; tag add/remove + graph + filter
   tile move. Header shows a `grab` cursor.
 - **Tile view keeps the header icons visible**: in tiles mode the column header actions
   (rename/export/open-all/delete) are always shown (not hover-gated), and the count stays visible.
-- **Duplicates — choose which copy to keep**: each occurrence row now has a **radio**; the
-  selected row is highlighted, clicking anywhere on a row selects it, and **Keep selected** removes
-  every other copy (replaces the old "keep the first" behaviour). Rows show a COLLECTION/BOOKMARK
-  kind tag; the view scrolls (`overflow-y: auto`). Collection removals keep their undo.
+- **Duplicates — choose which copies to keep (2026-07-07, was radio)**: each occurrence row has a
+  **checkbox** (`.dup-keep`); tick **one or several** copies to keep — ticked rows highlight, and
+  clicking anywhere on a row toggles it. **Keep selected** deletes only the unticked copies (so a
+  single ticked folder removes every other duplicate of that link). The button disables with an
+  explanatory tooltip when nothing is ticked (a link must survive) or when everything is ticked
+  (nothing to remove). Rows show a COLLECTION/BOOKMARK kind tag; the view scrolls
+  (`overflow-y: auto`). Collection removals keep their undo.
+- **Interface-size zoom no longer overflows the viewport (2026-07-07)**: the size setting applies
+  CSS `zoom` on the root, which multiplies every rendered length — including `.app { height:
+  100vh }` — so at Comfortable (1.08) / Large (1.2) the app painted 8–20% taller than the window
+  and the pinned Settings/footer clipped off-screen. `applySettings` now also sets `--app-zoom`,
+  and the stylesheet divides every viewport unit by it (`.app` height, `#windows-root` cap, the
+  ≤880px `min-height`). The tag-popover `place()` is zoom-aware too: rects/viewport are visual px
+  while `style.top/left` are layout px, so writes divide by the zoom factor. Verified flush at all
+  four scales × several window sizes.
+- **Duplicates — one-click clean + Forget (2026-07-07)**: a **Keep one of each** primary button in
+  the view header bulk-resolves every group — keeps the first copy of each link, removes the rest —
+  behind a `confirmDialog` that states the exact counts (bookmark removals are irreversible).
+  Each group card also has a **Forget** button (`.btnx.ghosty`): the link's normalized URL is
+  stored under `stacknest:dupforgotten` (`{ url, title, at }`), the group leaves the scan (and the
+  sidebar badge and the bulk clean), and it appears in a **Forgotten links** section at the bottom
+  (dashed divider) with favicon, title/domain, current `n× saved` count, and a **Restore** button
+  that deletes the ignore entry and re-flags the copies. The storage listener also re-renders on
+  `dupforgotten` changes.
 
 Verified in preview (light + dark): title no longer edits on click + rename action works; whole-
 tile reorder in columns and tiles while tab-card moves still work; all four header icons visible in
-tiles; duplicate radio selection + Keep-selected removes the right copies. No console errors.
+tiles; duplicate multi-keep checkboxes + Keep-selected remove exactly the unticked copies. No
+console errors.
 
 ## Files
 

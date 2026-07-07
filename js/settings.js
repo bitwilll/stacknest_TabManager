@@ -78,11 +78,15 @@ export async function saveSettings(patch) {
 }
 
 // Push settings into the live DOM: font stacks onto the CSS vars, size via zoom.
+// zoom multiplies every rendered length — including 100vh — so the stylesheet
+// divides viewport units by --app-zoom to keep the app exactly one screen tall.
 export function applySettings(s) {
   const root = document.documentElement;
   root.style.setProperty('--grot', pick(FONT_UI, s.fontUi).stack);
   root.style.setProperty('--mono', pick(FONT_MONO, s.fontMono).stack);
-  root.style.zoom = String(pick(SCALES, s.scale).zoom);
+  const zoom = pick(SCALES, s.scale).zoom;
+  root.style.zoom = String(zoom);
+  root.style.setProperty('--app-zoom', String(zoom));
 }
 
 /* ————————————————————————— settings view ————————————————————————— */

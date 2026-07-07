@@ -73,8 +73,12 @@ is a hub, every tagged link orbits its tags, and multi-tag links sit between the
 hub to filter, click a dot to open), and a per-tag grid for sorting similar links together.
 
 **Duplicates** — the **Duplicates** view scans every collection *and* all your Chrome bookmarks,
-groups links saved more than once, and shows where each copy lives. Remove copies one at a time,
-or hit **Keep one** to prune all but the first — cutting redundancy in a couple of clicks.
+groups links saved more than once, and shows where each copy lives. Tick the copies you want to
+keep — one folder or several — and **Keep selected** deletes the rest of that link's duplicates;
+or remove copies one at a time. **Keep one of each** does it all in a single click: for every
+duplicated link it keeps one copy and removes the rest (with a confirm first). Links you'd rather
+not be nagged about get a **Forget** button — they move to a **Forgotten links** section at the
+bottom, excluded from scans and from the one-click clean, restorable any time.
 
 **Settings** (in the sidebar):
 - **Typography** — pick the **interface font** and **monospace font** (offline-safe stacks, live

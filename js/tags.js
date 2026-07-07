@@ -45,9 +45,19 @@ export async function setTagsFor(url, title, tags) {
 /* ————————————————————————— inline tag editor popover ————————————————————————— */
 
 let openPopover = null;
-export function closeTagEditor() { if (openPopover) { openPopover.remove(); openPopover = null; document.removeEventListener('mousedown', onDocDown, true); document.removeEventListener('keydown', onDocKey, true); } }
+export function closeTagEditor() {
+  if (!openPopover) return;
+  openPopover.remove();
+  openPopover = null;
+  document.removeEventListener('mousedown', onDocDown, true);
+  document.removeEventListener('keydown', onDocKey, true);
+  document.removeEventListener('scroll', onDocScroll, true);
+  window.removeEventListener('resize', onDocScroll);
+}
 function onDocDown(e) { if (openPopover && !openPopover.contains(e.target)) closeTagEditor(); }
 function onDocKey(e) { if (e.key === 'Escape') { e.stopPropagation(); closeTagEditor(); } }
+// a fixed-position popover detaches from its anchor when anything scrolls — close it
+function onDocScroll(e) { if (openPopover && !openPopover.contains(e.target)) closeTagEditor(); }
 
 export async function openTagEditor(anchor, { url, title }) {
   closeTagEditor();
@@ -63,12 +73,12 @@ export async function openTagEditor(anchor, { url, title }) {
   function renderChips() {
     chips.replaceChildren(...tags.map((t) => el('span', { class: 'tagpop-chip', style: `--tc:${tagColor(t)}` },
       el('span', { class: 'tag-dot', style: `background:${tagColor(t)}` }),
-      el('span', { text: t }),
+      el('span', { class: 'tagpop-chip-t', text: t }),
       el('button', { class: 'tagpop-x', title: `Remove ${t}`, 'aria-label': `Remove ${t}`, onclick: () => commit(tags.filter((x) => x !== t)) }, icon('close', 11)),
     )));
     if (!tags.length) chips.append(el('span', { class: 'tagpop-empty', text: 'No tags yet' }));
+    place(); // the popover grows/shrinks with its chips — keep it inside the viewport
   }
-  renderChips();
 
   const add = () => { const v = input.value.trim(); if (!v) return; input.value = ''; commit([...tags, ...v.split(',')]); };
   input.addEventListener('keydown', (e) => {
@@ -84,20 +94,39 @@ export async function openTagEditor(anchor, { url, title }) {
   );
   pop.addEventListener('mousedown', (e) => e.stopPropagation());
   pop.addEventListener('click', (e) => e.stopPropagation());
+
+  // Anchor below the button, flipping above only when there's more room there.
+  // Re-run after every chip change: the popover grows and must never spill past
+  // an edge or cover its own anchor while the user is adding tags.
+  // All math happens in visual px (rects/viewport); style writes divide by the
+  // interface-size zoom, because lengths inside the zoomed root get multiplied.
+  function place() {
+    const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+    const r = anchor.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight, m = 8, gap = 6;
+    pop.style.maxHeight = ''; // measure natural size first
+    const pr = pop.getBoundingClientRect();
+    const w = pr.width, h = pr.height;
+    const below = vh - r.bottom - gap - m;    // space under the anchor
+    const above = r.top - gap - m;            // space over the anchor
+    const openUp = h > below && above > below; // flip only if below can't fit and above is roomier
+    const room = Math.max(120, openUp ? above : below);
+    if (h > room) pop.style.maxHeight = `${room / zoom}px`; // cap + scroll instead of spilling
+    const hFinal = Math.min(h, room);
+    const top = openUp ? Math.max(m, r.top - gap - hFinal) : r.bottom + gap;
+    const left = Math.min(Math.max(m, r.left), Math.max(m, vw - w - m));
+    pop.style.left = `${left / zoom}px`;
+    pop.style.top = `${top / zoom}px`;
+  }
+
   document.body.append(pop);
   openPopover = pop;
-
-  // position under the anchor, kept within the viewport
-  const r = anchor.getBoundingClientRect();
-  const w = pop.offsetWidth, h = pop.offsetHeight;
-  let left = Math.min(r.left, window.innerWidth - w - 10);
-  let top = r.bottom + 6;
-  if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
-  pop.style.left = `${Math.max(8, left)}px`;
-  pop.style.top = `${top}px`;
+  renderChips();
   setTimeout(() => input.focus(), 0);
   document.addEventListener('mousedown', onDocDown, true);
   document.addEventListener('keydown', onDocKey, true);
+  document.addEventListener('scroll', onDocScroll, true);
+  window.addEventListener('resize', onDocScroll);
 }
 
 // Small inline chip row for a card (display only). Returns null if untagged.
@@ -277,9 +306,11 @@ function buildGraph(tagList, items) {
   tags.forEach((t) => {
     const h = hub.get(t.name);
     const g = mk('g', { class: 'tg-hub', tabindex: '0', role: 'button' });
-    g.append(mk('circle', { cx: h.x, cy: h.y, r: String(11 + Math.min(10, t.count * 1.5)), fill: tagColor(t.name), 'fill-opacity': '0.16', stroke: tagColor(t.name), 'stroke-width': '1.5' }));
-    const label = mk('text', { x: h.x, y: h.y + 0.5, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'tg-hub-label', fill: tagColor(t.name) });
-    label.append(document.createTextNode(t.name));
+    const rad = 11 + Math.min(10, t.count * 1.5);
+    g.append(mk('circle', { cx: h.x, cy: h.y, r: String(rad), fill: tagColor(t.name), 'fill-opacity': '0.16', stroke: tagColor(t.name), 'stroke-width': '1.5' }));
+    // label under the circle, never across it; long names truncate (tooltip has the full name)
+    const label = mk('text', { x: h.x, y: h.y + rad + 13, 'text-anchor': 'middle', class: 'tg-hub-label', fill: tagColor(t.name) });
+    label.append(document.createTextNode(t.name.length > 16 ? `${t.name.slice(0, 15)}…` : t.name));
     g.append(label);
     g.append(mk('title', {}, document.createTextNode(`${t.name} · ${t.count}`)));
     g.addEventListener('click', () => { activeTag = t.name; render(); });
