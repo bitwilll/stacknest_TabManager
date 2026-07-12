@@ -123,18 +123,34 @@ Cloud sync and the ticker are the only features that reach the network, and both
 
 ## Cloud sync setup
 
-Google Drive backup needs a one-time OAuth client that's tied to *your* extension ID:
+Google Drive backup uses `chrome.identity` OAuth, which needs a one-time client that's tied to
+*your* extension's ID. The code is ready — it just needs the client ID. Until you add it, Settings
+shows Cloud sync as **"Set up required"** (in the dev preview it's simulated, so you can try the
+whole flow without Google).
 
-1. Load the extension unpacked and copy its **ID** from `chrome://extensions`.
-2. In the [Google Cloud Console](https://console.cloud.google.com/) create an OAuth client of type
-   **Chrome Extension**, using that ID, and enable the **Google Drive API**. Add the scopes
-   `drive.appdata` and `userinfo.email`.
-3. Put the client ID into `manifest.json` → `oauth2.client_id` (replace the `REPLACE_WITH_…`
-   placeholder), and add the same `"key"` to the manifest so the extension ID stays stable.
-4. Reload the extension → **Settings → Cloud sync → Connect** now signs in with your Google account.
+1. **Load the extension unpacked** (`chrome://extensions` → Developer mode → *Load unpacked*) and
+   copy its **ID**.
+2. **Pin the ID so it survives moves/reinstalls** (recommended). `getAuthToken` only issues tokens
+   to an extension whose ID matches the OAuth client, so a stable ID matters:
+   - `chrome://extensions` → **Pack extension** on this folder → Chrome writes a `.pem` private key.
+   - Derive the public `"key"` from it and add it as a top-level `"key": "<base64>"` in
+     `manifest.json`, then reload. The ID is now fixed. *(For a single dev machine you can skip this
+     and just register the current ID from step 1 — it stays the same as long as the folder doesn't move.)*
+3. **Create the OAuth client.** In the [Google Cloud Console](https://console.cloud.google.com/):
+   - **APIs & Services → Enable APIs → Google Drive API** → Enable.
+   - **OAuth consent screen** → External → add scopes `.../auth/drive.appdata` and
+     `.../auth/userinfo.email`, and add your Google account under **Test users** (while unpublished).
+   - **Credentials → Create credentials → OAuth client ID → Application type: Chrome Extension**,
+     and paste the extension **ID** from step 1/2.
+4. **Wire it in.** Put the generated client ID into `manifest.json` → `oauth2.client_id` (replacing
+   the `REPLACE_WITH_…` placeholder). It must end in `.apps.googleusercontent.com`.
+5. **Reload the extension.** Settings → Cloud sync now shows **Connect** → sign in →
+   **Back up now / Restore latest**. The backup lives in Drive's private `appDataFolder`
+   (invisible in your Drive UI). **Disconnect** revokes the grant, not just the local token cache.
 
-Until that's configured, Cloud sync still shows in Settings but sign-in won't complete. (In the
-local dev preview it's simulated so the flow can be tried without Google.)
+Robustness built in: a stale/revoked cached token self-heals (the token is evicted and re-fetched,
+re-consenting if needed) instead of wedging backup/restore, and Drive/network errors surface as
+plain-language messages rather than raw HTTP codes.
 
 ## Design
 

@@ -296,6 +296,34 @@ Settings row sits above the footer at the bottom-left (left: 12px), renders the 
 the Settings view (title + populated `#settings-root`) with the accent-soft active treatment, and
 toggles off when leaving. No console errors.
 
+## Google Drive sync hardening (2026-07-08)
+
+An adversarial multi-agent audit of the Drive OAuth path (`js/drive.js` + manifest + the
+Settings cloud card) found and confirmed six real defects; all fixed and verified by stubbing
+`chrome.identity` / `chrome.runtime.getManifest` / `fetch` to drive the live path deterministically:
+
+- **Placeholder detection** — `isConfigured()` reads `oauth2.client_id` and rejects the shipped
+  `REPLACE_WITH_…` placeholder. When live-but-unconfigured, the card shows a disabled **"Set up
+  required"** with a note, and backup/restore fail fast with a plain message *without* even calling
+  `getAuthToken` (no cryptic Chrome OAuth string). Verified: 0 tokens requested on the placeholder path.
+- **401 self-heal** — Drive calls run through `withDrive()`, which on a 401/403 evicts the cached
+  token (`removeCachedAuthToken`) and re-fetches, escalating to interactive re-consent if the silent
+  mint fails. A stale/revoked token no longer bricks every backup/restore. Verified: first list → 401
+  → evict → retry → success.
+- **Real revoke on Disconnect** — now POSTs to `https://oauth2.googleapis.com/revoke` (added to
+  `host_permissions`) before clearing the cache, so Disconnect severs access rather than hiding a label.
+- **Plain-language errors** — `api()` maps status → friendly text (401/403 → reconnect, 5xx →
+  temporarily unavailable, network → check connection); raw `path → status` goes to `console.error` only.
+- **`fetchEmail`** no longer fabricates "Google account"; on failure it stores `null` and the label
+  falls back to "Google Drive". State shape gained an explicit `connected` flag.
+- **Bonus (unrelated)** — `loadSettings()` was dropping `grammarEnabled` from its return object, so the
+  flag never round-tripped; added `grammarEnabled: !!m.grammarEnabled`.
+
+The live path still requires the user's own OAuth client ID + a stable extension ID — see README
+"Cloud sync setup". Two audit findings were correctly rejected on verification (a missing manifest
+`key` is a setup requirement, not a code defect; the fixed multipart boundary can't collide because
+`JSON.stringify` escapes all control chars, so the payload contains no raw CRLF).
+
 ## Cloud sync · views · tags · duplicates · ticker (2026-07-07)
 
 A five-feature batch. The three fully-local features are verified end-to-end in preview;

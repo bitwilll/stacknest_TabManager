@@ -9,6 +9,7 @@
   "permissions": ["tabs", "bookmarks", "favicon", "storage", "identity"],
   "host_permissions": [
     "https://www.googleapis.com/*",
+    "https://oauth2.googleapis.com/*",
     "https://api.coingecko.com/*",
     "https://open.er-api.com/*"
   ],

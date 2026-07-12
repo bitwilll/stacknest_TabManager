@@ -4,7 +4,7 @@
 import { el, icon, toast } from './ui.js';
 import { getKey, update } from './store.js';
 import { exportBackup, importFlow } from './backup.js';
-import { CLOUD_KEY, loadCloudState, connect, disconnect, backupNow, restoreLatest, isLive } from './drive.js';
+import { CLOUD_KEY, loadCloudState, connect, disconnect, backupNow, restoreLatest, isLive, isConfigured } from './drive.js';
 import { confirmDialog } from './ui.js';
 
 export const SETTINGS_KEY = 'stacknest:settings';
@@ -45,6 +45,7 @@ export const DEFAULT_SETTINGS = {
   fontUi: 'hanken', fontMono: 'jetbrains', scale: 'default',
   tickerEnabled: false, tickerBase: 'USD',
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
+  grammarEnabled: false,
 };
 
 const pick = (list, id) => list.find((x) => x.id === id) || list[0];
@@ -64,6 +65,7 @@ export async function loadSettings() {
     tickerBase: TICKER_BASES.includes(m.tickerBase) ? m.tickerBase : DEFAULT_SETTINGS.tickerBase,
     tickerCrypto: validArr(TICKER_CRYPTOS.map((c) => c.id), m.tickerCrypto, DEFAULT_SETTINGS.tickerCrypto),
     tickerFx: validArr(TICKER_FX, m.tickerFx, DEFAULT_SETTINGS.tickerFx),
+    grammarEnabled: !!m.grammarEnabled, // was dropped here, so the flag never round-tripped
   };
 }
 
@@ -111,14 +113,23 @@ function shortWhen(iso) {
 
 async function cloudCard() {
   const cloud = await loadCloudState();
-  const connected = !!cloud.email;
+  const live = isLive();
+  const needsSetup = live && !isConfigured(); // real extension, but no OAuth client ID yet
+  const connected = !!(cloud.connected || cloud.email);
   const card = el('section', { class: 'set-card' },
     el('h2', { class: 'set-h' }, icon('cloud', 16), 'Cloud sync'),
     el('p', { class: 'set-sub', text: 'Back up your spaces, collections and settings to your own Google Drive and restore them on any machine. The backup lives in a private app folder only StackNest can read — it never appears in your Drive.' }),
   );
 
   const gdrive = el('div', { class: 'cloud-provider' });
-  if (!connected) {
+  if (needsSetup) {
+    gdrive.append(
+      el('div', { class: 'cloud-row' },
+        el('span', { class: 'cloud-name' }, el('span', { class: 'cloud-dot g' }), 'Google Drive'),
+        el('button', { class: 'btnx soft', disabled: 'true' }, el('span', { text: 'Set up required' })),
+      ),
+    );
+  } else if (!connected) {
     gdrive.append(
       el('div', { class: 'cloud-row' },
         el('span', { class: 'cloud-name' }, el('span', { class: 'cloud-dot g' }), 'Google Drive'),
@@ -128,7 +139,7 @@ async function cloudCard() {
   } else {
     gdrive.append(
       el('div', { class: 'cloud-row' },
-        el('span', { class: 'cloud-name' }, el('span', { class: 'cloud-dot g' }), el('span', { class: 'cloud-acct', text: cloud.email })),
+        el('span', { class: 'cloud-name' }, el('span', { class: 'cloud-dot g' }), el('span', { class: 'cloud-acct', text: cloud.email || 'Google Drive' })),
         el('button', { class: 'btnx ghosty', onclick: withBusy(async () => { await disconnect(); toast('Disconnected'); }) }, el('span', { text: 'Disconnect' })),
       ),
       el('div', { class: 'cloud-meta', text: `Last backup ${shortWhen(cloud.lastBackupAt)} · last restore ${shortWhen(cloud.lastRestoreAt)}` }),
@@ -144,7 +155,9 @@ async function cloudCard() {
   }
   card.append(gdrive);
 
-  if (!isLive()) {
+  if (needsSetup) {
+    card.append(el('p', { class: 'set-note', text: 'Google Drive sync isn’t set up in this build yet. Add your own Google OAuth client ID to the manifest to enable it — see the README’s “Cloud sync setup” steps.' }));
+  } else if (!live) {
     card.append(el('p', { class: 'set-note', text: 'Preview mode: Google sign-in and Drive aren’t available outside the packaged extension, so this simulates the cloud locally. In the real extension it uses your Google account.' }));
   }
 
