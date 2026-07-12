@@ -1,11 +1,12 @@
 // Library view — Chrome bookmarks as a folder-first card grid with breadcrumbs.
 
-import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget } from './ui.js';
+import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget, confirmDialog } from './ui.js';
 import { TAGS_KEY, loadTags, tagChips, openTagEditor } from './tags.js';
 
 const BM_MIME = 'text/x-stacknest-bm';
 const TAB_MIME = 'text/x-stacknest-tab';
 const LAST_FOLDER_KEY = 'stacknest:folder';
+const OPEN_ALL_CONFIRM = 10; // matches the Collections board's confirm threshold
 
 let root, getQuery;
 let currentFolderId = null;
@@ -265,6 +266,14 @@ function deleteBtn(node, label) {
 async function openAll(folder) {
   const links = (folder.children || []).filter((n) => n.url);
   if (!links.length) { toast('Folder has no links'); return; }
+  if (links.length > OPEN_ALL_CONFIRM) {
+    const ok = await confirmDialog({
+      title: `Open ${links.length} tabs?`,
+      message: `“${folder.title || 'This folder'}” has ${links.length} links. They'll open together in a new window.`,
+      confirmLabel: `Open ${links.length} tabs`,
+    });
+    if (!ok) return;
+  }
   try {
     await chrome.windows.create({ url: links.map((n) => n.url), focused: true });
   } catch {
