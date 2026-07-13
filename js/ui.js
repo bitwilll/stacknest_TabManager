@@ -10,6 +10,16 @@ export function el(tag, attrs = {}, ...children) {
     else if (k === 'text') node.textContent = v;
     else node.setAttribute(k, v);
   }
+  // Every editable field in StackNest holds structured data — collection/space names,
+  // URLs, tag slugs — never prose. Turn OFF Chrome's native spellcheck so it stops
+  // red-squiggling names/URLs, and so its correction menu can't target a stale word
+  // after these frequently-re-rendered inputs are recreated. Callers may opt back in
+  // with an explicit spellcheck attr. (The search box already sets spellcheck="false".)
+  if ((tag === 'input' || tag === 'textarea') && !node.hasAttribute('spellcheck')) {
+    node.setAttribute('spellcheck', 'false');
+    node.setAttribute('autocapitalize', 'off');
+    node.setAttribute('autocorrect', 'off');
+  }
   for (const child of children.flat()) {
     if (child == null) continue;
     node.append(child.nodeType ? child : document.createTextNode(child));
