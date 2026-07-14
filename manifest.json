@@ -6,6 +6,7 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
+  "incognito": "spanning",
   "permissions": ["tabs", "bookmarks", "favicon", "storage", "identity"],
   "host_permissions": [
     "https://www.googleapis.com/*",

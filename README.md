@@ -13,6 +13,22 @@ with proper light and dark themes. No build step, no dependencies, no data leave
 
 > Chrome will ask to confirm the new-tab replacement the first time. Click **Keep it**.
 
+### Use it in incognito
+
+The manifest declares `"incognito": "spanning"`, so StackNest can run in incognito windows with
+your **same** collections, bookmarks and settings (they live in shared storage). Chrome still
+gates this behind a per-user switch you have to flip once — the extension cannot grant itself
+incognito access:
+
+1. `chrome://extensions` → StackNest → **Details**.
+2. Turn on **Allow in incognito**.
+3. Open a new tab in an incognito window — StackNest loads with your data.
+
+Note the trade-off of "spanning": because storage is shared, anything you actively **stash or save
+while in incognito persists** into your normal profile (it's you choosing to save it). Your saved
+theme and board layout are the exception — those are kept in `localStorage`, which is per-session
+in incognito, so they fall back to defaults there.
+
 ## The layout
 
 - **Sidebar** — switch views (**Collections**, **Library**, **Settings**), pick your active
