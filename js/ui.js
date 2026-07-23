@@ -48,6 +48,9 @@ const ICONS = {
   tag:      '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
   cloud:    '<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 9.5a3.5 3.5 0 0 1 .5 8.5H7Z"/>',
   refresh:  '<path d="M20 11a8 8 0 0 0-14-4.5L4 8m0 0V4m0 4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16m0 0v4m0-4h-4"/>',
+  note:     '<path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="m8.5 13 1.7 1.7L14 11"/>',
+  check:    '<path d="M4 12.5 9 17.5 20 6.5"/>',
+  upload:   '<path d="M12 21V10m0 0 4 4m-4-4-4 4"/><path d="M5 5h14"/>',
 };
 
 export function icon(name, size = 15) {

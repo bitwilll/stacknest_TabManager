@@ -137,6 +137,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
+/* announced by screen readers, invisible on screen (live regions, status text) */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
 ::-webkit-scrollbar { width: 11px; height: 11px; }
 ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -1029,14 +1036,76 @@ kbd {
 .tag-chip-n { font: 600 10.5px var(--mono); color: var(--text-mut); }
 .tag-chip.is-active .tag-chip-n { color: var(--accent-text); }
 .tag-section-h { display: flex; align-items: center; gap: 8px; margin: 22px 0 12px; font: 700 14px var(--grot); color: var(--text-strong); }
-.tag-graph-wrap { border: 1px solid var(--card-line-2); border-radius: 16px; background: var(--bg-col); padding: 6px; }
-.tag-graph { width: 100%; height: auto; display: block; }
+.tag-graph-wrap {
+  position: relative;
+  border: 1px solid var(--card-line-2);
+  border-radius: 16px;
+  background: var(--bg-col);
+  background-image: radial-gradient(circle at 1px 1px, var(--dotgrid) 1px, transparent 0);
+  background-size: 22px 22px;
+  height: clamp(320px, 52vh, 560px);
+  overflow: hidden;
+  user-select: none;
+  /* pan-y by default so a touch swipe still scrolls the page past this tall canvas;
+     wide (pointer-driven) layouts take the whole gesture for drag-panning */
+  touch-action: pan-y;
+}
+@media (min-width: 881px) { .tag-graph-wrap { touch-action: none; } }
+.tag-graph { width: 100%; height: 100%; display: block; cursor: grab; }
+.tag-graph-wrap.is-panning .tag-graph { cursor: grabbing; }
+.tg-viewport { will-change: transform; }
+
+/* on-canvas zoom controls */
+.tg-controls {
+  position: absolute; right: 12px; bottom: 12px;
+  display: flex; align-items: center; gap: 1px;
+  padding: 3px;
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+}
+.tg-cbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.tg-cbtn:hover { background: var(--hov); color: var(--text-strong); }
+.tg-cbtn svg { display: block; }
+.tg-czoom { min-width: 42px; text-align: center; font: 600 11.5px var(--mono); color: var(--text-mut); padding: 0 2px; }
+
+/* discoverability hint — fades away while actively panning */
+.tg-hint {
+  position: absolute; left: 12px; top: 11px;
+  display: flex; align-items: center; gap: 4px;
+  font: 600 11px var(--grot); color: var(--text-mut);
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  padding: 4px 10px; border-radius: 999px;
+  pointer-events: none;
+  transition: opacity .2s, color .2s, border-color .2s;
+}
+.tg-hint kbd {
+  font: 600 10px var(--mono);
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: 1px 4px; color: var(--text-soft);
+}
+.tag-graph-wrap.is-panning .tg-hint { opacity: 0; }
+/* flashed when the user scrolls over the canvas without the zoom modifier */
+.tg-hint.is-nudge { color: var(--text-strong); border-color: var(--accent-border); }
+
 .tg-item { cursor: pointer; transition: r .1s ease; }
 .tg-item:hover { r: 7; }
 .tg-hub { cursor: pointer; outline: none; }
 .tg-hub-label { font: 700 12px var(--grot); pointer-events: none; }
 .tg-hub circle { transition: fill-opacity .13s; }
-.tg-hub:hover circle, .tg-hub:focus-visible circle { fill-opacity: 0.32; }
+.tg-hub:hover circle { fill-opacity: 0.32; }
+/* focus must be clearly distinct from hover, not identical to it */
+.tg-hub:focus-visible circle { fill-opacity: 0.4; stroke-width: 3.2; }
+.tg-hub:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* ————— Duplicates view ————— */
 
@@ -1128,3 +1197,71 @@ kbd {
 .tick-check.is-active { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-border); }
 
 @media (max-width: 980px) { .ticker { display: none !important; } }
+
+/* ————— Notes & Todos ————— */
+.view-notes { overflow-y: auto; }
+.notesview { padding: 22px 24px 44px; max-width: 1120px; }
+
+.notes-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.notes-title { margin: 0; font: 800 18px var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
+.notes-sub { margin: 5px 0 0; font: 500 12.5px var(--grot); color: var(--text-mut); }
+.notes-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.notes-menu-wrap { position: relative; }
+.notes-tool { gap: 6px; }
+.notes-tool svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.notes-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 210px; background: var(--bg-side); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 16px 40px -12px rgba(0,0,0,.35); padding: 6px; display: flex; flex-direction: column; }
+.notes-menu[hidden] { display: none; } /* class display: flex would otherwise beat the [hidden] UA rule */
+.notes-menu-item { padding: 8px 10px; border-radius: 8px; font: 600 13px var(--grot); color: var(--text-body); text-align: left; }
+.notes-menu-item:hover { background: var(--hov); color: var(--text-strong); }
+
+.notes-cols { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .notes-cols { grid-template-columns: 1fr; } }
+
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; min-height: 30px; }
+.panel-h { margin: 0; font: 700 10.5px var(--mono); letter-spacing: 0.14em; color: var(--text-mut); }
+
+/* todos */
+.todo-panel { border: 1px solid var(--card-line-2); border-radius: var(--r5); background: var(--bg-col); padding: 16px; }
+.todo-addrow { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-inset); color: var(--text-mut); margin-bottom: 12px; }
+.todo-addrow svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.todo-add { flex: 1; border: 0; background: transparent; outline: none; font: 500 13.5px var(--grot); color: var(--text); }
+.todo-add::placeholder { color: var(--text-mut); }
+.todo-list { display: flex; flex-direction: column; gap: 1px; }
+.todo-row { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: 8px; }
+.todo-row:hover { background: var(--hov); }
+.todo-check { width: 18px; height: 18px; flex: none; border: 1.6px solid var(--line-strong); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--accent-contrast); cursor: pointer; transition: background .12s, border-color .12s; }
+.todo-check.is-done { background: var(--accent); border-color: var(--accent); }
+.todo-check svg { stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.todo-text { flex: 1; min-width: 0; font: 500 13.5px var(--grot); color: var(--text-body); cursor: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-row.is-done .todo-text { color: var(--text-mut); text-decoration: line-through; }
+.todo-edit { flex: 1; min-width: 0; border: 1px solid var(--accent-border); border-radius: 6px; padding: 2px 6px; font: 500 13.5px var(--grot); background: var(--bg-inset); color: var(--text); outline: none; }
+.todo-row .icb { opacity: 0; }
+.todo-row:hover .icb, .todo-row:focus-within .icb { opacity: 1; }
+.todo-foot { margin-top: 12px; }
+.linkbtn { font: 600 12px var(--grot); color: var(--text-mut); cursor: pointer; }
+.linkbtn:hover { color: var(--text-strong); }
+
+/* notes */
+.notes-new { gap: 6px; }
+.notes-new svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.note-card { display: flex; flex-direction: column; border: 1px solid var(--card-line-2); border-radius: var(--r5); background: var(--bg-card); padding: 14px; min-height: 150px; transition: border-color .12s; }
+.note-card:focus-within { border-color: var(--accent-border); }
+.note-title { border: 0; background: transparent; outline: none; font: 700 14px var(--grot); color: var(--text-strong); padding: 0 0 6px; width: 100%; }
+.note-title::placeholder { color: var(--text-ghost); }
+.note-body { border: 0; background: transparent; outline: none; resize: none; flex: 1; width: 100%; font: 500 13px/1.5 var(--grot); color: var(--text-body); padding: 0; }
+.note-body::placeholder { color: var(--text-ghost); }
+.note-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.note-when { font: 500 10.5px var(--mono); color: var(--text-faint); }
+.note-card .icb { opacity: 0; }
+.note-card:hover .icb, .note-card:focus-within .icb { opacity: 1; }
+
+.notes-empty { font: 500 13px var(--grot); color: var(--text-mut); padding: 12px 4px; }
+.notes-empty.big { padding: 32px 4px; text-align: center; border: 1px dashed var(--card-line-2); border-radius: var(--r5); }
+
+/* Apple Notes paste dialog (reuses .modal-scrim/.modal) */
+.apple-paste { width: 100%; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg-inset); color: var(--text); font: 500 13px/1.5 var(--grot); padding: 10px; outline: none; resize: vertical; min-height: 120px; }
+.apple-paste:focus { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
+.apple-splitrow { display: flex; align-items: center; gap: 8px; margin: 12px 0 18px; font: 500 12.5px var(--grot); color: var(--text-soft); cursor: pointer; }
+.apple-split-cb { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }

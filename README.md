@@ -29,6 +29,11 @@ while in incognito persists** into your normal profile (it's you choosing to sav
 theme and board layout are the exception — those are kept in `localStorage`, which is per-session
 in incognito, so they fall back to defaults there.
 
+Google Drive backup works in incognito too: `chrome.identity`'s OAuth flow can't run from an
+incognito page, so incognito newtabs delegate token minting to the background service worker
+(`js/sw.js`), which lives in the regular profile. The consent window, if one is needed, opens as a
+normal-profile window.
+
 ## The layout
 
 - **Sidebar** — switch views (**Collections**, **Library**, **Settings**), pick your active
@@ -95,6 +100,14 @@ or remove copies one at a time. **Keep one of each** does it all in a single cli
 duplicated link it keeps one copy and removes the rest (with a confirm first). Links you'd rather
 not be nagged about get a **Forget** button — they move to a **Forgotten links** section at the
 bottom, excluded from scans and from the one-click clean, restorable any time.
+
+**Notes & Todos** — a calm scratchpad in the sidebar (below Duplicates). A quick **todo**
+checklist (add, check off, click-to-edit, clear completed — the nav badge shows open tasks) and
+free-form **notes** (title + body, auto-saved as you type). Everything lives in `chrome.storage`,
+so it rides along in your backups and Google Drive sync. The toolbar offers **Export** (full
+backup incl. notes, or notes-only), **Import** (a file, or paste from **Apple Notes** — a browser
+extension can't read Apple Notes directly, so you paste exported text, optionally splitting on
+blank lines), and **Drive** back-up / fetch (uses the same backup, so notes sync with everything else).
 
 **Settings** (in the sidebar):
 - **Typography** — pick the **interface font** and **monospace font** (offline-safe stacks, live
@@ -193,6 +206,7 @@ js/bookmarks.js    Library view (bookmarks as card grid)
 js/tags.js         tags data + editor popover + Tags view (mind-graph)
 js/duplicates.js   Duplicates view (finds repeated links across collections + bookmarks)
 js/drive.js        Google Drive cloud backup/restore (chrome.identity + Drive appData)
+js/sw.js           background service worker (identity token broker for incognito pages)
 js/ticker.js       market ticker (CoinGecko crypto + open.er-api FX marquee)
 js/settings.js     Settings view (typography, ticker, backup, cloud)
 js/backup.js       full JSON backup/restore (spaces, collections, settings, bookmarks)

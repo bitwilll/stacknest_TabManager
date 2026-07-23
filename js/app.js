@@ -15,6 +15,7 @@ async function main() {
   const { initHistory } = await import('./history.js');
   const { initDuplicates } = await import('./duplicates.js');
   const { initTags } = await import('./tags.js');
+  const { initNotes } = await import('./notes.js');
   const { initTicker } = await import('./ticker.js');
 
   // apply saved typography before first paint; guarantee a default space exists
@@ -56,6 +57,7 @@ async function main() {
     library: { el: document.getElementById('view-library'), title: 'Library' },
     tags: { el: document.getElementById('view-tags'), title: 'Tags' },
     duplicates: { el: document.getElementById('view-duplicates'), title: 'Duplicates' },
+    notes: { el: document.getElementById('view-notes'), title: 'Notes & Todos' },
     settings: { el: document.getElementById('view-settings'), title: 'Settings' },
   };
   const viewTitle = document.getElementById('view-title');
@@ -113,6 +115,11 @@ async function main() {
     getQuery,
     countEl: document.getElementById('nav-tags-count'),
   });
+  const notesCol = initNotes({
+    root: document.getElementById('notes-root'),
+    getQuery,
+    countEl: document.getElementById('nav-notes-count'),
+  });
   const ticker = initTicker({ root: document.getElementById('ticker') });
 
   // re-render whichever view is being opened, so it reflects the latest data
@@ -121,6 +128,7 @@ async function main() {
     else if (name === 'library') bmCol.render();
     else if (name === 'tags') tagsCol.render();
     else if (name === 'duplicates') dupCol.render();
+    else if (name === 'notes') notesCol.render();
   }
 
   // topbar + tray actions
@@ -145,7 +153,7 @@ async function main() {
   });
 
   // — unified search —
-  const renderAll = () => { tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); };
+  const renderAll = () => { tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); notesCol.render(); };
   let searchTimer;
   search.addEventListener('input', () => {
     clearTimeout(searchTimer);

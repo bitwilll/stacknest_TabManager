@@ -4,6 +4,7 @@ import { toast, exportDownload, pickFile, confirmDialog } from './ui.js';
 import { getKey, setKey, queued } from './store.js';
 import { SPACES_KEY, WORKSPACES_KEY, ACTIVE_WS_KEY, ensureWorkspaces } from './spacesStore.js';
 import { SETTINGS_KEY } from './settings.js';
+import { NOTES_KEY } from './notes.js';
 
 function stamp() {
   const d = new Date();
@@ -27,11 +28,12 @@ async function exportBookmarkTree() {
 }
 
 export async function buildBackup(includeBookmarks) {
-  const [workspaces, collections, activeWorkspace, settings] = await Promise.all([
+  const [workspaces, collections, activeWorkspace, settings, notes] = await Promise.all([
     getKey(WORKSPACES_KEY, []),
     getKey(SPACES_KEY, []),
     getKey(ACTIVE_WS_KEY, null),
     getKey(SETTINGS_KEY, null),
+    getKey(NOTES_KEY, null),
   ]);
   const backup = {
     app: 'StackNest',
@@ -42,6 +44,7 @@ export async function buildBackup(includeBookmarks) {
     workspaces,
     collections,
     settings,
+    notes, // { todos, notes } — the Notes & Todos view, so backup/Drive carry them
   };
   if (includeBookmarks) backup.bookmarks = await exportBookmarkTree();
   return backup;
@@ -80,6 +83,7 @@ export async function applyBackup(data) {
     if (Array.isArray(data.collections)) await setKey(SPACES_KEY, data.collections);
     if (data.settings && typeof data.settings === 'object') await setKey(SETTINGS_KEY, data.settings);
     if (data.activeWorkspace) await setKey(ACTIVE_WS_KEY, data.activeWorkspace);
+    if (data.notes && typeof data.notes === 'object' && !Array.isArray(data.notes)) await setKey(NOTES_KEY, data.notes);
   });
   // repair a missing/invalid active-space pointer and reattach any orphaned collections,
   // so an older / hand-edited / partial backup can never leave the board stranded-empty

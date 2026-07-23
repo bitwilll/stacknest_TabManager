@@ -35,6 +35,10 @@
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M4.5 15.5V6a1.5 1.5 0 0 1 1.5-1.5h9.5"/></svg></span>Duplicates
           <span class="nav-count" id="nav-duplicates-count"></span>
         </button>
+        <button class="navx view-link" id="nav-notes" data-view="notes">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="m8.3 13 1.7 1.7L14 11"/></svg></span>Notes
+          <span class="nav-count" id="nav-notes-count"></span>
+        </button>
       </nav>
 
       <div class="side-scroll">
@@ -72,7 +76,12 @@
       <div class="side-sec side-settings">
         <button class="navx view-link" id="nav-settings" data-view="settings">
           <span class="nav-ic" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
+            <!-- 6-tooth gear generated from exact polar geometry: tips on r=8.6, valleys on
+                 r=6.1, centred on (12,12). Six broad teeth stay crisp at 16px where finer
+                 8-tooth cutting blurs together. Tips sit at top/bottom so the ink (incl. the
+                 1.7 stroke) runs 2.55→21.45 vertically and 2.84→21.16 horizontally: ~2.6u
+                 clear of every viewBox edge, and never clipped. -->
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.52 6.43L9.77 3.69A8.6 8.6 0 0 1 14.23 3.69L14.48 6.43A6.1 6.1 0 0 1 15.59 7.06L18.08 5.92A8.6 8.6 0 0 1 20.31 9.77L18.07 11.36A6.1 6.1 0 0 1 18.07 12.64L20.31 14.23A8.6 8.6 0 0 1 18.08 18.08L15.59 16.94A6.1 6.1 0 0 1 14.48 17.57L14.23 20.31A8.6 8.6 0 0 1 9.77 20.31L9.52 17.57A6.1 6.1 0 0 1 8.41 16.94L5.92 18.08A8.6 8.6 0 0 1 3.69 14.23L5.93 12.64A6.1 6.1 0 0 1 5.93 11.36L3.69 9.77A8.6 8.6 0 0 1 5.92 5.92L8.41 7.06A6.1 6.1 0 0 1 9.52 6.43Z"/><circle cx="12" cy="12" r="2.7"/></svg>
           </span>Settings
         </button>
       </div>
@@ -128,6 +137,7 @@
         <button class="chipx view-link" data-view="library">Library</button>
         <button class="chipx view-link" data-view="tags">Tags</button>
         <button class="chipx view-link" data-view="duplicates">Duplicates</button>
+        <button class="chipx view-link" data-view="notes">Notes</button>
         <button class="chipx view-link" data-view="settings">Settings</button>
       </div>
 
@@ -154,6 +164,10 @@
 
       <section class="view view-duplicates" id="view-duplicates" hidden>
         <div class="duplicates" id="duplicates-root"></div>
+      </section>
+
+      <section class="view view-notes" id="view-notes" hidden>
+        <div class="notesview" id="notes-root"></div>
       </section>
 
       <section class="view view-settings" id="view-settings" hidden>

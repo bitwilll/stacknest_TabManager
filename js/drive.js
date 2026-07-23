@@ -25,8 +25,15 @@ const FILE_NAME = 'stacknest-backup.json';
 const SCOPES = ['https://www.googleapis.com/auth/drive.appdata', 'https://www.googleapis.com/auth/userinfo.email'];
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
-// running inside a real extension (has chrome.identity + a runtime id)
-export const isLive = () => !!(globalThis.chrome?.identity?.getAuthToken && chrome.runtime?.id);
+// running inside a real extension (has chrome.identity + a runtime id). Incognito
+// pages may not expose chrome.identity at all, but they still count as live —
+// token work is delegated to the background worker there (see getToken).
+export const isLive = () => !!(globalThis.chrome?.runtime?.id && (chrome.identity?.getAuthToken || chrome.extension?.inIncognitoContext));
+
+// chrome.identity's OAuth flows (interactive consent especially) can't run from an
+// incognito page, so incognito delegates token mint/evict to the background service
+// worker (js/sw.js) — "spanning" mode shares one worker, living in the regular profile.
+const inIncognito = () => !!globalThis.chrome?.extension?.inIncognitoContext;
 
 // the OAuth client is actually filled in (not the shipped placeholder). Live sync
 // can only work when this is true; the UI uses it to show a clear setup prompt.
@@ -51,7 +58,12 @@ async function patchState(patch) {
 
 /* ————————————————————————— OAuth (live) ————————————————————————— */
 
-function getToken(interactive) {
+async function getToken(interactive) {
+  if (inIncognito()) {
+    const r = await chrome.runtime.sendMessage({ type: 'auth:getToken', interactive }).catch(() => null);
+    if (!r?.token) { if (r?.error) console.error('getAuthToken (via sw):', r.error); throw authError(r?.error, interactive); }
+    return r.token;
+  }
   return new Promise((resolve, reject) => {
     chrome.identity.getAuthToken({ interactive, scopes: SCOPES }, (token) => {
       const err = chrome.runtime.lastError;
@@ -71,6 +83,7 @@ function authError(raw, interactive) {
   return new Error('Google sign-in failed. Please try again.');
 }
 function dropToken(token) {
+  if (inIncognito()) return chrome.runtime.sendMessage({ type: 'auth:removeToken', token }).catch(() => {});
   return new Promise((resolve) => { try { chrome.identity.removeCachedAuthToken({ token }, resolve); } catch { resolve(); } });
 }
 

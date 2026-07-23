@@ -146,6 +146,13 @@ export function tagChips(map, url, max = 3) {
 let root, getQuery, countEl, jumpToUrl;
 let activeTag = null; // null = overview (graph)
 
+// Mind-graph camera (pan offset + zoom). Kept at module scope so a background
+// re-render (a storage/bookmark event) re-frames to where the user left the
+// canvas instead of snapping back to the default view mid-exploration.
+let graphView = { tx: 0, ty: 0, s: 1 };
+let graphSig = ''; // hub layout the retained camera belongs to
+const Z_MIN = 0.45, Z_MAX = 5, Z_STEP = 1.25;
+
 export function initTags(options) {
   ({ root, getQuery, countEl, jumpToUrl } = options);
   chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[TAGS_KEY] || c['stacknest:spaces'])) render(); });
@@ -279,17 +286,27 @@ function buildGraph(tagList, items) {
   });
 
   const NS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute('class', 'tag-graph');
-  svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'Tag relationship graph');
   const mk = (name, attrs, ...kids) => { const n = document.createElementNS(NS, name); for (const k in attrs) n.setAttribute(k, attrs[k]); kids.forEach((c) => n.append(c)); return n; };
+
+  // role=group, NOT role=img: img makes the whole subtree presentational, which
+  // would prune the focusable tag hubs below out of the accessibility tree
+  const svg = mk('svg', {
+    viewBox: `0 0 ${W} ${H}`, class: 'tag-graph', role: 'group',
+    preserveAspectRatio: 'xMidYMid meet',
+    'aria-label': 'Tag relationship graph',
+  });
+  // one group holds all content; pan/zoom is a single transform on it
+  const viewport = mk('g', { class: 'tg-viewport' });
+  svg.append(viewport);
+
+  // a drag past the threshold is a pan, not a click — this guards the hub/dot
+  // click handlers below so panning never accidentally filters or navigates
+  let didPan = false;
 
   // edges
   const edges = mk('g', { class: 'tg-edges' });
   drawn.forEach((it) => { const p = pos.get(it.id); it.tags.forEach((t) => { const h = hub.get(t); edges.append(mk('line', { x1: p.x, y1: p.y, x2: h.x, y2: h.y, stroke: tagColor(t), 'stroke-opacity': '0.28', 'stroke-width': '1' })); }); });
-  svg.append(edges);
+  viewport.append(edges);
 
   // item dots
   const nodes = mk('g', { class: 'tg-nodes' });
@@ -297,28 +314,160 @@ function buildGraph(tagList, items) {
     const p = pos.get(it.id);
     const c = mk('circle', { cx: p.x, cy: p.y, r: '4.5', fill: tagColor(it.tags[0]), 'fill-opacity': '0.9', class: 'tg-item' });
     c.append(mk('title', {}, document.createTextNode(`${it.title} — ${it.tags.join(', ')}`)));
-    c.addEventListener('click', () => { window.location.href = it.url; });
+    c.addEventListener('click', () => { if (didPan) return; window.location.href = it.url; });
     nodes.append(c);
   });
-  svg.append(nodes);
+  viewport.append(nodes);
 
   // tag hubs (clickable → filter)
   const hubs = mk('g', { class: 'tg-hubs' });
   tags.forEach((t) => {
     const h = hub.get(t.name);
-    const g = mk('g', { class: 'tg-hub', tabindex: '0', role: 'button' });
+    const g = mk('g', { class: 'tg-hub', tabindex: '0', role: 'button', 'aria-label': `Filter by ${t.name} — ${t.count} link${t.count === 1 ? '' : 's'}` });
     const rad = 11 + Math.min(10, t.count * 1.5);
     g.append(mk('circle', { cx: h.x, cy: h.y, r: String(rad), fill: tagColor(t.name), 'fill-opacity': '0.16', stroke: tagColor(t.name), 'stroke-width': '1.5' }));
     // label under the circle, never across it; long names truncate (tooltip has the full name)
     const label = mk('text', { x: h.x, y: h.y + rad + 13, 'text-anchor': 'middle', class: 'tg-hub-label', fill: tagColor(t.name) });
     label.append(document.createTextNode(t.name.length > 16 ? `${t.name.slice(0, 15)}…` : t.name));
     g.append(label);
-    g.append(mk('title', {}, document.createTextNode(`${t.name} · ${t.count}`)));
-    g.addEventListener('click', () => { activeTag = t.name; render(); });
-    g.addEventListener('keydown', (e) => { if (e.key === 'Enter') { activeTag = t.name; render(); } });
+    g.append(mk('title', {}, document.createTextNode(`${t.name} · ${t.count} — click to filter`)));
+    g.addEventListener('click', () => { if (didPan) return; activeTag = t.name; render(); });
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activeTag = t.name; render(); } });
     hubs.append(g);
   });
-  svg.append(hubs);
+  viewport.append(hubs);
 
-  return el('div', { class: 'tag-graph-wrap' }, svg);
+  /* ————— pan / zoom camera ————— */
+  const wrap = el('div', { class: 'tag-graph-wrap' });
+
+  const applyView = () => viewport.setAttribute('transform', `translate(${graphView.tx} ${graphView.ty}) scale(${graphView.s})`);
+
+  // The retained camera only means anything while the hub layout is unchanged. If a
+  // re-render added/removed/moved hubs, restoring the old pan could strand the user
+  // on empty canvas looking at content that isn't there any more — re-frame instead.
+  const layoutSig = `${W}x${H}|${tags.map((t) => t.name).join(' ')}`;
+  if (layoutSig !== graphSig) { graphSig = layoutSig; graphView = { tx: 0, ty: 0, s: 1 }; }
+  applyView();
+
+  const hint = el('div', { class: 'tg-hint', 'aria-hidden': 'true' },
+    el('span', { text: 'Drag to pan · ' }), el('kbd', { text: '⌘/Ctrl' }), el('span', { text: ' + scroll to zoom' }));
+
+  // map a client (screen) point into SVG user units, accounting for the viewBox
+  // fit and any interface-size zoom — both live in the SVG's screen CTM
+  const clientToUser = (px, py) => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const inv = ctm.inverse();
+    return { x: inv.a * px + inv.c * py + inv.e, y: inv.b * px + inv.d * py + inv.f };
+  };
+
+  let zoomLabel = null, zoomStatus = null;
+  const updateLabel = () => {
+    const pct = `${Math.round(graphView.s * 100)}%`;
+    if (zoomLabel) zoomLabel.textContent = pct;
+    if (zoomStatus) zoomStatus.textContent = `Zoom ${pct}`; // spoken by screen readers
+  };
+
+  // zoom keeping the point under (px,py) fixed on screen — the "zoom to cursor" feel
+  const zoomAt = (px, py, factor) => {
+    const s0 = graphView.s;
+    const s1 = Math.max(Z_MIN, Math.min(Z_MAX, s0 * factor));
+    if (s1 === s0) return;
+    const u = clientToUser(px, py);
+    graphView.tx = u.x - ((u.x - graphView.tx) / s0) * s1;
+    graphView.ty = u.y - ((u.y - graphView.ty) / s0) * s1;
+    graphView.s = s1;
+    applyView(); updateLabel();
+  };
+  const zoomCenter = (factor) => { const r = svg.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor); };
+  const resetView = () => { graphView = { tx: 0, ty: 0, s: 1 }; applyView(); updateLabel(); };
+
+  // A focused hub must never be off-canvas — otherwise tabbing lands on something
+  // invisible with no keyboard way to bring it back into frame.
+  hubs.querySelectorAll('.tg-hub').forEach((g) => g.addEventListener('focus', () => {
+    const sr = svg.getBoundingClientRect(), gr = g.getBoundingClientRect();
+    if (gr.right < sr.left || gr.left > sr.right || gr.bottom < sr.top || gr.top > sr.bottom) resetView();
+  }));
+
+  // Wheel zooms only while ⌘/Ctrl is held. The canvas is tall and sits directly above
+  // the card grid, so swallowing every wheel event would trap the page — the user
+  // could never scroll past it. Trackpad pinch already arrives as ctrlKey+wheel, so
+  // pinch-to-zoom still works; a plain wheel scrolls the page and flashes the hint.
+  let nudgeTimer = null;
+  const nudgeHint = () => {
+    hint.classList.add('is-nudge');
+    clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(() => hint.classList.remove('is-nudge'), 1400);
+  };
+  svg.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey && !e.metaKey) { nudgeHint(); return; } // let the page scroll
+    e.preventDefault();
+    zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+  }, { passive: false });
+
+  // drag → pan. Pointer capture is taken lazily (only once movement crosses the
+  // threshold) so a plain click still reaches the hub/dot handlers underneath.
+  let panning = false, startUser = null, start0 = null;
+  const endPan = (e) => {
+    if (!panning) return;
+    panning = false;
+    wrap.classList.remove('is-panning');
+    try { if (e && e.pointerId != null) svg.releasePointerCapture(e.pointerId); } catch { /* nothing captured */ }
+    window.removeEventListener('pointerup', endPan);
+    window.removeEventListener('pointercancel', endPan);
+  };
+  svg.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    panning = true; didPan = false;
+    startUser = clientToUser(e.clientX, e.clientY);
+    start0 = { tx: graphView.tx, ty: graphView.ty };
+    // capture is lazy, so a release outside the canvas would otherwise never reach
+    // us and the graph would keep panning under a button-less cursor
+    window.addEventListener('pointerup', endPan);
+    window.addEventListener('pointercancel', endPan);
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (!panning) return;
+    if (e.buttons === 0) { endPan(e); return; } // released somewhere we never saw
+    const u = clientToUser(e.clientX, e.clientY);
+    const dx = u.x - startUser.x, dy = u.y - startUser.y;
+    if (!didPan && Math.hypot(dx, dy) > 4) { didPan = true; wrap.classList.add('is-panning'); try { svg.setPointerCapture(e.pointerId); } catch { /* capture optional */ } }
+    if (didPan) { graphView.tx = start0.tx + dx; graphView.ty = start0.ty + dy; applyView(); }
+  });
+
+  // keyboard: arrows pan, +/- zoom, 0 resets (when the canvas holds focus)
+  const PAN_KEY = 60; // user units per press
+  wrap.tabIndex = 0;
+  wrap.setAttribute('aria-label', 'Tag graph canvas — arrow keys pan, plus and minus zoom, 0 resets the view');
+  wrap.addEventListener('keydown', (e) => {
+    const pan = (dx, dy) => { graphView.tx += dx; graphView.ty += dy; applyView(); };
+    if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomCenter(Z_STEP); }
+    else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomCenter(1 / Z_STEP); }
+    else if (e.key === '0') { e.preventDefault(); resetView(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); pan(PAN_KEY, 0); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); pan(-PAN_KEY, 0); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); pan(0, PAN_KEY); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); pan(0, -PAN_KEY); }
+  });
+
+  // on-canvas controls: [−] [zoom %] [+] [fit]
+  const cbtn = (aria, on, ...paths) => {
+    const b = el('button', { class: 'tg-cbtn', type: 'button', title: aria, 'aria-label': aria });
+    b.addEventListener('click', (e) => { e.stopPropagation(); on(); });
+    b.append(mk('svg', { viewBox: '0 0 24 24', width: '15', height: '15', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, ...paths.map((d) => mk('path', { d }))));
+    return b;
+  };
+  zoomLabel = el('span', { class: 'tg-czoom', 'aria-hidden': 'true', text: '100%' });
+  // the visible % is decorative; this mirrors it for screen readers
+  zoomStatus = el('span', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
+  const controls = el('div', { class: 'tg-controls', role: 'group', 'aria-label': 'Zoom controls' },
+    cbtn('Zoom out', () => zoomCenter(1 / Z_STEP), 'M5 12h14'),
+    zoomLabel,
+    cbtn('Zoom in', () => zoomCenter(Z_STEP), 'M12 5v14', 'M5 12h14'),
+    cbtn('Fit to view', () => resetView(), 'M8 4H5a1 1 0 0 0-1 1v3', 'M16 4h3a1 1 0 0 1 1 1v3', 'M8 20H5a1 1 0 0 1-1-1v-3', 'M16 20h3a1 1 0 0 0 1-1v-3'),
+  );
+  updateLabel();
+
+  wrap.append(svg, hint, controls, zoomStatus);
+  return wrap;
 }

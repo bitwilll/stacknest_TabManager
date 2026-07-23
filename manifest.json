@@ -1,10 +1,14 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuqcNwEJYyzqB12jxbFy3mGISSToUHK/lyC/wCJnHLemuTyedm+bJzLdvqlwWXYKZOm9uQlr+vMHx6xsZEbxc96WL5VJQm7hB71WF6ZGM9h/i1Wih2LIMlpIt8EAXaMJE8ZL5ff/oY18x/lEg0fcRcLDdJ2CwqISthgGrk4N32xlUGvp4TXHcKE1/GxGCoEmGOk7/TG3oyTbpGIZnk4GOdtdKBMLXn3kGY1kCx6zF3Nm+6D0W/Keo2zhKkjHiPEMLlHvIrXDdE0DW+eselwMEizpj9cQmL7K13ZkPVZclgHBNtRloIfP0YFWfY7cuBM/QMxbgIhCF4n0zLoFtlqx3owIDAQAB",
   "name": "StackNest — Tab Manager",
   "version": "1.0.0",
   "description": "A calm command center for your tabs and bookmarks, on every new tab. Group open tabs, stash them into folders, and curate your library without clutter.",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
+  },
+  "background": {
+    "service_worker": "js/sw.js"
   },
   "incognito": "spanning",
   "permissions": ["tabs", "bookmarks", "favicon", "storage", "identity"],
@@ -15,7 +19,7 @@
     "https://open.er-api.com/*"
   ],
   "oauth2": {
-    "client_id": "REPLACE_WITH_YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "599136003782-49rr17vnbjhf2a8acgd3ftlmi17oqtb0.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.appdata",
       "https://www.googleapis.com/auth/userinfo.email"

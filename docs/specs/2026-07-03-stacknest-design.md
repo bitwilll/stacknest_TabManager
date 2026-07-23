@@ -296,6 +296,29 @@ Settings row sits above the footer at the bottom-left (left: 12px), renders the 
 the Settings view (title + populated `#settings-root`) with the accent-soft active treatment, and
 toggles off when leaving. No console errors.
 
+## Notes & Todos view (2026-07-08)
+
+New sidebar view below Duplicates (`js/notes.js`), a nav line-icon + open-todo count badge.
+Storage key `stacknest:notes = { todos:[{id,text,done,createdAt}], notes:[{id,title,body,
+createdAt,updatedAt}] }`, mutated through the serialized `update()` queue.
+
+- **Todos**: add (Enter), toggle done (custom ink checkbox), click-to-edit inline, delete, "Clear
+  completed"; open tasks sort above done ones (strikethrough + muted).
+- **Notes**: card grid; title input + auto-growing body textarea, both debounced-autosaved (400ms);
+  new note prepends and focuses; delete confirms only when non-empty.
+- **Toolbar menus** (progressive disclosure — one button each): Export (full backup incl. notes /
+  notes-only file), Import (file / **Apple Notes** paste), Drive (back up / fetch).
+- **Backup integration**: `buildBackup`/`applyBackup` now carry `notes`, so the existing local
+  backup **and** Google Drive sync include notes automatically (per the user's "in existing backup"
+  choice). Notes-only export is a separate `{type:'notes'}` file that import also accepts.
+- **Apple Notes**: a browser extension can't reach Apple Notes (no API; sandbox blocks AppleScript),
+  so import is by pasting exported text, optionally split into separate notes on blank lines.
+- One bug caught in review-by-eye: `.notes-menu { display:flex }` beat the `[hidden]` UA rule so all
+  three dropdowns showed at once — fixed with `.notes-menu[hidden]{ display:none }`.
+
+Verified in preview (light+dark): CRUD, badge, autosave, notes-only export shape, Apple-paste
+parsing, and a Drive backup→wipe→restore round-trip that brings notes back. No console errors, no overflow.
+
 ## Google Drive sync hardening (2026-07-08)
 
 An adversarial multi-agent audit of the Drive OAuth path (`js/drive.js` + manifest + the
