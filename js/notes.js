@@ -184,7 +184,8 @@ function todoRow(t) {
   const main = el('div', { class: 'todo-main' }, label);
   if (t.reminder) main.append(reminderChip(t));
 
-  const bell = actionBtn('bell', t.reminder ? 'Edit reminder' : 'Set reminder', (_, btn) => openReminderEditor(btn, t), t.reminder ? 'on' : '');
+  // the bell stays visible (unlike the hover-only delete) so reminders are discoverable
+  const bell = actionBtn('bell', t.reminder ? 'Edit reminder' : 'Set reminder', (_, btn) => openReminderEditor(btn, t), t.reminder ? 'rem-bell on' : 'rem-bell');
   const del = actionBtn('close', 'Delete task', () => { clearAlarm(t.id); mutate((d) => { d.todos = d.todos.filter((x) => x.id !== t.id); }); }, 'danger');
   return el('div', { class: `todo-row${t.done ? ' is-done' : ''}` }, box, main, el('div', { class: 'todo-acts' }, bell, del));
 }

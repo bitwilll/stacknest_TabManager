@@ -1240,7 +1240,8 @@ kbd {
 .todo-row.is-done .todo-text { color: var(--text-mut); text-decoration: line-through; }
 .todo-edit { width: 100%; min-width: 0; border: 1px solid var(--accent-border); border-radius: 6px; padding: 2px 6px; font: 500 13.5px var(--grot); background: var(--bg-inset); color: var(--text); outline: none; }
 .todo-acts { display: flex; align-items: center; gap: 1px; flex: none; }
-.todo-row .icb { opacity: 0; }
+.todo-row .icb { opacity: 0; }                       /* destructive delete stays hover-only */
+.todo-row .icb.rem-bell { opacity: 0.55; }           /* reminder bell is always discoverable */
 .todo-row:hover .icb, .todo-row:focus-within .icb { opacity: 1; }
 .todo-acts .icb.on { opacity: 1; color: var(--accent-text); }
 
