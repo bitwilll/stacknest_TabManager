@@ -1,23 +1,41 @@
-// Notes & Todos view. A calm scratchpad next to your tabs: a quick task checklist
-// and free-form notes, both kept in chrome.storage.local under one key so they ride
-// along in the full backup (local export/import + Google Drive sync). Apple Notes has
-// no API a browser extension can reach, so import is by pasting exported text.
+// Notes & Todos — a Keep-style mosaic that mixes free-form notes and single-line
+// tasks as peer cards. Every card can be dragged to reorder, tagged, tinted with a
+// translucent pastel, and given a reminder that fires a browser notification.
+//
+// Storage: chrome.storage.local under one key, so it rides along in the full backup
+// (local export/import + Google Drive sync). Apple Notes has no API a browser
+// extension can reach, so import is by pasting exported text.
 
 import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, debounce, shortDate } from './ui.js';
 import { getKey, update } from './store.js';
 import { exportBackup } from './backup.js';
 import { backupNow, restoreLatest, loadCloudState } from './drive.js';
+import { tagColor } from './tags.js';
 
 export const NOTES_KEY = 'stacknest:notes';
+const MOS_MIME = 'text/x-stacknest-mos';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() || `n${Date.now()}${Math.round(Math.random() * 1e6)}`);
 const now = () => new Date().toISOString();
 
-/* ————— reminders ————— */
-// A task reminder is { at: <ISO of the target date/time, in the user's local zone>,
-// lead: <minutes before to notify: 0|5|10|30|60> }. The notification fires at
-// (at − lead). All maths is in absolute epoch ms, so local timezone is handled for
-// free — the datetime-local input is read as local time and Date gives UTC ms.
+/* ————— card tints —————
+   Deliberately pale + translucent: they layer over the card surface so the same
+   swatch reads as a soft pastel on paper and a quiet wash on ink, without fighting
+   the monochrome chrome or hurting text contrast. */
+export const CARD_COLORS = [
+  { id: 'none', label: 'Default' },
+  { id: 'amber', label: 'Amber' },
+  { id: 'rose', label: 'Rose' },
+  { id: 'violet', label: 'Violet' },
+  { id: 'blue', label: 'Blue' },
+  { id: 'teal', label: 'Teal' },
+  { id: 'green', label: 'Green' },
+];
+
+/* ————— reminders —————
+   { at: <ISO of the target date/time>, lead: minutes before to notify }. The
+   notification fires at (at − lead). All maths is epoch-ms, so the user's local
+   timezone is handled for free. */
 const LEADS = [
   { v: 0, label: 'At time of event' },
   { v: 5, label: '5 minutes before' },
@@ -28,11 +46,9 @@ const LEADS = [
 const LEAD_CHIP = { 0: '', 5: '5m before', 10: '10m before', 30: '30m before', 60: '1h before' };
 const remName = (id) => `reminder:${id}`;
 const fireTime = (r) => (r ? new Date(r.at).getTime() - (r.lead || 0) * 60000 : 0);
-// chrome.alarms is absent in the dev preview — guard so the UI still works there
 const armAlarm = (id, fireMs) => { if (fireMs > Date.now()) chrome.alarms?.create(remName(id), { when: fireMs }); };
 const clearAlarm = (id) => chrome.alarms?.clear(remName(id));
 const pad2 = (n) => String(n).padStart(2, '0');
-// format a Date as a local <input type=datetime-local> value (YYYY-MM-DDTHH:MM)
 const toLocalInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
 let root, getQuery, countEl;
@@ -44,47 +60,72 @@ export function initNotes(options) {
   return { render };
 }
 
-async function load() {
-  const d = await getKey(NOTES_KEY, {});
-  return {
-    todos: Array.isArray(d?.todos) ? d.todos : [],
-    notes: Array.isArray(d?.notes) ? d.notes : [],
+/* ————————————————————————— data ————————————————————————— */
+
+// Older builds stored { todos, notes }; fold both into one ordered `items` list so
+// they can share a mosaic, drag-ordering, tags, tints and reminders.
+export function migrateNotes(d) {
+  if (Array.isArray(d?.items)) return { items: d.items.map(normalize) };
+  const items = [
+    ...(Array.isArray(d?.notes) ? d.notes : []).map((n) => normalize({ ...n, kind: 'note' })),
+    ...(Array.isArray(d?.todos) ? d.todos : []).map((t) => normalize({ ...t, kind: 'todo' })),
+  ];
+  items.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  return { items };
+}
+function normalize(x = {}) {
+  const kind = x.kind === 'todo' ? 'todo' : 'note';
+  const base = {
+    id: x.id || uid(), kind,
+    tags: Array.isArray(x.tags) ? x.tags.filter(Boolean).map(String) : [],
+    color: CARD_COLORS.some((c) => c.id === x.color) ? x.color : 'none',
+    createdAt: x.createdAt || now(),
   };
+  if (x.reminder?.at) base.reminder = { at: x.reminder.at, lead: Number(x.reminder.lead) || 0 };
+  return kind === 'todo'
+    ? { ...base, text: String(x.text || ''), done: !!x.done }
+    : { ...base, title: String(x.title || ''), body: String(x.body || ''), updatedAt: x.updatedAt || base.createdAt };
 }
-// serialized read-modify-write; fn mutates the {todos, notes} draft in place
+
+async function load() { return migrateNotes(await getKey(NOTES_KEY, {})); }
+// serialized read-modify-write; fn mutates the { items } draft in place
 function mutate(fn) {
-  return update(NOTES_KEY, { todos: [], notes: [] }, (d) => {
-    const draft = { todos: Array.isArray(d?.todos) ? d.todos : [], notes: Array.isArray(d?.notes) ? d.notes : [] };
-    fn(draft);
-    return draft;
-  });
+  return update(NOTES_KEY, {}, (d) => { const draft = migrateNotes(d); fn(draft); return draft; });
 }
+const findItem = (d, id) => d.items.find((x) => x.id === id);
 
 /* ————————————————————————— render ————————————————————————— */
 
 export async function render() {
-  const { todos, notes } = await load();
+  const { items } = await load();
   const q = getQuery ? getQuery() : '';
 
-  const open = todos.filter((t) => !t.done).length;
+  const open = items.filter((i) => i.kind === 'todo' && !i.done).length;
   if (countEl) countEl.textContent = open ? String(open) : '';
 
   const frag = document.createDocumentFragment();
-  frag.append(headerBar(todos, notes));
-  frag.append(el('div', { class: 'notes-cols' },
-    todoPanel(todos, q),
-    notesPanel(notes, q),
-  ));
+  frag.append(headerBar(items), composer());
+
+  const shown = q ? items.filter((i) => matches(q, i.text, i.title, i.body, (i.tags || []).join(' '))) : items;
+  if (!shown.length) {
+    frag.append(el('div', { class: 'notes-empty big' },
+      q ? 'Nothing here matches your search.'
+        : el('span', {}, 'Nothing yet — add a task above, or ', el('button', { class: 'linkbtn', onclick: () => newItem('note') }, el('span', { text: 'write your first note' })), '.')));
+  } else {
+    const mosaic = el('div', { class: 'mosaic' });
+    for (const it of shown) mosaic.append(itemCard(it));
+    frag.append(mosaic);
+  }
   root.replaceChildren(frag);
 }
 
-function headerBar(todos, notes) {
-  const open = todos.filter((t) => !t.done).length;
-  const sub = `${open} open task${open === 1 ? '' : 's'} · ${notes.length} note${notes.length === 1 ? '' : 's'}`;
+function headerBar(items) {
+  const open = items.filter((i) => i.kind === 'todo' && !i.done).length;
+  const notes = items.filter((i) => i.kind === 'note').length;
   return el('div', { class: 'notes-head' },
     el('div', { class: 'notes-h-text' },
       el('h2', { class: 'notes-title', text: 'Notes & Todos' }),
-      el('p', { class: 'notes-sub', text: sub }),
+      el('p', { class: 'notes-sub', text: `${open} open task${open === 1 ? '' : 's'} · ${notes} note${notes === 1 ? '' : 's'}` }),
     ),
     el('div', { class: 'notes-tools' },
       menuButton('Export', 'download', [
@@ -103,11 +144,36 @@ function headerBar(todos, notes) {
   );
 }
 
-// A tiny click-to-open menu (progressive disclosure — one button, actions on demand).
-function menuButton(label, iconName, items) {
+// quick-add a task, plus a New menu that can also start a note
+function composer() {
+  const input = el('input', { class: 'todo-add', placeholder: 'Add a task…', 'aria-label': 'Add a task' });
+  const add = () => {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    mutate((d) => { d.items.unshift(normalize({ kind: 'todo', text })); });
+  };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+  return el('div', { class: 'mos-composer' },
+    el('div', { class: 'todo-addrow' }, icon('plus', 15), input),
+    menuButton('New', 'plus', [
+      { label: 'New note', run: () => newItem('note') },
+      { label: 'New todo', run: () => newItem('todo') },
+    ], 'primary'),
+  );
+}
+
+async function newItem(kind) {
+  const id = uid();
+  await mutate((d) => { d.items.unshift(normalize({ id, kind })); });
+  requestAnimationFrame(() => root.querySelector('.mos-card .note-title, .mos-card .todo-edit')?.focus());
+}
+
+// tiny click-to-open menu (progressive disclosure — one button, actions on demand)
+function menuButton(label, iconName, items, variant = 'soft') {
   const menu = el('div', { class: 'notes-menu', hidden: 'true' },
     ...items.map((it) => el('button', { class: 'notes-menu-item', onclick: () => { close(); it.run(); } }, el('span', { text: it.label }))));
-  const btn = el('button', { class: 'btnx soft notes-tool', onclick: (e) => { e.stopPropagation(); toggle(); } },
+  const btn = el('button', { class: `btnx ${variant} notes-tool`, onclick: (e) => { e.stopPropagation(); toggle(); } },
     icon(iconName, 15), el('span', { text: label }), icon('chevron', 13));
   const wrap = el('div', { class: 'notes-menu-wrap' }, btn, menu);
   function toggle() { menu.hidden ? open() : close(); }
@@ -119,117 +185,185 @@ function menuButton(label, iconName, items) {
 }
 function closeAllMenus() { document.querySelectorAll('.notes-menu-wrap').forEach((w) => w._closeMenu?.()); }
 
-/* ————————————————————————— todos ————————————————————————— */
+/* ————————————————————————— cards ————————————————————————— */
 
-function todoPanel(todos, q) {
-  const panel = el('section', { class: 'todo-panel' });
-  const input = el('input', { class: 'todo-add', placeholder: 'Add a task…', 'aria-label': 'Add a task' });
-  const add = () => {
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-    mutate((d) => { d.todos.unshift({ id: uid(), text, done: false, createdAt: now() }); });
-  };
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+function itemCard(it) {
+  const card = el('article', {
+    class: `mos-card ${it.kind === 'todo' ? 'is-todo' : 'is-note'}${it.done ? ' is-done' : ''} c-${it.color || 'none'}`,
+    draggable: 'true', dataset: { id: it.id },
+  });
+  card.append(it.kind === 'todo' ? todoBody(it) : noteBody(it));
 
-  panel.append(
-    el('div', { class: 'panel-head' }, el('h3', { class: 'panel-h', text: 'Todos' })),
-    el('div', { class: 'todo-addrow' }, icon('plus', 15), input),
-  );
+  const chips = el('div', { class: 'mos-chips' });
+  if (it.reminder) chips.append(reminderChip(it));
+  (it.tags || []).forEach((t) => chips.append(tagChip(it, t)));
+  if (chips.children.length) card.append(chips);
 
-  // open tasks first (newest on top), then done at the bottom
-  const filtered = q ? todos.filter((t) => matches(q, t.text)) : todos;
-  const ordered = [...filtered].sort((a, b) => Number(a.done) - Number(b.done));
-  const list = el('div', { class: 'todo-list' });
-  if (!ordered.length) {
-    list.append(el('div', { class: 'notes-empty', text: q ? 'No tasks match your search.' : 'No tasks yet — add one above.' }));
-  } else {
-    for (const t of ordered) list.append(todoRow(t));
-  }
-  panel.append(list);
+  card.append(el('div', { class: 'mos-foot' },
+    el('span', { class: 'mos-when', text: it.kind === 'note' ? shortDate(it.updatedAt || it.createdAt) : '' }),
+    el('div', { class: 'mos-acts' },
+      actionBtn('bell', it.reminder ? 'Edit reminder' : 'Set reminder', (_, b) => openReminderEditor(b, it), it.reminder ? 'rem-bell on' : 'rem-bell'),
+      actionBtn('tag', 'Tags', (_, b) => openTagPicker(b, it)),
+      actionBtn('palette', 'Card colour', (_, b) => openColorPicker(b, it)),
+      actionBtn('close', it.kind === 'todo' ? 'Delete task' : 'Delete note', async () => {
+        const empty = it.kind === 'todo' ? !it.text : !(it.title || it.body);
+        if (empty || await confirmDialog({ title: it.kind === 'todo' ? 'Delete task?' : 'Delete note?', message: 'This will be removed.', confirmLabel: 'Delete', danger: true })) {
+          clearAlarm(it.id);
+          mutate((d) => { d.items = d.items.filter((x) => x.id !== it.id); });
+        }
+      }, 'danger'),
+    ),
+  ));
 
-  if (todos.some((t) => t.done)) {
-    panel.append(el('div', { class: 'todo-foot' },
-      el('button', { class: 'linkbtn', onclick: () => mutate((d) => { d.todos = d.todos.filter((t) => !t.done); }) }, el('span', { text: 'Clear completed' }))));
-  }
-  return panel;
+  wireDrag(card, it);
+  return card;
 }
 
-function todoRow(t) {
+function todoBody(it) {
   const box = el('button', {
-    class: `todo-check${t.done ? ' is-done' : ''}`, role: 'checkbox', 'aria-checked': String(t.done), 'aria-label': t.text,
+    class: `todo-check${it.done ? ' is-done' : ''}`, role: 'checkbox', 'aria-checked': String(it.done), 'aria-label': it.text,
     onclick: async () => {
-      await mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) it.done = !it.done; });
-      if (!t.done) clearAlarm(t.id);                    // was open → now done: stop nagging
-      else if (t.reminder) armAlarm(t.id, fireTime(t.reminder)); // re-opened: re-arm a future reminder
+      await mutate((d) => { const x = findItem(d, it.id); if (x) x.done = !x.done; });
+      if (!it.done) clearAlarm(it.id);                        // now done — stop nagging
+      else if (it.reminder) armAlarm(it.id, fireTime(it.reminder)); // re-opened — re-arm
     },
-  }, t.done ? icon('check', 13) : null);
+  }, it.done ? icon('check', 13) : null);
 
-  const label = el('span', { class: 'todo-text', text: t.text, title: 'Click to edit', tabindex: '0' });
+  const label = el('span', { class: 'todo-text', text: it.text || 'Untitled task', title: 'Click to edit', tabindex: '0' });
   const beginEdit = () => {
-    const edit = el('input', { class: 'todo-edit', value: t.text });
+    const edit = el('input', { class: 'todo-edit', value: it.text });
     const commit = () => {
       const v = edit.value.trim();
-      if (v && v !== t.text) mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) it.text = v; });
+      if (v && v !== it.text) mutate((d) => { const x = findItem(d, it.id); if (x) x.text = v; });
       else render();
     };
     edit.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); edit.blur(); } if (e.key === 'Escape') render(); });
     edit.addEventListener('blur', commit);
-    label.replaceWith(edit);
-    edit.focus(); edit.select();
+    label.replaceWith(edit); edit.focus(); edit.select();
   };
   label.addEventListener('click', beginEdit);
   label.addEventListener('keydown', (e) => { if (e.key === 'Enter') beginEdit(); });
-
-  const main = el('div', { class: 'todo-main' }, label);
-  if (t.reminder) main.append(reminderChip(t));
-
-  // the bell stays visible (unlike the hover-only delete) so reminders are discoverable
-  const bell = actionBtn('bell', t.reminder ? 'Edit reminder' : 'Set reminder', (_, btn) => openReminderEditor(btn, t), t.reminder ? 'rem-bell on' : 'rem-bell');
-  const del = actionBtn('close', 'Delete task', () => { clearAlarm(t.id); mutate((d) => { d.todos = d.todos.filter((x) => x.id !== t.id); }); }, 'danger');
-  return el('div', { class: `todo-row${t.done ? ' is-done' : ''}` }, box, main, el('div', { class: 'todo-acts' }, bell, del));
+  return el('div', { class: 'todo-line' }, box, label);
 }
 
-function reminderChip(t) {
-  const at = new Date(t.reminder.at);
-  const past = fireTime(t.reminder) <= Date.now();
+const saveTitle = debounce((id, v) => mutate((d) => { const n = findItem(d, id); if (n) { n.title = v; n.updatedAt = now(); } }), 400);
+const saveBody = debounce((id, v) => mutate((d) => { const n = findItem(d, id); if (n) { n.body = v; n.updatedAt = now(); } }), 400);
+
+function noteBody(it) {
+  const title = el('input', { class: 'note-title', value: it.title || '', placeholder: 'Title', 'aria-label': 'Note title' });
+  title.addEventListener('input', () => saveTitle(it.id, title.value));
+  const body = el('textarea', { class: 'note-body', placeholder: 'Write…', 'aria-label': 'Note body', rows: '3' });
+  body.value = it.body || '';
+  const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 420) + 'px'; };
+  body.addEventListener('input', () => { grow(); saveBody(it.id, body.value); });
+  requestAnimationFrame(grow);
+  return el('div', { class: 'note-lines' }, title, body);
+}
+
+function reminderChip(it) {
+  const at = new Date(it.reminder.at);
+  const past = fireTime(it.reminder) <= Date.now();
   const when = at.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  const lead = LEAD_CHIP[t.reminder.lead] || '';
-  return el('button', {
-    class: `todo-rem-chip${past ? ' past' : ''}`, title: past ? 'Reminder time passed — click to change' : 'Edit reminder',
-    onclick: (_, btn) => openReminderEditor(btn, t),
-  }, icon('bell', 11), el('span', { text: when + (lead ? ` · ${lead}` : '') }));
+  const lead = LEAD_CHIP[it.reminder.lead] || '';
+  return el('button', { class: `todo-rem-chip${past ? ' past' : ''}`, title: past ? 'Reminder passed — click to change' : 'Edit reminder', onclick: (_, b) => openReminderEditor(b, it) },
+    icon('bell', 11), el('span', { text: when + (lead ? ` · ${lead}` : '') }));
 }
 
-// Popover to set/clear a task reminder. Clamped to the viewport (zoom-aware).
-let openRem = null;
-function closeReminderEditor() {
-  if (!openRem) return;
-  openRem.remove(); openRem = null;
-  document.removeEventListener('mousedown', onRemDown, true);
-  document.removeEventListener('keydown', onRemKey, true);
-  document.removeEventListener('scroll', onRemScroll, true);
+function tagChip(it, t) {
+  return el('button', { class: 'mos-tag', title: `Remove “${t}”`, onclick: () => mutate((d) => { const x = findItem(d, it.id); if (x) x.tags = x.tags.filter((y) => y !== t); }) },
+    el('span', { class: 'tag-dot', style: `background:${tagColor(t)}` }), el('span', { text: t }));
 }
-function onRemDown(e) { if (openRem && !openRem.contains(e.target)) closeReminderEditor(); }
-function onRemKey(e) { if (e.key === 'Escape') { e.stopPropagation(); closeReminderEditor(); } }
-function onRemScroll(e) { if (openRem && !openRem.contains(e.target)) closeReminderEditor(); }
 
-function openReminderEditor(anchor, t) {
-  closeReminderEditor();
-  // default: existing reminder, else the next round 5-minute slot an hour out
-  const start = t.reminder ? new Date(t.reminder.at) : new Date(Date.now() + 60 * 60000);
-  if (!t.reminder) start.setMinutes(Math.ceil(start.getMinutes() / 5) * 5, 0, 0);
+/* ————————————————————————— drag to reorder ————————————————————————— */
+
+function wireDrag(card, it) {
+  card.addEventListener('dragstart', (e) => {
+    // don't hijack drags that start inside an editable field or a button
+    if (e.target.closest('input, textarea, button')) { e.preventDefault(); return; }
+    e.dataTransfer.setData(MOS_MIME, it.id);
+    e.dataTransfer.effectAllowed = 'move';
+    card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', () => { card.classList.remove('dragging'); clearDropMarks(); });
+  card.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer.types.includes(MOS_MIME)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    const r = card.getBoundingClientRect();
+    const after = e.clientY > r.top + r.height / 2;
+    clearDropMarks();
+    card.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+  card.addEventListener('dragleave', () => card.classList.remove('drop-before', 'drop-after'));
+  card.addEventListener('drop', async (e) => {
+    if (!e.dataTransfer.types.includes(MOS_MIME)) return;
+    e.preventDefault(); e.stopPropagation();
+    const fromId = e.dataTransfer.getData(MOS_MIME);
+    const after = card.classList.contains('drop-after');
+    clearDropMarks();
+    if (!fromId || fromId === it.id) return;
+    await mutate((d) => {
+      const from = d.items.findIndex((x) => x.id === fromId);
+      if (from < 0) return;
+      const [moved] = d.items.splice(from, 1);
+      let to = d.items.findIndex((x) => x.id === it.id);
+      if (to < 0) to = d.items.length; else to += after ? 1 : 0;
+      d.items.splice(to, 0, moved);
+    });
+  });
+}
+function clearDropMarks() { document.querySelectorAll('.mos-card.drop-before, .mos-card.drop-after').forEach((n) => n.classList.remove('drop-before', 'drop-after')); }
+
+/* ————————————————————————— popovers ————————————————————————— */
+
+let openPop = null;
+function closePop() {
+  if (!openPop) return;
+  openPop.remove(); openPop = null;
+  document.removeEventListener('mousedown', onPopDown, true);
+  document.removeEventListener('keydown', onPopKey, true);
+  document.removeEventListener('scroll', onPopScroll, true);
+}
+function onPopDown(e) { if (openPop && !openPop.contains(e.target)) closePop(); }
+function onPopKey(e) { if (e.key === 'Escape') { e.stopPropagation(); closePop(); } }
+function onPopScroll(e) { if (openPop && !openPop.contains(e.target)) closePop(); }
+
+// place a popover under `anchor`, clamped to the viewport (zoom-aware)
+function placePop(pop, anchor) {
+  const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+  const r = anchor.getBoundingClientRect();
+  const vw = innerWidth, vh = innerHeight, m = 8, gap = 6;
+  const pr = pop.getBoundingClientRect();
+  const openUp = pr.height > vh - r.bottom - gap - m && r.top > vh - r.bottom;
+  const top = openUp ? Math.max(m, r.top - gap - pr.height) : r.bottom + gap;
+  const left = Math.min(Math.max(m, r.right - pr.width), Math.max(m, vw - pr.width - m));
+  pop.style.left = `${left / zoom}px`;
+  pop.style.top = `${top / zoom}px`;
+}
+function mountPop(pop, anchor, focusEl) {
+  closePop();
+  pop.addEventListener('mousedown', (e) => e.stopPropagation());
+  document.body.append(pop);
+  openPop = pop;
+  placePop(pop, anchor);
+  if (focusEl) setTimeout(() => focusEl.focus(), 0);
+  document.addEventListener('mousedown', onPopDown, true);
+  document.addEventListener('keydown', onPopKey, true);
+  document.addEventListener('scroll', onPopScroll, true);
+}
+
+function openReminderEditor(anchor, it) {
+  const start = it.reminder ? new Date(it.reminder.at) : new Date(Date.now() + 60 * 60000);
+  if (!it.reminder) start.setMinutes(Math.ceil(start.getMinutes() / 5) * 5, 0, 0);
   const dt = el('input', { type: 'datetime-local', class: 'rem-dt', value: toLocalInput(start), 'aria-label': 'Reminder date and time' });
   const lead = el('select', { class: 'rem-lead', 'aria-label': 'How early to notify' },
-    ...LEADS.map((l) => el('option', { value: String(l.v), ...(t.reminder?.lead === l.v ? { selected: 'true' } : {}) }, el('span', { text: l.label }))));
+    ...LEADS.map((l) => el('option', { value: String(l.v), ...(it.reminder?.lead === l.v ? { selected: 'true' } : {}) }, el('span', { text: l.label }))));
 
   const hint = el('div', { class: 'rem-hint' });
   const refresh = () => {
     const target = new Date(dt.value);
     if (isNaN(target)) { hint.textContent = 'Pick a date & time.'; return; }
     const fireMs = target.getTime() - Number(lead.value) * 60000;
-    hint.textContent = fireMs <= Date.now()
-      ? 'That’s in the past — pick a later time.'
+    hint.textContent = fireMs <= Date.now() ? 'That’s in the past — pick a later time.'
       : `Notifies ${new Date(fireMs).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
   };
   dt.addEventListener('input', refresh); lead.addEventListener('change', refresh); refresh();
@@ -240,117 +374,79 @@ function openReminderEditor(anchor, t) {
     const leadV = Number(lead.value);
     const fireMs = target.getTime() - leadV * 60000;
     if (fireMs <= Date.now()) { toast('That reminder time is in the past'); return; }
-    await mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) { it.done = false; it.reminder = { at: target.toISOString(), lead: leadV }; } });
-    armAlarm(t.id, fireMs);
-    closeReminderEditor();
-    toast('Reminder set');
-  } }, el('span', { text: t.reminder ? 'Update' : 'Set reminder' }));
+    await mutate((d) => { const x = findItem(d, it.id); if (x) { if (x.kind === 'todo') x.done = false; x.reminder = { at: target.toISOString(), lead: leadV }; } });
+    armAlarm(it.id, fireMs);
+    closePop(); toast('Reminder set');
+  } }, el('span', { text: it.reminder ? 'Update' : 'Set reminder' }));
 
-  const clearBtn = t.reminder ? el('button', { class: 'btnx ghosty rem-clear', onclick: async () => {
-    await mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) delete it.reminder; });
-    clearAlarm(t.id);
-    closeReminderEditor();
-    toast('Reminder cleared');
+  const clearBtn = it.reminder ? el('button', { class: 'btnx ghosty rem-clear', onclick: async () => {
+    await mutate((d) => { const x = findItem(d, it.id); if (x) delete x.reminder; });
+    clearAlarm(it.id); closePop(); toast('Reminder cleared');
   } }, el('span', { text: 'Clear' })) : null;
 
-  const pop = el('div', { class: 'rem-pop', role: 'dialog', 'aria-label': 'Set reminder' },
+  mountPop(el('div', { class: 'rem-pop', role: 'dialog', 'aria-label': 'Set reminder' },
     el('div', { class: 'rem-h' }, icon('bell', 13), el('span', { text: 'Reminder' })),
     el('label', { class: 'rem-field' }, el('span', { class: 'rem-lbl', text: 'Date & time' }), dt),
     el('label', { class: 'rem-field' }, el('span', { class: 'rem-lbl', text: 'Remind me' }), lead),
     hint,
     el('div', { class: 'rem-actions' }, clearBtn, setBtn),
-  );
-  pop.addEventListener('mousedown', (e) => e.stopPropagation());
-  document.body.append(pop);
-  openRem = pop;
-
-  // place under the anchor, clamped to the viewport (divide by zoom for layout px)
-  const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-  const r = anchor.getBoundingClientRect();
-  const vw = innerWidth, vh = innerHeight, m = 8, gap = 6;
-  const pr = pop.getBoundingClientRect();
-  const openUp = pr.height > vh - r.bottom - gap - m && r.top > vh - r.bottom;
-  const top = openUp ? Math.max(m, r.top - gap - pr.height) : r.bottom + gap;
-  const left = Math.min(Math.max(m, r.right - pr.width), Math.max(m, vw - pr.width - m));
-  pop.style.left = `${left / zoom}px`;
-  pop.style.top = `${top / zoom}px`;
-  setTimeout(() => dt.focus(), 0);
-  document.addEventListener('mousedown', onRemDown, true);
-  document.addEventListener('keydown', onRemKey, true);
-  document.addEventListener('scroll', onRemScroll, true);
+  ), anchor, dt);
 }
 
-/* ————————————————————————— notes ————————————————————————— */
-
-function notesPanel(notes, q) {
-  const panel = el('section', { class: 'notes-panel' });
-  panel.append(el('div', { class: 'panel-head' },
-    el('h3', { class: 'panel-h', text: 'Notes' }),
-    el('button', { class: 'btnx primary notes-new', onclick: newNote }, icon('plus', 15), el('span', { text: 'New note' })),
-  ));
-
-  const filtered = q ? notes.filter((n) => matches(q, n.title, n.body)) : notes;
-  if (!filtered.length) {
-    panel.append(el('div', { class: 'notes-empty big' },
-      q ? 'No notes match your search.'
-        : el('span', {}, 'Nothing yet. ', el('button', { class: 'linkbtn', onclick: newNote }, el('span', { text: 'Write your first note' })), '.')));
-    return panel;
-  }
-  const grid = el('div', { class: 'notes-grid' });
-  for (const n of filtered) grid.append(noteCard(n));
-  panel.append(grid);
-  return panel;
+function openTagPicker(anchor, it) {
+  const chips = el('div', { class: 'tagpop-chips' });
+  const input = el('input', { class: 'tagpop-input', placeholder: 'Add tag…', 'aria-label': 'Add a tag' });
+  const draw = (tags) => {
+    chips.replaceChildren(...tags.map((t) => el('span', { class: 'tagpop-chip' },
+      el('span', { class: 'tag-dot', style: `background:${tagColor(t)}` }),
+      el('span', { class: 'tagpop-chip-t', text: t }),
+      el('button', { class: 'tagpop-x', title: `Remove ${t}`, onclick: () => commit(tags.filter((x) => x !== t)) }, icon('close', 11)))));
+    if (!tags.length) chips.append(el('span', { class: 'tagpop-empty', text: 'No tags yet' }));
+  };
+  let current = [...(it.tags || [])];
+  const commit = async (next) => {
+    const seen = new Set(); const clean = [];
+    for (let t of next) { t = String(t).trim().replace(/\s+/g, ' ').slice(0, 32); const k = t.toLowerCase(); if (t && !seen.has(k)) { seen.add(k); clean.push(t); } }
+    current = clean.slice(0, 12);
+    await mutate((d) => { const x = findItem(d, it.id); if (x) x.tags = current; });
+    draw(current); placePop(openPop, anchor);
+  };
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); const v = input.value.trim(); if (v) { input.value = ''; commit([...current, ...v.split(',')]); } }
+    if (e.key === 'Escape') closePop();
+  });
+  draw(current);
+  mountPop(el('div', { class: 'tagpop', role: 'dialog', 'aria-label': 'Edit tags' },
+    el('div', { class: 'tagpop-h', text: 'Tags' }), chips,
+    el('div', { class: 'tagpop-add' }, input),
+    el('div', { class: 'tagpop-hint', text: 'Enter or comma to add · Esc to close' }),
+  ), anchor, input);
 }
 
-const saveTitle = debounce((id, v) => mutate((d) => { const n = d.notes.find((x) => x.id === id); if (n) { n.title = v; n.updatedAt = now(); } }), 400);
-const saveBody = debounce((id, v) => mutate((d) => { const n = d.notes.find((x) => x.id === id); if (n) { n.body = v; n.updatedAt = now(); } }), 400);
-
-function noteCard(n) {
-  const title = el('input', { class: 'note-title', value: n.title || '', placeholder: 'Title', 'aria-label': 'Note title' });
-  title.addEventListener('input', () => saveTitle(n.id, title.value));
-
-  const body = el('textarea', { class: 'note-body', placeholder: 'Write…', 'aria-label': 'Note body', rows: '3' });
-  body.value = n.body || '';
-  const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 420) + 'px'; };
-  body.addEventListener('input', () => { grow(); saveBody(n.id, body.value); });
-  requestAnimationFrame(grow);
-
-  const del = actionBtn('close', 'Delete note', async () => {
-    if (!(n.title || n.body) || await confirmDialog({ title: 'Delete note?', message: 'This note will be removed.', confirmLabel: 'Delete', danger: true })) {
-      mutate((d) => { d.notes = d.notes.filter((x) => x.id !== n.id); });
-    }
-  }, 'danger');
-
-  return el('article', { class: 'note-card' },
-    title,
-    body,
-    el('div', { class: 'note-foot' },
-      el('span', { class: 'note-when', text: n.updatedAt ? shortDate(n.updatedAt) : 'New' }),
-      del,
-    ),
-  );
-}
-
-async function newNote() {
-  const id = uid();
-  await mutate((d) => { d.notes.unshift({ id, title: '', body: '', createdAt: now(), updatedAt: now() }); });
-  // focus the fresh card's title after the storage listener re-renders
-  requestAnimationFrame(() => root.querySelector('.note-card .note-title')?.focus());
+function openColorPicker(anchor, it) {
+  const grid = el('div', { class: 'colr-grid' },
+    ...CARD_COLORS.map((c) => el('button', {
+      class: `colr-sw c-${c.id}${(it.color || 'none') === c.id ? ' is-active' : ''}`, title: c.label, 'aria-label': c.label,
+      onclick: async () => { await mutate((d) => { const x = findItem(d, it.id); if (x) x.color = c.id; }); closePop(); },
+    }, (it.color || 'none') === c.id ? icon('check', 12) : null)));
+  mountPop(el('div', { class: 'colr-pop', role: 'dialog', 'aria-label': 'Card colour' },
+    el('div', { class: 'rem-h' }, icon('palette', 13), el('span', { text: 'Colour' })), grid,
+  ), anchor);
 }
 
 /* ————————————————————————— export / import ————————————————————————— */
 
 function stamp() {
-  const d = new Date(), p = (x) => String(x).padStart(2, '0');
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+  const d = new Date();
+  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
 }
 
 async function exportNotesOnly() {
-  const { todos, notes } = await load();
-  if (!todos.length && !notes.length) { toast('Nothing to export yet'); return; }
-  const payload = { app: 'StackNest', type: 'notes', version: 1, exportedAt: now(), todos, notes };
-  exportDownload(`stacknest-notes-${stamp()}.json`, JSON.stringify(payload, null, 2), 'application/json');
-  toast(`Exported ${notes.length} note${notes.length === 1 ? '' : 's'} + ${todos.length} task${todos.length === 1 ? '' : 's'}`);
+  const { items } = await load();
+  if (!items.length) { toast('Nothing to export yet'); return; }
+  exportDownload(`stacknest-notes-${stamp()}.json`, JSON.stringify({ app: 'StackNest', type: 'notes', version: 2, exportedAt: now(), items }, null, 2), 'application/json');
+  toast(`Exported ${items.length} card${items.length === 1 ? '' : 's'}`);
 }
 
 async function importFromFile() {
@@ -358,34 +454,22 @@ async function importFromFile() {
   if (!file) return;
   let data;
   try { data = JSON.parse(await file.text()); } catch { toast('That file is not valid JSON'); return; }
-  // accept a notes-only file ({type:'notes', todos, notes}) OR a full StackNest
-  // backup whose notes blob lives under data.notes = {todos, notes}
-  let notes = [], todos = [];
-  if (data?.type === 'notes') { notes = data.notes; todos = data.todos; }
-  else if (data?.notes && typeof data.notes === 'object' && !Array.isArray(data.notes)) { notes = data.notes.notes; todos = data.notes.todos; }
-  notes = Array.isArray(notes) ? notes : [];
-  todos = Array.isArray(todos) ? todos : [];
-  if (!notes.length && !todos.length) { toast('No notes or tasks found in that file'); return; }
-  const ok = await confirmDialog({
-    title: 'Import notes?',
-    message: `Add ${notes.length} note${notes.length === 1 ? '' : 's'} and ${todos.length} task${todos.length === 1 ? '' : 's'} to what you already have?`,
-    confirmLabel: 'Import',
-  });
+  // a notes-only file (v1 {todos,notes} or v2 {items}) or a full backup carrying either
+  const blob = data?.type === 'notes' ? data
+    : (data?.notes && typeof data.notes === 'object' && !Array.isArray(data.notes) ? data.notes : null);
+  const incoming = blob ? migrateNotes(blob).items : [];
+  if (!incoming.length) { toast('No notes or tasks found in that file'); return; }
+  const ok = await confirmDialog({ title: 'Import notes?', message: `Add ${incoming.length} card${incoming.length === 1 ? '' : 's'} to what you already have?`, confirmLabel: 'Import' });
   if (!ok) return;
-  await mergeIn(notes, todos);
-  toast(`Imported ${notes.length} note${notes.length === 1 ? '' : 's'} + ${todos.length} task${todos.length === 1 ? '' : 's'}`);
+  await mergeIn(incoming);
+  toast(`Imported ${incoming.length} card${incoming.length === 1 ? '' : 's'}`);
 }
 
-// add imported items (fresh ids so nothing collides), newest on top
-function mergeIn(notes, todos) {
-  return mutate((d) => {
-    for (const n of [...notes].reverse()) d.notes.unshift({ id: uid(), title: String(n.title || ''), body: String(n.body || ''), createdAt: n.createdAt || now(), updatedAt: n.updatedAt || now() });
-    for (const t of [...todos].reverse()) d.todos.unshift({ id: uid(), text: String(t.text || ''), done: !!t.done, createdAt: t.createdAt || now() });
-  });
+// add imported cards with fresh ids so nothing collides, newest on top
+function mergeIn(list) {
+  return mutate((d) => { for (const x of [...list].reverse()) d.items.unshift(normalize({ ...x, id: uid() })); });
 }
 
-// Apple Notes has no API reachable from an extension — import pasted/exported text.
-// Reuses the app's .modal-scrim/.modal dialog system for a consistent look.
 function openAppleNotesImport() {
   const ta = el('textarea', { class: 'apple-paste', placeholder: 'Paste text copied from Apple Notes…', rows: '9' });
   const split = el('input', { type: 'checkbox', class: 'apple-split-cb' });
@@ -406,10 +490,10 @@ function openAppleNotesImport() {
     const text = ta.value.trim();
     if (!text) { toast('Paste some text first'); return; }
     const blocks = split.checked ? text.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean) : [text];
-    const notes = blocks.map((b) => { const nl = b.indexOf('\n'); return nl === -1 ? { title: b.slice(0, 80), body: '' } : { title: b.slice(0, nl).trim().slice(0, 120), body: b.slice(nl + 1).trim() }; });
+    const list = blocks.map((b) => { const nl = b.indexOf('\n'); return { kind: 'note', ...(nl === -1 ? { title: b.slice(0, 80), body: '' } : { title: b.slice(0, nl).trim().slice(0, 120), body: b.slice(nl + 1).trim() }) }; });
     close();
-    await mergeIn(notes, []);
-    toast(`Imported ${notes.length} note${notes.length === 1 ? '' : 's'} from Apple Notes`);
+    await mergeIn(list);
+    toast(`Imported ${list.length} note${list.length === 1 ? '' : 's'} from Apple Notes`);
   };
   cancelBtn.addEventListener('click', close);
   importBtn.addEventListener('click', doImport);
@@ -419,7 +503,7 @@ function openAppleNotesImport() {
   requestAnimationFrame(() => { scrim.classList.add('show'); ta.focus(); });
 }
 
-/* ————————————————————————— Drive (via the full backup, which now carries notes) ————————————————————————— */
+/* ————————————————————————— Drive (via the full backup, which carries notes) ————————————————————————— */
 
 async function driveBackup() {
   const cloud = await loadCloudState();
@@ -431,11 +515,7 @@ async function driveBackup() {
 async function driveRestore() {
   const cloud = await loadCloudState();
   if (!(cloud.connected || cloud.email)) { toast('Connect Google Drive first — Settings → Cloud sync'); return; }
-  const ok = await confirmDialog({
-    title: 'Fetch from Drive?',
-    message: 'This restores your latest Drive backup — replacing your current spaces, collections, settings and notes.',
-    confirmLabel: 'Fetch & restore', danger: true,
-  });
+  const ok = await confirmDialog({ title: 'Fetch from Drive?', message: 'This restores your latest Drive backup — replacing your current spaces, collections, settings and notes.', confirmLabel: 'Fetch & restore', danger: true });
   if (!ok) return;
   const r = await restoreLatest().catch((e) => { toast(e?.message || 'Restore failed'); return null; });
   if (r) toast('Restored from Drive');

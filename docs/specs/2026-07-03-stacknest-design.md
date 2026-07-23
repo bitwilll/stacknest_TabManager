@@ -296,6 +296,31 @@ Settings row sits above the footer at the bottom-left (left: 12px), renders the 
 the Settings view (title + populated `#settings-root`) with the accent-soft active treatment, and
 toggles off when leaving. No console errors.
 
+## Notes mosaic: unified cards, drag-order, tags, tints (2026-07-08)
+
+Notes and todos stopped being two separate panels and became **peer cards in one
+masonry mosaic**, so both kinds share ordering, tags, tints and reminders.
+
+- **Model**: `{ todos, notes }` → `{ items: [{ id, kind:'note'|'todo', …, tags[], color,
+  reminder }] }`. `migrateNotes()` folds the old split shape (and old backups / notes-only
+  exports) into `items` on every read, newest-first — verified lossless, preserving
+  `done`, `reminder` and note bodies. `sw.js` reads `items` with a fallback to the old shape.
+- **Mosaic**: CSS `column-width: 250px` (not `column-count` + breakpoints) so the column
+  count derives from the mosaic's own width — the sidebar and `max-width` make it far
+  narrower than the viewport, so viewport breakpoints guessed wrong (2 columns at a
+  1380px window).
+- **Drag to reorder**: whole-card HTML5 DnD on a `text/x-stacknest-mos` payload; hovering
+  a card's upper/lower half marks insert-before/after. Drags starting in an input,
+  textarea or button are ignored so editing still works.
+- **Tints**: 6 pastels applied as a *translucent wash* layered over the card surface
+  (`linear-gradient(var(--tint)…), var(--bg-card)`), so one swatch reads as a pastel on
+  paper and a quiet wash on ink without hurting text contrast; alpha is nudged up in dark.
+- **Reminders now work on notes too**, not just tasks (the alarm/notification path is
+  keyed on item id, so it was already kind-agnostic).
+- Card actions (bell / tag / colour / delete) sit at 0.42 opacity rather than hover-only —
+  hidden actions proved undiscoverable, and one visible icon among invisible siblings
+  floated oddly off the right edge.
+
 ## Task reminders → browser notifications (2026-07-08)
 
 Any todo can carry `reminder: { at: <ISO local target>, lead: 0|5|10|30|60 min }`. The notification

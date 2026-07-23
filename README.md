@@ -101,13 +101,22 @@ duplicated link it keeps one copy and removes the rest (with a confirm first). L
 not be nagged about get a **Forget** button — they move to a **Forgotten links** section at the
 bottom, excluded from scans and from the one-click clean, restorable any time.
 
-**Notes & Todos** — a calm scratchpad in the sidebar (below Duplicates). A quick **todo**
-checklist (add, check off, click-to-edit, clear completed — the nav badge shows open tasks) and
-free-form **notes** (title + body, auto-saved as you type). Any task can carry a **reminder**: pick
-a date & time and how early to be nudged (at the time, or 5 / 10 / 30 / 60 min before), and the
-extension fires a **browser notification** at that moment — even with no StackNest tab open (a
-`chrome.alarms` entry wakes the service worker). Times are your **local** timezone; completing or
-deleting a task cancels its reminder. Everything lives in `chrome.storage`,
+**Notes & Todos** — a calm scratchpad in the sidebar (below Duplicates), laid out as a **mosaic**
+where notes and tasks sit side by side as cards. Quick-add a task from the composer, or use **New**
+to start either a note or a todo. Notes are title + body, auto-saved as you type; tasks check off
+in place. Every card can be:
+
+- **Dragged** anywhere in the mosaic to reorder (drop above or below any other card).
+- **Tagged** — add as many labels as you like; each gets its own colour dot.
+- **Tinted** — six soft pastels, applied as a translucent wash so they stay readable in both
+  light and dark.
+- **Reminded** — pick a date & time and how early to be nudged (at the time, or 5 / 10 / 30 / 60
+  min before) and the extension fires a **browser notification** then, even with no StackNest tab
+  open (a `chrome.alarms` entry wakes the service worker). Times are your **local** timezone;
+  completing or deleting a task cancels its reminder. Notes can carry reminders too.
+
+The nav badge counts open tasks. Everything lives in `chrome.storage`, so it rides along in your
+backups and Google Drive sync. Everything lives in `chrome.storage`,
 so it rides along in your backups and Google Drive sync. The toolbar offers **Export** (full
 backup incl. notes, or notes-only), **Import** (a file, or paste from **Apple Notes** — a browser
 extension can't read Apple Notes directly, so you paste exported text, optionally splitting on

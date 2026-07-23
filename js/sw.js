@@ -41,14 +41,16 @@ chrome.alarms?.onAlarm.addListener(async (alarm) => {
   const id = alarm.name.slice(REMINDER_PREFIX.length);
   try {
     const store = (await chrome.storage.local.get(NOTES_KEY))[NOTES_KEY] || {};
-    const todo = (store.todos || []).find((t) => t.id === id);
-    if (!todo || todo.done) return; // task was completed or deleted — nothing to nag about
-    const when = todo.reminder?.at ? new Date(todo.reminder.at) : null;
-    const ctx = when ? `Due ${when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Task reminder';
+    // current shape is { items }; tolerate the older { todos, notes } split
+    const list = Array.isArray(store.items) ? store.items : [...(store.todos || []), ...(store.notes || [])];
+    const item = list.find((x) => x.id === id);
+    if (!item || item.done) return; // completed or deleted — nothing to nag about
+    const when = item.reminder?.at ? new Date(item.reminder.at) : null;
+    const ctx = when ? `Due ${when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Reminder';
     chrome.notifications.create(alarm.name, {
       type: 'basic',
       iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-      title: todo.text || 'StackNest reminder',
+      title: item.text || item.title || 'StackNest reminder',
       message: ctx,
       contextMessage: 'StackNest',
       priority: 2,
