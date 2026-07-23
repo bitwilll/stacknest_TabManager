@@ -11,7 +11,7 @@
     "service_worker": "js/sw.js"
   },
   "incognito": "spanning",
-  "permissions": ["tabs", "bookmarks", "favicon", "storage", "identity"],
+  "permissions": ["tabs", "bookmarks", "favicon", "storage", "identity", "notifications", "alarms"],
   "host_permissions": [
     "https://www.googleapis.com/*",
     "https://oauth2.googleapis.com/*",

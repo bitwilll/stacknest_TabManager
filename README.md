@@ -103,7 +103,11 @@ bottom, excluded from scans and from the one-click clean, restorable any time.
 
 **Notes & Todos** — a calm scratchpad in the sidebar (below Duplicates). A quick **todo**
 checklist (add, check off, click-to-edit, clear completed — the nav badge shows open tasks) and
-free-form **notes** (title + body, auto-saved as you type). Everything lives in `chrome.storage`,
+free-form **notes** (title + body, auto-saved as you type). Any task can carry a **reminder**: pick
+a date & time and how early to be nudged (at the time, or 5 / 10 / 30 / 60 min before), and the
+extension fires a **browser notification** at that moment — even with no StackNest tab open (a
+`chrome.alarms` entry wakes the service worker). Times are your **local** timezone; completing or
+deleting a task cancels its reminder. Everything lives in `chrome.storage`,
 so it rides along in your backups and Google Drive sync. The toolbar offers **Export** (full
 backup incl. notes, or notes-only), **Import** (a file, or paste from **Apple Notes** — a browser
 extension can't read Apple Notes directly, so you paste exported text, optionally splitting on

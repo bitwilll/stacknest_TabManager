@@ -100,6 +100,20 @@ const bmEvents = { onCreated: listeners(), onRemoved: listeners(), onChanged: li
 
 globalThis.chrome = {
   runtime: { id: undefined, getURL: (p) => p },
+  // reminders: record scheduled alarms so the dev preview can exercise the flow
+  // (the real notification fires from the service worker in the packaged extension)
+  alarms: {
+    _created: {},
+    create(name, opts) { this._created[name] = opts; },
+    clear(name, cb) { delete this._created[name]; if (cb) cb(true); },
+    getAll(cb) { cb(Object.entries(this._created).map(([name, o]) => ({ name, ...o }))); },
+    onAlarm: { addListener() {}, removeListener() {} },
+  },
+  notifications: {
+    create(id, opts, cb) { console.info('mock notification:', opts?.title, '—', opts?.message); if (cb) cb(id); },
+    clear(id, cb) { if (cb) cb(true); },
+    onClicked: { addListener() {}, removeListener() {} },
+  },
   windows: {
     getAll: async () => Object.values(windowMeta).map((w) => ({ ...w })),
     getCurrent: async () => ({ ...windowMeta[1] }),

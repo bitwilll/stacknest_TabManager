@@ -1230,14 +1230,40 @@ kbd {
 .todo-list { display: flex; flex-direction: column; gap: 1px; }
 .todo-row { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: 8px; }
 .todo-row:hover { background: var(--hov); }
+.todo-row:has(.todo-rem-chip) { align-items: flex-start; }
+.todo-row:has(.todo-rem-chip) .todo-check, .todo-row:has(.todo-rem-chip) .todo-acts { margin-top: 1px; }
 .todo-check { width: 18px; height: 18px; flex: none; border: 1.6px solid var(--line-strong); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--accent-contrast); cursor: pointer; transition: background .12s, border-color .12s; }
 .todo-check.is-done { background: var(--accent); border-color: var(--accent); }
 .todo-check svg { stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-.todo-text { flex: 1; min-width: 0; font: 500 13.5px var(--grot); color: var(--text-body); cursor: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.todo-text { min-width: 0; font: 500 13.5px var(--grot); color: var(--text-body); cursor: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo-row.is-done .todo-text { color: var(--text-mut); text-decoration: line-through; }
-.todo-edit { flex: 1; min-width: 0; border: 1px solid var(--accent-border); border-radius: 6px; padding: 2px 6px; font: 500 13.5px var(--grot); background: var(--bg-inset); color: var(--text); outline: none; }
+.todo-edit { width: 100%; min-width: 0; border: 1px solid var(--accent-border); border-radius: 6px; padding: 2px 6px; font: 500 13.5px var(--grot); background: var(--bg-inset); color: var(--text); outline: none; }
+.todo-acts { display: flex; align-items: center; gap: 1px; flex: none; }
 .todo-row .icb { opacity: 0; }
 .todo-row:hover .icb, .todo-row:focus-within .icb { opacity: 1; }
+.todo-acts .icb.on { opacity: 1; color: var(--accent-text); }
+
+/* reminder chip on a task */
+.todo-rem-chip { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; max-width: 100%; font: 600 10.5px var(--mono); color: var(--text-mut); background: var(--bg-inset); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px 2px 6px; cursor: pointer; transition: color .12s, border-color .12s; }
+.todo-rem-chip svg { stroke: currentColor; fill: none; stroke-width: 1.8; flex: none; }
+.todo-rem-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-rem-chip:hover { color: var(--text-strong); border-color: var(--line-strong); }
+.todo-rem-chip.past { color: var(--red); border-color: color-mix(in srgb, var(--red) 32%, transparent); }
+.todo-row.is-done .todo-rem-chip { opacity: 0.55; }
+
+/* reminder popover */
+.rem-pop { position: fixed; z-index: 60; width: 268px; background: var(--bg-side); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 16px 44px -12px rgba(0,0,0,.4); padding: 14px; display: flex; flex-direction: column; gap: 11px; }
+.rem-h { display: flex; align-items: center; gap: 7px; font: 700 10.5px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-mut); }
+.rem-h svg { stroke: currentColor; fill: none; stroke-width: 1.8; }
+.rem-field { display: flex; flex-direction: column; gap: 5px; }
+.rem-lbl { font: 600 11.5px var(--grot); color: var(--text-soft); }
+.rem-dt, .rem-lead { width: 100%; box-sizing: border-box; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg-inset); color: var(--text); font: 500 13px var(--grot); outline: none; color-scheme: light; }
+:root[data-theme='dark'] .rem-dt, :root[data-theme='dark'] .rem-lead { color-scheme: dark; }
+.rem-dt:focus, .rem-lead:focus { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
+.rem-hint { font: 500 11.5px var(--grot); color: var(--text-mut); min-height: 15px; }
+.rem-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.rem-set, .rem-clear { padding: 7px 12px; }
 .todo-foot { margin-top: 12px; }
 .linkbtn { font: 600 12px var(--grot); color: var(--text-mut); cursor: pointer; }
 .linkbtn:hover { color: var(--text-strong); }

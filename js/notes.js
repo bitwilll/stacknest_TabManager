@@ -13,6 +13,28 @@ export const NOTES_KEY = 'stacknest:notes';
 const uid = () => (globalThis.crypto?.randomUUID?.() || `n${Date.now()}${Math.round(Math.random() * 1e6)}`);
 const now = () => new Date().toISOString();
 
+/* ————— reminders ————— */
+// A task reminder is { at: <ISO of the target date/time, in the user's local zone>,
+// lead: <minutes before to notify: 0|5|10|30|60> }. The notification fires at
+// (at − lead). All maths is in absolute epoch ms, so local timezone is handled for
+// free — the datetime-local input is read as local time and Date gives UTC ms.
+const LEADS = [
+  { v: 0, label: 'At time of event' },
+  { v: 5, label: '5 minutes before' },
+  { v: 10, label: '10 minutes before' },
+  { v: 30, label: '30 minutes before' },
+  { v: 60, label: '1 hour before' },
+];
+const LEAD_CHIP = { 0: '', 5: '5m before', 10: '10m before', 30: '30m before', 60: '1h before' };
+const remName = (id) => `reminder:${id}`;
+const fireTime = (r) => (r ? new Date(r.at).getTime() - (r.lead || 0) * 60000 : 0);
+// chrome.alarms is absent in the dev preview — guard so the UI still works there
+const armAlarm = (id, fireMs) => { if (fireMs > Date.now()) chrome.alarms?.create(remName(id), { when: fireMs }); };
+const clearAlarm = (id) => chrome.alarms?.clear(remName(id));
+const pad2 = (n) => String(n).padStart(2, '0');
+// format a Date as a local <input type=datetime-local> value (YYYY-MM-DDTHH:MM)
+const toLocalInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
 let root, getQuery, countEl;
 
 export function initNotes(options) {
@@ -136,7 +158,11 @@ function todoPanel(todos, q) {
 function todoRow(t) {
   const box = el('button', {
     class: `todo-check${t.done ? ' is-done' : ''}`, role: 'checkbox', 'aria-checked': String(t.done), 'aria-label': t.text,
-    onclick: () => mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) it.done = !it.done; }),
+    onclick: async () => {
+      await mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) it.done = !it.done; });
+      if (!t.done) clearAlarm(t.id);                    // was open → now done: stop nagging
+      else if (t.reminder) armAlarm(t.id, fireTime(t.reminder)); // re-opened: re-arm a future reminder
+    },
   }, t.done ? icon('check', 13) : null);
 
   const label = el('span', { class: 'todo-text', text: t.text, title: 'Click to edit', tabindex: '0' });
@@ -155,8 +181,102 @@ function todoRow(t) {
   label.addEventListener('click', beginEdit);
   label.addEventListener('keydown', (e) => { if (e.key === 'Enter') beginEdit(); });
 
-  const del = actionBtn('close', 'Delete task', () => mutate((d) => { d.todos = d.todos.filter((x) => x.id !== t.id); }), 'danger');
-  return el('div', { class: `todo-row${t.done ? ' is-done' : ''}` }, box, label, del);
+  const main = el('div', { class: 'todo-main' }, label);
+  if (t.reminder) main.append(reminderChip(t));
+
+  const bell = actionBtn('bell', t.reminder ? 'Edit reminder' : 'Set reminder', (_, btn) => openReminderEditor(btn, t), t.reminder ? 'on' : '');
+  const del = actionBtn('close', 'Delete task', () => { clearAlarm(t.id); mutate((d) => { d.todos = d.todos.filter((x) => x.id !== t.id); }); }, 'danger');
+  return el('div', { class: `todo-row${t.done ? ' is-done' : ''}` }, box, main, el('div', { class: 'todo-acts' }, bell, del));
+}
+
+function reminderChip(t) {
+  const at = new Date(t.reminder.at);
+  const past = fireTime(t.reminder) <= Date.now();
+  const when = at.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const lead = LEAD_CHIP[t.reminder.lead] || '';
+  return el('button', {
+    class: `todo-rem-chip${past ? ' past' : ''}`, title: past ? 'Reminder time passed — click to change' : 'Edit reminder',
+    onclick: (_, btn) => openReminderEditor(btn, t),
+  }, icon('bell', 11), el('span', { text: when + (lead ? ` · ${lead}` : '') }));
+}
+
+// Popover to set/clear a task reminder. Clamped to the viewport (zoom-aware).
+let openRem = null;
+function closeReminderEditor() {
+  if (!openRem) return;
+  openRem.remove(); openRem = null;
+  document.removeEventListener('mousedown', onRemDown, true);
+  document.removeEventListener('keydown', onRemKey, true);
+  document.removeEventListener('scroll', onRemScroll, true);
+}
+function onRemDown(e) { if (openRem && !openRem.contains(e.target)) closeReminderEditor(); }
+function onRemKey(e) { if (e.key === 'Escape') { e.stopPropagation(); closeReminderEditor(); } }
+function onRemScroll(e) { if (openRem && !openRem.contains(e.target)) closeReminderEditor(); }
+
+function openReminderEditor(anchor, t) {
+  closeReminderEditor();
+  // default: existing reminder, else the next round 5-minute slot an hour out
+  const start = t.reminder ? new Date(t.reminder.at) : new Date(Date.now() + 60 * 60000);
+  if (!t.reminder) start.setMinutes(Math.ceil(start.getMinutes() / 5) * 5, 0, 0);
+  const dt = el('input', { type: 'datetime-local', class: 'rem-dt', value: toLocalInput(start), 'aria-label': 'Reminder date and time' });
+  const lead = el('select', { class: 'rem-lead', 'aria-label': 'How early to notify' },
+    ...LEADS.map((l) => el('option', { value: String(l.v), ...(t.reminder?.lead === l.v ? { selected: 'true' } : {}) }, el('span', { text: l.label }))));
+
+  const hint = el('div', { class: 'rem-hint' });
+  const refresh = () => {
+    const target = new Date(dt.value);
+    if (isNaN(target)) { hint.textContent = 'Pick a date & time.'; return; }
+    const fireMs = target.getTime() - Number(lead.value) * 60000;
+    hint.textContent = fireMs <= Date.now()
+      ? 'That’s in the past — pick a later time.'
+      : `Notifies ${new Date(fireMs).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+  };
+  dt.addEventListener('input', refresh); lead.addEventListener('change', refresh); refresh();
+
+  const setBtn = el('button', { class: 'btnx primary rem-set', onclick: async () => {
+    const target = new Date(dt.value);
+    if (isNaN(target)) { toast('Pick a date & time'); return; }
+    const leadV = Number(lead.value);
+    const fireMs = target.getTime() - leadV * 60000;
+    if (fireMs <= Date.now()) { toast('That reminder time is in the past'); return; }
+    await mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) { it.done = false; it.reminder = { at: target.toISOString(), lead: leadV }; } });
+    armAlarm(t.id, fireMs);
+    closeReminderEditor();
+    toast('Reminder set');
+  } }, el('span', { text: t.reminder ? 'Update' : 'Set reminder' }));
+
+  const clearBtn = t.reminder ? el('button', { class: 'btnx ghosty rem-clear', onclick: async () => {
+    await mutate((d) => { const it = d.todos.find((x) => x.id === t.id); if (it) delete it.reminder; });
+    clearAlarm(t.id);
+    closeReminderEditor();
+    toast('Reminder cleared');
+  } }, el('span', { text: 'Clear' })) : null;
+
+  const pop = el('div', { class: 'rem-pop', role: 'dialog', 'aria-label': 'Set reminder' },
+    el('div', { class: 'rem-h' }, icon('bell', 13), el('span', { text: 'Reminder' })),
+    el('label', { class: 'rem-field' }, el('span', { class: 'rem-lbl', text: 'Date & time' }), dt),
+    el('label', { class: 'rem-field' }, el('span', { class: 'rem-lbl', text: 'Remind me' }), lead),
+    hint,
+    el('div', { class: 'rem-actions' }, clearBtn, setBtn),
+  );
+  pop.addEventListener('mousedown', (e) => e.stopPropagation());
+  document.body.append(pop);
+  openRem = pop;
+
+  // place under the anchor, clamped to the viewport (divide by zoom for layout px)
+  const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+  const r = anchor.getBoundingClientRect();
+  const vw = innerWidth, vh = innerHeight, m = 8, gap = 6;
+  const pr = pop.getBoundingClientRect();
+  const openUp = pr.height > vh - r.bottom - gap - m && r.top > vh - r.bottom;
+  const top = openUp ? Math.max(m, r.top - gap - pr.height) : r.bottom + gap;
+  const left = Math.min(Math.max(m, r.right - pr.width), Math.max(m, vw - pr.width - m));
+  pop.style.left = `${left / zoom}px`;
+  pop.style.top = `${top / zoom}px`;
+  setTimeout(() => dt.focus(), 0);
+  document.addEventListener('mousedown', onRemDown, true);
+  document.addEventListener('keydown', onRemKey, true);
+  document.addEventListener('scroll', onRemScroll, true);
 }
 
 /* ————————————————————————— notes ————————————————————————— */

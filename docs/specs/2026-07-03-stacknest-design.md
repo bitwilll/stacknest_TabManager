@@ -296,6 +296,27 @@ Settings row sits above the footer at the bottom-left (left: 12px), renders the 
 the Settings view (title + populated `#settings-root`) with the accent-soft active treatment, and
 toggles off when leaving. No console errors.
 
+## Task reminders → browser notifications (2026-07-08)
+
+Any todo can carry `reminder: { at: <ISO local target>, lead: 0|5|10|30|60 min }`. The notification
+fires at `at − lead`.
+
+- **Scheduling** (`js/notes.js`): a bell action / chip on each task opens a popover with a
+  `datetime-local` input + a "remind me" lead select, live "Notifies …" preview, and Set/Clear.
+  On save it stores the reminder on the todo and calls `chrome.alarms.create('reminder:<id>',
+  { when: fireMs })`. Completing, deleting, or clearing cancels the alarm; re-opening a done task
+  re-arms a still-future one.
+- **Firing** (`js/sw.js`): `chrome.alarms.onAlarm` reads the task from storage and calls
+  `chrome.notifications.create` — so it fires even with no StackNest tab open, and Chrome delivers
+  alarms missed while the browser was closed on next start. Clicking the notification opens a tab.
+- **Timezone**: all maths is in epoch ms; the `datetime-local` value is read as local and `Date`
+  gives UTC ms, so local zone is handled for free. The chip and hint render via `toLocaleString`.
+  Verified a round-trip (local build == local parse) and that fireMs == target − lead.
+- **Permissions**: added `notifications` + `alarms`. Native pickers get `color-scheme` so the
+  date/time control themes correctly in dark. Mock (`js/mock.js`) stubs `alarms`/`notifications`
+  so the flow is testable in the dev preview (the real notification only fires in the packaged
+  extension). Reminders live on the todo, so they ride along in backup + Drive sync automatically.
+
 ## Notes & Todos view (2026-07-08)
 
 New sidebar view below Duplicates (`js/notes.js`), a nav line-icon + open-todo count badge.

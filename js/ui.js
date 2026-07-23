@@ -51,6 +51,7 @@ const ICONS = {
   note:     '<path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="m8.5 13 1.7 1.7L14 11"/>',
   check:    '<path d="M4 12.5 9 17.5 20 6.5"/>',
   upload:   '<path d="M12 21V10m0 0 4 4m-4-4-4 4"/><path d="M5 5h14"/>',
+  bell:     '<path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8Z"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/>',
 };
 
 export function icon(name, size = 15) {

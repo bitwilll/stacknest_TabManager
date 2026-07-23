@@ -26,3 +26,38 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 });
+
+/* ————— Task reminders ————— */
+// The notes page schedules a chrome.alarms entry ("reminder:<todoId>") for each
+// task reminder; this worker fires the OS/browser notification when the alarm
+// rings — even with no StackNest tab open. Alarms persist across worker restarts
+// (MV3), and Chrome fires ones missed while the browser was closed on next start.
+
+const NOTES_KEY = 'stacknest:notes';
+const REMINDER_PREFIX = 'reminder:';
+
+chrome.alarms?.onAlarm.addListener(async (alarm) => {
+  if (!alarm.name?.startsWith(REMINDER_PREFIX)) return;
+  const id = alarm.name.slice(REMINDER_PREFIX.length);
+  try {
+    const store = (await chrome.storage.local.get(NOTES_KEY))[NOTES_KEY] || {};
+    const todo = (store.todos || []).find((t) => t.id === id);
+    if (!todo || todo.done) return; // task was completed or deleted — nothing to nag about
+    const when = todo.reminder?.at ? new Date(todo.reminder.at) : null;
+    const ctx = when ? `Due ${when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Task reminder';
+    chrome.notifications.create(alarm.name, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+      title: todo.text || 'StackNest reminder',
+      message: ctx,
+      contextMessage: 'StackNest',
+      priority: 2,
+    });
+  } catch (e) { console.error('reminder alarm failed:', e); }
+});
+
+// clicking the notification opens a StackNest tab (the Notes view)
+chrome.notifications?.onClicked.addListener((id) => {
+  chrome.notifications.clear(id);
+  chrome.tabs.create({ url: 'chrome://newtab' });
+});
