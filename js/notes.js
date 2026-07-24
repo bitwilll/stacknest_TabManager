@@ -767,14 +767,18 @@ function syncFormatBar() {
   } else hideFormatBar();
 }
 
+// Anchored to the CARD, not the focused field. Anchoring to the field put the bar inside the
+// card — covering the rows, the "Add item" button and the footer — and made it hop from line
+// to line as the caret moved. One bar under one card holds still while you move around it.
 function placeFormatBar() {
   if (!formatBar || !formatField) return;
+  const anchor = formatField.closest('.mos-card') || formatField;
   const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-  const r = formatField.getBoundingClientRect();
+  const r = anchor.getBoundingClientRect();
   const br = formatBar.getBoundingClientRect();
-  const m = 8;
-  let top = r.bottom + 6;
-  if (top + br.height > innerHeight - m) top = Math.max(m, r.top - 6 - br.height);
+  const m = 8, gap = 6;
+  let top = r.bottom + gap;
+  if (top + br.height > innerHeight - m) top = Math.max(m, r.top - gap - br.height);  // flip above
   const left = Math.min(Math.max(m, r.left), Math.max(m, innerWidth - br.width - m));
   formatBar.style.left = `${left / zoom}px`;
   formatBar.style.top = `${top / zoom}px`;
