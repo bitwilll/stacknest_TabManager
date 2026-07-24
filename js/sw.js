@@ -6,23 +6,24 @@
 // there is a single extension instance — this worker always runs in the
 // regular profile, where the interactive consent window is allowed to open.
 //
-// Keep SCOPES in sync with js/drive.js.
+// The token logic itself lives in js/auth.js so the page and this worker can't drift
+// apart — whichever sign-in path is configured, incognito gets the same one.
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.appdata', 'https://www.googleapis.com/auth/userinfo.email'];
+import { mintToken, forgetToken, forgetAllTokens } from './auth.js';
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === 'auth:getToken') {
-    chrome.identity.getAuthToken({ interactive: !!msg.interactive, scopes: SCOPES }, (token) => {
-      const err = chrome.runtime.lastError;
-      sendResponse(err || !token ? { error: err?.message || 'No token returned.' } : { token });
-    });
+    mintToken({ interactive: !!msg.interactive, chooseAccount: !!msg.chooseAccount, loginHint: msg.loginHint || null })
+      .then((token) => sendResponse({ token }))
+      .catch((e) => sendResponse({ error: e?.message || 'No token returned.' }));
     return true; // keep the channel open for the async sendResponse
   }
   if (msg?.type === 'auth:removeToken') {
-    chrome.identity.removeCachedAuthToken({ token: msg.token }, () => {
-      void chrome.runtime.lastError; // eviction is best-effort
-      sendResponse({ ok: true });
-    });
+    forgetToken(msg.token).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg?.type === 'auth:removeAll') {
+    forgetAllTokens().then(() => sendResponse({ ok: true }), () => sendResponse({ ok: true }));
     return true;
   }
 });

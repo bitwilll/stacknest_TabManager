@@ -296,6 +296,55 @@ Settings row sits above the footer at the bottom-left (left: 12px), renders the 
 the Settings view (title + populated `#settings-root`) with the accent-soft active treatment, and
 toggles off when leaving. No console errors.
 
+## Notes: typing bug, task chaining, contrast, guide, undo (2026-07-09)
+
+**The typing bug** (reported: "semicolon and shift then a capital letter won't type sometimes").
+Root cause: the view re-rendered on *every* `chrome.storage.onChanged` — including the echo of
+its own 400ms debounced auto-save — and `render()` did `root.replaceChildren()`. That destroyed
+the focused field mid-word. The symptom singled out shifted characters because **reaching for
+Shift is exactly what creates a >400ms pause**, so the destructive re-render landed in the gap
+between pressing Shift and pressing the letter. Three layers now protect typing:
+
+1. **The shell is built once.** `buildShell()` creates the header + composer + `.mosaic-host`
+   and never replaces them; `render()` only ever swaps the mosaic's children. The composer
+   input therefore keeps focus and in-flight text no matter what.
+2. **Self-writes don't re-render.** Text edits batch into a `pending` map and flush with
+   `{ rerender: false }`; each write leaves a timestamped marker the storage listener consumes,
+   so our own echo is ignored. Markers expire after 3s so a coalesced event can't leave a stale
+   marker that swallows somebody else's real change.
+3. **Focus survives what's left.** Any render that does run snapshots `{card, field class,
+   selectionStart/End}` and restores it. External changes arriving mid-edit are deferred to
+   `focusout` rather than yanking the field.
+
+Structural mutations `await flushSaves()` first, so a re-render can never resurrect a stale
+value over what was just typed.
+
+- **Task chaining**: task text is now an always-live `<input>` (no click-to-edit), so it can hold
+  focus across renders. **Enter** inserts a fresh task directly below and focuses it; **Backspace**
+  in an empty, untagged, reminder-less task deletes it and steps back up; the composer refocuses
+  after Enter. Lists can be typed straight through.
+- **Drag handle**: with the whole card surface now covered by live fields (which must not be
+  hijacked by drags), reordering needed a grabbable target — a `<span>` grip in the footer
+  (a span, not a button, so the drag guard doesn't reject it).
+- **Contrast** on the notes bar: a rule under the header, tool buttons at `--accent-border` +
+  `--text-strong` that fill with ink on hover, and micro-labels lifted off `--text-mut`
+  (~2.9:1 on paper — under AA). Measured with alpha-composited ancestors: sub-line 8.6/8.0,
+  chips 7.4/7.4, tool buttons 16.1/14.0, task text 11.6/13.7 (light/dark) — all clear AA.
+  Card actions went 0.42 → 0.58 opacity.
+- **`?` guide**: a scrollable modal, term-and-definition in two columns (one when narrow),
+  covering creating / organising / reminders / undo / backup.
+- **Undo**: deleting a card snapshots it with its index and registers an undo/redo pair with the
+  shared `history.js` stack — ⌘Z restores it in place with tags, colour and reminder intact and
+  re-arms its alarm; ⌘⇧Z re-deletes. The confirm dialog is kept as well, since the undo stack is
+  session-scoped and doesn't survive closing the tab.
+
+Two verification artifacts worth recording, both from the preview pane being a *hidden* document
+(`document.hasFocus() === false`): blur/`focusout` events never fire (so click-away had to be
+driven with a synthetic bubbling `focusout`), and CSS transitions never advance, freezing
+`getComputedStyle().color` at the pre-theme-switch value — which is why `.mos-tag` read as dark
+tokens on a light page. Neither is a product defect; measuring requires
+`transition: none !important` first.
+
 ## Notes mosaic: unified cards, drag-order, tags, tints (2026-07-08)
 
 Notes and todos stopped being two separate panels and became **peer cards in one
@@ -364,6 +413,32 @@ createdAt,updatedAt}] }`, mutated through the serialized `update()` queue.
 
 Verified in preview (light+dark): CRUD, badge, autosave, notes-only export shape, Apple-paste
 parsing, and a Drive backup→wipe→restore round-trip that brings notes back. No console errors, no overflow.
+
+## Drive: whose Google account? (2026-07-09)
+
+Raised as a worry that other users might end up backing up into the developer's account. They
+can't: `oauth2.client_id` identifies the *extension*, not an account, and every install mints a
+token for whoever signs in on that machine, writing to that person's own `appDataFolder`. Nothing
+is pre-connected. That part needed no code change — but auditing it surfaced a real gap.
+
+`chrome.identity.getAuthToken` uses the **Chrome profile's** account and offers no picker, so a
+user signed into Chrome as A but wanting backups in B has no way to say so. Changes:
+
+- **`js/auth.js`** — one module, imported by both the page and the worker, so incognito
+  delegation can't drift from the page's behaviour. Two paths behind `mintToken()`:
+  `getAuthToken` (default), or `launchWebAuthFlow` with `prompt=select_account consent` when
+  `js/authConfig.js` supplies a **Web application** client ID. The web path caches the
+  short-lived token under its own key, renews 2 min early, and silently re-mints with
+  `prompt=none`.
+- **Switch account** in Settings → Cloud sync. On the web path it opens the picker; on the
+  default path it throws a specific, actionable message rather than reconnecting the same
+  account and looking broken.
+- **Disconnect** now revokes *and* calls `clearAllCachedAuthTokens()`.
+- Settings states in plain language which account is in use and why — the honest answer differs
+  per path, so the copy branches on `canChooseAccount()`.
+- The token key is deliberately outside the backup key list; verified that a built backup
+  contains no token and no account address.
+- The worker became `"type": "module"` so it can share `auth.js`.
 
 ## Google Drive sync hardening (2026-07-08)
 

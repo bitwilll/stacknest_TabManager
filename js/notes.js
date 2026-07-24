@@ -5,11 +5,20 @@
 // Storage: chrome.storage.local under one key, so it rides along in the full backup
 // (local export/import + Google Drive sync). Apple Notes has no API a browser
 // extension can reach, so import is by pasting exported text.
+//
+// TYPING IS SACRED. This view used to rebuild its whole DOM whenever storage
+// changed — including the echo of its own debounced auto-save — which tore the
+// focused field out from under the caret mid-word. Three rules keep that from
+// happening again:
+//   1. The shell (header + composer) is built once and never replaced.
+//   2. Text edits save with { rerender: false } and their storage echo is ignored.
+//   3. Any render that does run snapshots and restores focus + caret.
 
-import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, debounce, shortDate } from './ui.js';
+import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, shortDate } from './ui.js';
 import { getKey, update } from './store.js';
 import { exportBackup } from './backup.js';
 import { backupNow, restoreLatest, loadCloudState } from './drive.js';
+import { pushHistory, flashDeleted } from './history.js';
 import { tagColor } from './tags.js';
 
 export const NOTES_KEY = 'stacknest:notes';
@@ -52,10 +61,15 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const toLocalInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
 let root, getQuery, countEl;
+let shell = null; // { sub, host } — built once, never torn down
 
 export function initNotes(options) {
   ({ root, getQuery, countEl } = options);
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && c[NOTES_KEY]) render(); });
+  chrome.storage?.onChanged?.addListener((c, area) => {
+    if (area !== 'local' || !c[NOTES_KEY]) return;
+    if (consumeSelfWrite()) return;   // the echo of a write we just made — DOM is already right
+    scheduleRender();                 // a genuine outside change (other tab, Drive restore, import)
+  });
   render();
   return { render };
 }
@@ -88,44 +102,135 @@ function normalize(x = {}) {
 }
 
 async function load() { return migrateNotes(await getKey(NOTES_KEY, {})); }
-// serialized read-modify-write; fn mutates the { items } draft in place
-function mutate(fn) {
-  return update(NOTES_KEY, {}, (d) => { const draft = migrateNotes(d); fn(draft); return draft; });
+
+// Writes we make ourselves come back to us through storage.onChanged. Re-rendering
+// on that echo is what used to eat keystrokes, so each write leaves a marker the
+// listener consumes. Markers expire after a few seconds: if Chrome ever coalesces
+// an event away, a stale marker must not swallow somebody else's real change.
+const selfWrites = [];
+function consumeSelfWrite() {
+  const cutoff = Date.now() - 3000;
+  while (selfWrites.length && selfWrites[0] < cutoff) selfWrites.shift();
+  if (!selfWrites.length) return false;
+  selfWrites.shift();
+  return true;
+}
+
+// Serialized read-modify-write; fn mutates the { items } draft in place. Structural
+// changes re-render (and the caller can await a settled DOM); text saves pass
+// { rerender: false } so typing is never interrupted.
+async function mutate(fn, { rerender = true } = {}) {
+  selfWrites.push(Date.now());
+  await update(NOTES_KEY, {}, (d) => { const draft = migrateNotes(d); fn(draft); return draft; });
+  if (rerender) await render();
 }
 const findItem = (d, id) => d.items.find((x) => x.id === id);
 
+/* ————— debounced text saves —————
+   Keystrokes accumulate in `pending` and flush as one write. Any structural change
+   flushes first, so a re-render can never resurrect a stale value over what the
+   user has already typed. */
+const pending = new Map(); // id -> { text } | { title, body }
+let saveTimer = null;
+function queueSave(id, field, value) {
+  pending.set(id, { ...(pending.get(id) || {}), [field]: value });
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSaves, 400);
+}
+function flushSaves() {
+  clearTimeout(saveTimer);
+  if (!pending.size) return Promise.resolve();
+  const batch = [...pending.entries()];
+  pending.clear();
+  return mutate((d) => {
+    for (const [id, fields] of batch) {
+      const x = findItem(d, id);
+      if (!x) continue;
+      Object.assign(x, fields);
+      if (x.kind === 'note') x.updatedAt = now();
+    }
+  }, { rerender: false });
+}
+
 /* ————————————————————————— render ————————————————————————— */
+
+// An outside change while the user is mid-edit waits for them to click away, so a
+// background sync can't yank the field they're typing in.
+let renderPending = false;
+function editingInMosaic() {
+  const a = document.activeElement;
+  return !!(a && shell?.host.contains(a) && /^(input|textarea)$/i.test(a.tagName));
+}
+function scheduleRender() {
+  if (editingInMosaic()) { renderPending = true; return; }
+  render();
+}
 
 export async function render() {
   const { items } = await load();
   const q = getQuery ? getQuery() : '';
 
   const open = items.filter((i) => i.kind === 'todo' && !i.done).length;
+  const noteCount = items.filter((i) => i.kind === 'note').length;
   if (countEl) countEl.textContent = open ? String(open) : '';
 
-  const frag = document.createDocumentFragment();
-  frag.append(headerBar(items), composer());
+  if (!shell || !root.contains(shell.wrap)) buildShell();
+  shell.sub.textContent = `${open} open task${open === 1 ? '' : 's'} · ${noteCount} note${noteCount === 1 ? '' : 's'}`;
 
   const shown = q ? items.filter((i) => matches(q, i.text, i.title, i.body, (i.tags || []).join(' '))) : items;
+  const focus = snapshotFocus();
   if (!shown.length) {
-    frag.append(el('div', { class: 'notes-empty big' },
+    shell.host.replaceChildren(el('div', { class: 'notes-empty big' },
       q ? 'Nothing here matches your search.'
         : el('span', {}, 'Nothing yet — add a task above, or ', el('button', { class: 'linkbtn', onclick: () => newItem('note') }, el('span', { text: 'write your first note' })), '.')));
   } else {
     const mosaic = el('div', { class: 'mosaic' });
     for (const it of shown) mosaic.append(itemCard(it));
-    frag.append(mosaic);
+    shell.host.replaceChildren(mosaic);
   }
-  root.replaceChildren(frag);
+  restoreFocus(focus);
 }
 
-function headerBar(items) {
-  const open = items.filter((i) => i.kind === 'todo' && !i.done).length;
-  const notes = items.filter((i) => i.kind === 'note').length;
+// Where the caret was, in terms that survive a rebuild: which card, which field, which
+// character. Only the mosaic is ever rebuilt, so the composer needs no snapshot.
+function snapshotFocus() {
+  const a = document.activeElement;
+  if (!a || !shell?.host.contains(a) || !/^(input|textarea)$/i.test(a.tagName)) return null;
+  let start = null, end = null;
+  try { start = a.selectionStart; end = a.selectionEnd; } catch { /* type doesn't expose a selection */ }
+  return { card: a.closest('.mos-card')?.dataset.id || null, cls: a.classList[0], start, end };
+}
+function restoreFocus(s) {
+  if (!s || !s.cls) return;
+  const scope = s.card ? shell.host.querySelector(`.mos-card[data-id="${CSS.escape(s.card)}"]`) : shell.host;
+  const node = scope?.querySelector('.' + s.cls);
+  if (!node) return;
+  node.focus({ preventScroll: true });
+  if (s.start != null) { try { node.setSelectionRange(s.start, s.end); } catch { /* not selectable */ } }
+}
+
+// Header + composer live outside the re-rendered region: their inputs keep focus and
+// in-flight text no matter what happens to the mosaic.
+function buildShell() {
+  const sub = el('p', { class: 'notes-sub' });
+  const host = el('div', { class: 'mosaic-host' });
+  // Leaving a field commits it immediately and lets any render we deferred while the
+  // user was typing finally happen.
+  host.addEventListener('focusout', () => setTimeout(() => {
+    if (editingInMosaic()) return;
+    flushSaves();
+    if (renderPending) { renderPending = false; render(); }
+  }, 0));
+  const wrap = el('div', { class: 'notes-shell' }, headerBar(sub), composer(), host);
+  shell = { wrap, sub, host };
+  root.replaceChildren(wrap);
+}
+
+function headerBar(sub) {
   return el('div', { class: 'notes-head' },
     el('div', { class: 'notes-h-text' },
       el('h2', { class: 'notes-title', text: 'Notes & Todos' }),
-      el('p', { class: 'notes-sub', text: `${open} open task${open === 1 ? '' : 's'} · ${notes} note${notes === 1 ? '' : 's'}` }),
+      sub,
     ),
     el('div', { class: 'notes-tools' },
       menuButton('Export', 'download', [
@@ -140,6 +245,7 @@ function headerBar(items) {
         { label: 'Back up to Drive', run: driveBackup },
         { label: 'Fetch from Drive', run: driveRestore },
       ]),
+      el('button', { class: 'btnx soft notes-tool notes-help', title: 'How Notes & Todos works', 'aria-label': 'Help', onclick: openGuide }, icon('help', 15)),
     ),
   );
 }
@@ -147,11 +253,13 @@ function headerBar(items) {
 // quick-add a task, plus a New menu that can also start a note
 function composer() {
   const input = el('input', { class: 'todo-add', placeholder: 'Add a task…', 'aria-label': 'Add a task' });
-  const add = () => {
+  const add = async () => {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    mutate((d) => { d.items.unshift(normalize({ kind: 'todo', text })); });
+    await flushSaves();
+    await mutate((d) => { d.items.unshift(normalize({ kind: 'todo', text })); });
+    input.focus();          // stay put so tasks can be typed one after another
   };
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
   return el('div', { class: 'mos-composer' },
@@ -165,8 +273,14 @@ function composer() {
 
 async function newItem(kind) {
   const id = uid();
+  await flushSaves();
   await mutate((d) => { d.items.unshift(normalize({ id, kind })); });
-  requestAnimationFrame(() => root.querySelector('.mos-card .note-title, .mos-card .todo-edit')?.focus());
+  focusItem(id);
+}
+
+function focusItem(id) {
+  const card = shell?.host.querySelector(`.mos-card[data-id="${CSS.escape(id)}"]`);
+  card?.querySelector('.note-title, .todo-text-in')?.focus();
 }
 
 // tiny click-to-open menu (progressive disclosure — one button, actions on demand)
@@ -200,18 +314,15 @@ function itemCard(it) {
   if (chips.children.length) card.append(chips);
 
   card.append(el('div', { class: 'mos-foot' },
+    // a span, not a button — the drag guard below ignores drags that start on a
+    // control, and the card's own text fields swallow the rest of its surface
+    el('span', { class: 'mos-grip', title: 'Drag to reorder' }, icon('grip', 13)),
     el('span', { class: 'mos-when', text: it.kind === 'note' ? shortDate(it.updatedAt || it.createdAt) : '' }),
     el('div', { class: 'mos-acts' },
       actionBtn('bell', it.reminder ? 'Edit reminder' : 'Set reminder', (_, b) => openReminderEditor(b, it), it.reminder ? 'rem-bell on' : 'rem-bell'),
       actionBtn('tag', 'Tags', (_, b) => openTagPicker(b, it)),
       actionBtn('palette', 'Card colour', (_, b) => openColorPicker(b, it)),
-      actionBtn('close', it.kind === 'todo' ? 'Delete task' : 'Delete note', async () => {
-        const empty = it.kind === 'todo' ? !it.text : !(it.title || it.body);
-        if (empty || await confirmDialog({ title: it.kind === 'todo' ? 'Delete task?' : 'Delete note?', message: 'This will be removed.', confirmLabel: 'Delete', danger: true })) {
-          clearAlarm(it.id);
-          mutate((d) => { d.items = d.items.filter((x) => x.id !== it.id); });
-        }
-      }, 'danger'),
+      actionBtn('close', it.kind === 'todo' ? 'Delete task' : 'Delete note', () => removeCard(it), 'danger'),
     ),
   ));
 
@@ -221,41 +332,61 @@ function itemCard(it) {
 
 function todoBody(it) {
   const box = el('button', {
-    class: `todo-check${it.done ? ' is-done' : ''}`, role: 'checkbox', 'aria-checked': String(it.done), 'aria-label': it.text,
+    class: `todo-check${it.done ? ' is-done' : ''}`, role: 'checkbox', 'aria-checked': String(it.done), 'aria-label': it.text || 'Task',
     onclick: async () => {
+      await flushSaves();
       await mutate((d) => { const x = findItem(d, it.id); if (x) x.done = !x.done; });
       if (!it.done) clearAlarm(it.id);                        // now done — stop nagging
       else if (it.reminder) armAlarm(it.id, fireTime(it.reminder)); // re-opened — re-arm
     },
   }, it.done ? icon('check', 13) : null);
 
-  const label = el('span', { class: 'todo-text', text: it.text || 'Untitled task', title: 'Click to edit', tabindex: '0' });
-  const beginEdit = () => {
-    const edit = el('input', { class: 'todo-edit', value: it.text });
-    const commit = () => {
-      const v = edit.value.trim();
-      if (v && v !== it.text) mutate((d) => { const x = findItem(d, it.id); if (x) x.text = v; });
-      else render();
-    };
-    edit.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); edit.blur(); } if (e.key === 'Escape') render(); });
-    edit.addEventListener('blur', commit);
-    label.replaceWith(edit); edit.focus(); edit.select();
-  };
-  label.addEventListener('click', beginEdit);
-  label.addEventListener('keydown', (e) => { if (e.key === 'Enter') beginEdit(); });
-  return el('div', { class: 'todo-line' }, box, label);
+  // Always-live input (no click-to-edit dance): it can hold focus across renders,
+  // and Enter chains straight into the next task.
+  const input = el('input', { class: 'todo-text-in', value: it.text || '', placeholder: 'Task', 'aria-label': 'Task' });
+  input.addEventListener('input', () => queueSave(it.id, 'text', input.value));
+  input.addEventListener('keydown', (e) => onTodoKey(e, it, input));
+  return el('div', { class: 'todo-line' }, box, input);
 }
 
-const saveTitle = debounce((id, v) => mutate((d) => { const n = findItem(d, id); if (n) { n.title = v; n.updatedAt = now(); } }), 400);
-const saveBody = debounce((id, v) => mutate((d) => { const n = findItem(d, id); if (n) { n.body = v; n.updatedAt = now(); } }), 400);
+// Enter → a fresh task right below this one, focused. Backspace in an empty task
+// removes it and steps back up, so a stray Enter never strands a blank card.
+async function onTodoKey(e, it, input) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const id = uid();
+    await flushSaves();
+    await mutate((d) => {
+      const i = d.items.findIndex((x) => x.id === it.id);
+      d.items.splice(i < 0 ? d.items.length : i + 1, 0, normalize({ id, kind: 'todo' }));
+    });
+    focusItem(id);
+    return;
+  }
+  if (e.key === 'Escape') { input.blur(); return; }
+  if (e.key === 'Backspace' && !input.value && !it.reminder && !(it.tags || []).length) {
+    e.preventDefault();
+    pending.delete(it.id);
+    let prevId = null;
+    await mutate((d) => {
+      const i = d.items.findIndex((x) => x.id === it.id);
+      if (i < 0) return;
+      prevId = d.items[i - 1]?.id || null;
+      d.items.splice(i, 1);
+    });
+    if (prevId) focusItem(prevId);
+  }
+}
 
 function noteBody(it) {
   const title = el('input', { class: 'note-title', value: it.title || '', placeholder: 'Title', 'aria-label': 'Note title' });
-  title.addEventListener('input', () => saveTitle(it.id, title.value));
+  title.addEventListener('input', () => queueSave(it.id, 'title', title.value));
   const body = el('textarea', { class: 'note-body', placeholder: 'Write…', 'aria-label': 'Note body', rows: '3' });
   body.value = it.body || '';
   const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 420) + 'px'; };
-  body.addEventListener('input', () => { grow(); saveBody(it.id, body.value); });
+  body.addEventListener('input', () => { grow(); queueSave(it.id, 'body', body.value); });
+  // Tab out of the title into the body reads as one continuous note
+  title.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); body.focus(); } });
   requestAnimationFrame(grow);
   return el('div', { class: 'note-lines' }, title, body);
 }
@@ -272,6 +403,45 @@ function reminderChip(it) {
 function tagChip(it, t) {
   return el('button', { class: 'mos-tag', title: `Remove “${t}”`, onclick: () => mutate((d) => { const x = findItem(d, it.id); if (x) x.tags = x.tags.filter((y) => y !== t); }) },
     el('span', { class: 'tag-dot', style: `background:${tagColor(t)}` }), el('span', { text: t }));
+}
+
+/* ————————————————————————— delete (undoable) ————————————————————————— */
+
+// Deleting captures the card and its position, then registers an undo/redo pair with
+// the shared history stack — so Cmd/Ctrl+Z (or the snackbar) puts it back exactly
+// where it was, reminder and all, without reverting anything you did since.
+async function removeCard(it) {
+  const label = it.kind === 'todo' ? 'task' : 'note';
+  const hasContent = it.kind === 'todo' ? !!it.text : !!(it.title || it.body);
+  if (hasContent && !(await confirmDialog({
+    title: it.kind === 'todo' ? 'Delete task?' : 'Delete note?',
+    message: 'You can undo this with ⌘Z / Ctrl+Z.', confirmLabel: 'Delete', danger: true,
+  }))) return;
+
+  await flushSaves();
+  let snapshot = null, index = -1;
+  await mutate((d) => {
+    index = d.items.findIndex((x) => x.id === it.id);
+    if (index < 0) return;
+    snapshot = structuredClone(d.items[index]);
+    d.items.splice(index, 1);
+  });
+  clearAlarm(it.id);
+  if (!snapshot) return;
+
+  const restore = async () => {
+    await mutate((d) => {
+      if (d.items.some((x) => x.id === snapshot.id)) return;    // already back
+      d.items.splice(Math.min(index, d.items.length), 0, normalize(snapshot));
+    });
+    if (snapshot.reminder) armAlarm(snapshot.id, fireTime(snapshot.reminder));
+  };
+  const again = async () => {
+    await mutate((d) => { d.items = d.items.filter((x) => x.id !== snapshot.id); });
+    clearAlarm(snapshot.id);
+  };
+  pushHistory({ label, undo: restore, redo: again });
+  flashDeleted(`Deleted ${label}`);
 }
 
 /* ————————————————————————— drag to reorder ————————————————————————— */
@@ -301,6 +471,7 @@ function wireDrag(card, it) {
     const after = card.classList.contains('drop-after');
     clearDropMarks();
     if (!fromId || fromId === it.id) return;
+    await flushSaves();
     await mutate((d) => {
       const from = d.items.findIndex((x) => x.id === fromId);
       if (from < 0) return;
@@ -322,6 +493,8 @@ function closePop() {
   document.removeEventListener('mousedown', onPopDown, true);
   document.removeEventListener('keydown', onPopKey, true);
   document.removeEventListener('scroll', onPopScroll, true);
+  // a render deferred while the user was mid-edit can land now
+  if (renderPending && !editingInMosaic()) { renderPending = false; render(); }
 }
 function onPopDown(e) { if (openPop && !openPop.contains(e.target)) closePop(); }
 function onPopKey(e) { if (e.key === 'Escape') { e.stopPropagation(); closePop(); } }
@@ -374,6 +547,7 @@ function openReminderEditor(anchor, it) {
     const leadV = Number(lead.value);
     const fireMs = target.getTime() - leadV * 60000;
     if (fireMs <= Date.now()) { toast('That reminder time is in the past'); return; }
+    await flushSaves();
     await mutate((d) => { const x = findItem(d, it.id); if (x) { if (x.kind === 'todo') x.done = false; x.reminder = { at: target.toISOString(), lead: leadV }; } });
     armAlarm(it.id, fireMs);
     closePop(); toast('Reminder set');
@@ -435,6 +609,68 @@ function openColorPicker(anchor, it) {
   ), anchor);
 }
 
+/* ————————————————————————— guide ————————————————————————— */
+
+const GUIDE = [
+  { h: 'Creating', icon: 'plus', rows: [
+    ['Add a task…', 'Type in the bar at the top and press Enter. Focus stays put, so you can rattle off tasks one after another.'],
+    ['New ▾', 'Starts an empty note (title + body) or an empty task, at the top of the mosaic.'],
+    ['Enter inside a task', 'Creates the next task directly below and jumps to it — the fastest way to write a list.'],
+    ['Backspace in an empty task', 'Removes it and steps back to the one above, so a stray Enter never leaves a blank card.'],
+    ['Autosave', 'Everything saves as you type. There is no Save button and nothing to lose.'],
+  ] },
+  { h: 'Organising', icon: 'grip', rows: [
+    ['Drag to reorder', 'Grab a card by the ⣿ handle in its footer and drop it above or below any other card.'],
+    ['Tags', 'The tag button adds any label you like — Enter or comma between them. Click a tag on a card to remove it.'],
+    ['Colour', 'Six translucent pastel washes. They sit over the card surface, so they stay readable in light and dark.'],
+    ['Search', 'The search box at the top of the window filters cards by title, body, task text and tag.'],
+  ] },
+  { h: 'Reminders', icon: 'bell', rows: [
+    ['Set a reminder', 'The bell on any card — note or task. Pick a date and time, then how early to be told.'],
+    ['Lead time', 'At the time of the event, or 5 / 10 / 30 minutes or 1 hour before it.'],
+    ['Timezone', 'Times are your computer’s local time. Travelling changes when a reminder lands, as you would expect.'],
+    ['Where it appears', 'A browser notification, even with no StackNest tab open. Chrome must be running; ones missed while it was closed fire at next launch.'],
+    ['Completing a task', 'Ticking a task cancels its reminder. Un-ticking re-arms it.'],
+  ] },
+  { h: 'Undo', icon: 'undo', rows: [
+    ['⌘Z / Ctrl+Z', 'Puts a deleted card back exactly where it was, with its tags, colour and reminder intact.'],
+    ['⇧⌘Z / Ctrl+Y', 'Redo — deletes it again.'],
+    ['Undo bar', 'A snackbar appears after every delete with a one-click Undo.'],
+    ['Scope', 'The undo stack lasts for this tab’s session, and never reverts edits you made after the delete.'],
+  ] },
+  { h: 'Backup & sync', icon: 'cloud', rows: [
+    ['Export', 'Notes only (a small JSON of just this view) or a full StackNest backup that carries notes alongside spaces and collections.'],
+    ['Import', 'Reads either file. Imported cards are added to what you already have — never replacing it — with fresh ids so nothing collides.'],
+    ['Apple Notes', 'No extension can read Apple Notes directly. Copy the note there, paste it here, and optionally split on blank lines.'],
+    ['Drive', 'Backs up and fetches through the same full backup. Connect an account first in Settings → Cloud sync.'],
+  ] },
+];
+
+function openGuide() {
+  const closeBtn = el('button', { class: 'modal-btn confirm', text: 'Got it' });
+  const modal = el('div', { class: 'modal help-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Notes & Todos guide' },
+    el('h2', { class: 'modal-title', text: 'Notes & Todos' }),
+    el('p', { class: 'modal-msg', text: 'Everything this view can do.' }),
+    el('div', { class: 'help-body' }, ...GUIDE.map((sec) => el('section', { class: 'help-sec' },
+      el('h3', { class: 'help-h' }, icon(sec.icon, 13), el('span', { text: sec.h })),
+      el('dl', { class: 'help-list' }, ...sec.rows.flatMap(([k, v]) => [
+        el('dt', { class: 'help-k', text: k }),
+        el('dd', { class: 'help-v', text: v }),
+      ])),
+    ))),
+    el('div', { class: 'modal-actions' }, closeBtn),
+  );
+  const scrim = el('div', { class: 'modal-scrim' }, modal);
+  let done = false;
+  const close = () => { if (done) return; done = true; scrim.classList.remove('show'); document.removeEventListener('keydown', onKey, true); setTimeout(() => scrim.remove(), 200); };
+  const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); close(); } };
+  closeBtn.addEventListener('click', close);
+  scrim.addEventListener('mousedown', (e) => { if (e.target === scrim) close(); });
+  document.addEventListener('keydown', onKey, true);
+  document.body.append(scrim);
+  requestAnimationFrame(() => { scrim.classList.add('show'); closeBtn.focus(); });
+}
+
 /* ————————————————————————— export / import ————————————————————————— */
 
 function stamp() {
@@ -443,6 +679,7 @@ function stamp() {
 }
 
 async function exportNotesOnly() {
+  await flushSaves();
   const { items } = await load();
   if (!items.length) { toast('Nothing to export yet'); return; }
   exportDownload(`stacknest-notes-${stamp()}.json`, JSON.stringify({ app: 'StackNest', type: 'notes', version: 2, exportedAt: now(), items }, null, 2), 'application/json');
@@ -466,7 +703,8 @@ async function importFromFile() {
 }
 
 // add imported cards with fresh ids so nothing collides, newest on top
-function mergeIn(list) {
+async function mergeIn(list) {
+  await flushSaves();
   return mutate((d) => { for (const x of [...list].reverse()) d.items.unshift(normalize({ ...x, id: uid() })); });
 }
 
@@ -508,6 +746,7 @@ function openAppleNotesImport() {
 async function driveBackup() {
   const cloud = await loadCloudState();
   if (!(cloud.connected || cloud.email)) { toast('Connect Google Drive first — Settings → Cloud sync'); return; }
+  await flushSaves();
   const r = await backupNow(false).catch((e) => { toast(e?.message || 'Backup failed'); return null; });
   if (r) toast('Backed up to Drive (notes included)');
 }

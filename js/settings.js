@@ -4,7 +4,7 @@
 import { el, icon, toast } from './ui.js';
 import { getKey, update } from './store.js';
 import { exportBackup, importFlow } from './backup.js';
-import { CLOUD_KEY, loadCloudState, connect, disconnect, backupNow, restoreLatest, isLive, isConfigured } from './drive.js';
+import { CLOUD_KEY, loadCloudState, connect, switchAccount, disconnect, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
 import { confirmDialog } from './ui.js';
 
 export const SETTINGS_KEY = 'stacknest:settings';
@@ -140,7 +140,10 @@ async function cloudCard() {
     gdrive.append(
       el('div', { class: 'cloud-row' },
         el('span', { class: 'cloud-name' }, el('span', { class: 'cloud-dot g' }), el('span', { class: 'cloud-acct', text: cloud.email || 'Google Drive' })),
-        el('button', { class: 'btnx ghosty', onclick: withBusy(async () => { await disconnect(); toast('Disconnected'); }) }, el('span', { text: 'Disconnect' })),
+        el('div', { class: 'cloud-btns' },
+          el('button', { class: 'btnx ghosty', title: 'Sign in with a different Google account', onclick: withBusy(async () => { await switchAccount(); toast('Switched account'); }) }, icon('swap', 13), el('span', { text: 'Switch account' })),
+          el('button', { class: 'btnx ghosty', onclick: withBusy(async () => { await disconnect(); toast('Disconnected'); }) }, el('span', { text: 'Disconnect' })),
+        ),
       ),
       el('div', { class: 'cloud-meta', text: `Last backup ${shortWhen(cloud.lastBackupAt)} · last restore ${shortWhen(cloud.lastRestoreAt)}` }),
       el('div', { class: 'set-actions' },
@@ -159,6 +162,12 @@ async function cloudCard() {
     card.append(el('p', { class: 'set-note', text: 'Google Drive sync isn’t set up in this build yet. Add your own Google OAuth client ID to the manifest to enable it — see the README’s “Cloud sync setup” steps.' }));
   } else if (!live) {
     card.append(el('p', { class: 'set-note', text: 'Preview mode: Google sign-in and Drive aren’t available outside the packaged extension, so this simulates the cloud locally. In the real extension it uses your Google account.' }));
+  } else {
+    // Be explicit about WHOSE account this is: nothing is pre-connected, and the backup
+    // goes to the signed-in person's own private Drive folder.
+    card.append(el('p', { class: 'set-note', text: canChooseAccount()
+      ? 'You choose the Google account. “Connect” opens Google’s account picker, and “Switch account” moves Drive sync to a different one at any time. Your backup lives in that account’s private StackNest folder — no one else can read it.'
+      : 'Drive sync signs in as the Google account this Chrome profile is signed into, and Chrome offers no picker for it. To use a different account, switch Chrome profiles — or turn on the built-in account chooser by adding a Web OAuth client ID (see js/authConfig.js). Your backup always lives in your own private Drive folder; the developer has no access to it.' }));
   }
 
   // StackNest Cloud (Pro) — needs a hosted backend; placeholder for now

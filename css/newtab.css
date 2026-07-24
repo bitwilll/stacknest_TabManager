@@ -1159,6 +1159,9 @@ kbd {
 .cloud-dot.pro { background: linear-gradient(140deg, var(--accent), var(--accent-2)); }
 .cloud-acct { font: 600 13px var(--grot); color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cloud-badge { font: 800 9px var(--mono); letter-spacing: 0.08em; color: var(--accent-contrast); background: linear-gradient(140deg, var(--accent), var(--accent-2)); border-radius: 5px; padding: 2px 5px; }
+.cloud-btns { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.cloud-btns .btnx { display: flex; align-items: center; gap: 6px; }
+.cloud-btns .btnx svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .cloud-meta { font: 500 11.5px var(--mono); color: var(--text-mut); margin-top: 8px; }
 .cloud-provider .set-actions { margin-top: 12px; }
 .btnx.ghosty { height: 34px; padding: 0 13px; color: var(--text-soft); border: 1px solid var(--line); border-radius: 9px; background: transparent; font: 600 12px var(--grot); }
@@ -1202,13 +1205,25 @@ kbd {
 .view-notes { overflow-y: auto; }
 .notesview { padding: 22px 24px 44px; max-width: 1180px; }
 
-.notes-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+/* The bar reads as a bar: a rule under it, and controls that hold their own weight
+   against the canvas. The sub-line used to be --text-mut (2.9:1 on paper — under AA);
+   everything in this header now clears it comfortably. */
+.notes-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--s4); flex-wrap: wrap;
+  padding-bottom: var(--s3); margin-bottom: var(--s4);
+  border-bottom: 1px solid var(--line-strong);
+}
 .notes-title { margin: 0; font: 800 18px var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
-.notes-sub { margin: 5px 0 0; font: 500 12.5px var(--grot); color: var(--text-mut); }
-.notes-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.notes-sub { margin: 5px 0 0; font: 500 12.5px var(--grot); color: var(--text-soft); }
+.notes-tools { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 
 .notes-menu-wrap { position: relative; }
 .notes-tool { gap: 6px; }
+.btnx.soft.notes-tool { border-color: var(--accent-border); color: var(--text-strong); font-weight: 700; }
+/* hover fills with ink (chalk on dark) — unmistakable, and still monochrome */
+.btnx.soft.notes-tool:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.notes-help { width: 34px; padding: 0; justify-content: center; }
 .notes-tool svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .notes-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 210px; background: var(--bg-side); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 16px 40px -12px rgba(0,0,0,.35); padding: 6px; display: flex; flex-direction: column; }
 .notes-menu[hidden] { display: none; }
@@ -1217,10 +1232,11 @@ kbd {
 
 /* composer: quick-add a task + a New menu that can start either kind */
 .mos-composer { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-.todo-addrow { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-inset); color: var(--text-mut); }
+.todo-addrow { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--bg-inset); color: var(--text-soft); transition: border-color .13s, box-shadow .13s; }
+.todo-addrow:focus-within { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
 .todo-addrow svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
 .todo-add { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font: 500 13.5px var(--grot); color: var(--text); }
-.todo-add::placeholder { color: var(--text-mut); }
+.todo-add::placeholder { color: var(--text-soft); }
 
 /* masonry mosaic — cards flow into columns and never split across one.
    column-width (not column-count) so the column count derives from the mosaic's
@@ -1267,9 +1283,11 @@ kbd {
 .todo-check { width: 18px; height: 18px; flex: none; margin-top: 1px; border: 1.6px solid var(--line-strong); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--accent-contrast); cursor: pointer; transition: background .12s, border-color .12s; }
 .todo-check.is-done { background: var(--accent); border-color: var(--accent); }
 .todo-check svg { stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-.todo-text { flex: 1; min-width: 0; font: 500 13.5px/1.45 var(--grot); color: var(--text-body); cursor: text; overflow-wrap: anywhere; }
-.mos-card.is-done .todo-text { color: var(--text-mut); text-decoration: line-through; }
-.todo-edit { flex: 1; min-width: 0; border: 1px solid var(--accent-border); border-radius: 6px; padding: 2px 6px; font: 500 13.5px var(--grot); background: var(--bg-inset); color: var(--text); outline: none; }
+/* the task text is a live field, not click-to-edit: it survives re-renders with the
+   caret intact, and Enter can chain straight into the next task */
+.todo-text-in { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; outline: none; font: 500 13.5px/1.45 var(--grot); color: var(--text-body); }
+.todo-text-in::placeholder { color: var(--text-ghost); }
+.mos-card.is-done .todo-text-in { color: var(--text-mut); text-decoration: line-through; }
 
 /* note card */
 .note-lines { display: flex; flex-direction: column; }
@@ -1280,27 +1298,34 @@ kbd {
 
 /* chips row (reminder + tags) */
 .mos-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
-.mos-tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; font: 600 10.5px var(--mono); color: var(--text-mut); background: var(--bg-inset); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px 2px 6px; cursor: pointer; transition: color .12s, border-color .12s; }
+.mos-tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; font: 600 10.5px var(--mono); color: var(--text-soft); background: var(--bg-inset); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 8px 2px 6px; cursor: pointer; transition: color .12s, border-color .12s; }
 .mos-tag:hover { color: var(--red); border-color: color-mix(in srgb, var(--red) 32%, transparent); }
 .mos-tag span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.todo-rem-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; font: 600 10.5px var(--mono); color: var(--text-mut); background: var(--bg-inset); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px 2px 6px; cursor: pointer; transition: color .12s, border-color .12s; }
+.todo-rem-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; font: 600 10.5px var(--mono); color: var(--text-soft); background: var(--bg-inset); border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 8px 2px 6px; cursor: pointer; transition: color .12s, border-color .12s; }
 .todo-rem-chip svg { stroke: currentColor; fill: none; stroke-width: 1.8; flex: none; }
 .todo-rem-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo-rem-chip:hover { color: var(--text-strong); border-color: var(--line-strong); }
 .todo-rem-chip.past { color: var(--red); border-color: color-mix(in srgb, var(--red) 32%, transparent); }
 
 /* card footer actions */
-.mos-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; min-height: 24px; }
-.mos-when { font: 500 10.5px var(--mono); color: var(--text-faint); }
+.mos-foot { display: flex; align-items: center; gap: 6px; margin-top: 8px; min-height: 24px; }
+.mos-when { font: 500 10.5px var(--mono); color: var(--text-soft); }
+/* Explicit drag handle. The card's own text fields now cover most of its surface and
+   swallow drags (by design — dragging must never hijack an edit), so reordering needs
+   a grabbable spot that isn't a field or a button. */
+.mos-grip { display: inline-flex; align-items: center; color: var(--text-faint); cursor: grab; opacity: .55; transition: opacity .12s, color .12s; }
+.mos-grip svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.mos-card:hover .mos-grip { opacity: 1; color: var(--text-soft); }
+.mos-card.dragging .mos-grip { cursor: grabbing; }
 /* every card action stays faintly visible rather than hover-only — hidden actions
    are undiscoverable, and a lone visible icon among invisible siblings sits oddly
    off the right edge. They brighten on hover/focus. */
 .mos-acts { display: flex; align-items: center; gap: 1px; margin-left: auto; }
-.mos-acts .icb { opacity: .42; }
+.mos-acts .icb { opacity: .58; }
 .mos-card:hover .mos-acts .icb, .mos-card:focus-within .mos-acts .icb { opacity: 1; }
 .mos-acts .icb.on { opacity: 1; color: var(--accent-text); }
 
-.notes-empty { font: 500 13px var(--grot); color: var(--text-mut); padding: 12px 4px; }
+.notes-empty { font: 500 13px var(--grot); color: var(--text-soft); padding: 12px 4px; }
 .notes-empty.big { padding: 34px 4px; text-align: center; border: 1px dashed var(--card-line-2); border-radius: var(--r5); }
 .linkbtn { font: 600 12px var(--grot); color: var(--text-mut); cursor: pointer; }
 .linkbtn:hover { color: var(--text-strong); }
@@ -1325,6 +1350,21 @@ kbd {
 .colr-sw:hover { transform: scale(1.1); }
 .colr-sw.is-active { border-color: var(--accent); }
 .colr-sw svg { stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* “?” guide (reuses .modal-scrim/.modal) — a scrollable reference, term on the left,
+   plain-language explanation on the right, collapsing to one column when narrow */
+.help-modal { width: min(640px, 100%); max-height: min(78vh, 720px); display: flex; flex-direction: column; }
+.help-modal .modal-msg { margin-bottom: 14px; }
+.help-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 2px 6px 4px 0; margin-bottom: 18px; }
+.help-h { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; font: 700 10.5px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-mut); }
+.help-h svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.help-list { margin: 0; display: grid; grid-template-columns: minmax(110px, 170px) 1fr; gap: 8px 16px; align-items: baseline; }
+.help-k { font: 700 12.5px var(--grot); color: var(--text-strong); }
+.help-v { margin: 0; font: 500 12.5px/1.5 var(--grot); color: var(--text-soft); }
+@media (max-width: 620px) {
+  .help-list { grid-template-columns: 1fr; gap: 2px; }
+  .help-v { margin-bottom: 9px; }
+}
 
 /* Apple Notes paste dialog (reuses .modal-scrim/.modal) */
 .apple-paste { width: 100%; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg-inset); color: var(--text); font: 500 13px/1.5 var(--grot); padding: 10px; outline: none; resize: vertical; min-height: 120px; }

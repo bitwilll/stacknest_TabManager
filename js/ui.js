@@ -53,6 +53,9 @@ const ICONS = {
   upload:   '<path d="M12 21V10m0 0 4 4m-4-4-4 4"/><path d="M5 5h14"/>',
   bell:     '<path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8Z"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/>',
   palette:  '<path d="M12 21a9 9 0 1 1 9-9c0 2-1.6 3-3 3h-1.5a1.8 1.8 0 0 0-1.2 3.1c.4.5.2 1.4-.6 1.7-.5.2-1.1.2-1.7.2Z"/><circle cx="8" cy="12.5" r="1.1"/><circle cx="9.8" cy="8.6" r="1.1"/><circle cx="14" cy="8" r="1.1"/>',
+  help:     '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2.1-2.5 3.8"/><path d="M12 17.2h.01"/>',
+  person:   '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  swap:     '<path d="M4 8h13m0 0-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7m0 0 3.5 3.5M7 16l3.5-3.5"/>',
 };
 
 export function icon(name, size = 15) {

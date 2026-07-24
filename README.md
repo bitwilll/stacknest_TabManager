@@ -103,10 +103,15 @@ bottom, excluded from scans and from the one-click clean, restorable any time.
 
 **Notes & Todos** — a calm scratchpad in the sidebar (below Duplicates), laid out as a **mosaic**
 where notes and tasks sit side by side as cards. Quick-add a task from the composer, or use **New**
-to start either a note or a todo. Notes are title + body, auto-saved as you type; tasks check off
-in place. Every card can be:
+to start either a note or a todo. Notes are title + body; tasks are a single live line. Everything
+**auto-saves as you type** — there is no Save button.
 
-- **Dragged** anywhere in the mosaic to reorder (drop above or below any other card).
+Writing a list is meant to flow: the composer **keeps focus** after Enter so you can rattle off
+tasks one after another, **Enter inside a task** creates the next one directly below and jumps to
+it, and **Backspace in an empty task** removes it and steps back up, so a stray Enter never strands
+a blank card. Every card can be:
+
+- **Dragged** by the ⣿ handle in its footer to reorder (drop above or below any other card).
 - **Tagged** — add as many labels as you like; each gets its own colour dot.
 - **Tinted** — six soft pastels, applied as a translucent wash so they stay readable in both
   light and dark.
@@ -114,13 +119,20 @@ in place. Every card can be:
   min before) and the extension fires a **browser notification** then, even with no StackNest tab
   open (a `chrome.alarms` entry wakes the service worker). Times are your **local** timezone;
   completing or deleting a task cancels its reminder. Notes can carry reminders too.
+- **Undone** — deleting a card is reversible: a snackbar offers **Undo**, and **⌘Z / Ctrl+Z** puts
+  it back where it was with its tags, colour and reminder intact (**⌘⇧Z / Ctrl+Y** to redo).
 
-The nav badge counts open tasks. Everything lives in `chrome.storage`, so it rides along in your
-backups and Google Drive sync. Everything lives in `chrome.storage`,
-so it rides along in your backups and Google Drive sync. The toolbar offers **Export** (full
-backup incl. notes, or notes-only), **Import** (a file, or paste from **Apple Notes** — a browser
-extension can't read Apple Notes directly, so you paste exported text, optionally splitting on
-blank lines), and **Drive** back-up / fetch (uses the same backup, so notes sync with everything else).
+The **?** button in the toolbar opens a guide covering all of the above. The nav badge counts open
+tasks. Everything lives in `chrome.storage`, so it rides along in your backups and Google Drive
+sync. The toolbar offers **Export** (full backup incl. notes, or notes-only), **Import** (a file,
+or paste from **Apple Notes** — a browser extension can't read Apple Notes directly, so you paste
+exported text, optionally splitting on blank lines), and **Drive** back-up / fetch (uses the same
+backup, so notes sync with everything else).
+
+> **Typing is never interrupted.** The view builds its header and composer once and only ever
+> rebuilds the mosaic, ignores the storage echo of its own auto-save, and restores focus and caret
+> position across any rebuild that does happen. An outside change (another tab, a Drive restore)
+> waits until you click away rather than yanking the field you're typing in.
 
 **Settings** (in the sidebar):
 - **Typography** — pick the **interface font** and **monospace font** (offline-safe stacks, live
@@ -194,6 +206,31 @@ Robustness built in: a stale/revoked cached token self-heals (the token is evict
 re-consenting if needed) instead of wedging backup/restore, and Drive/network errors surface as
 plain-language messages rather than raw HTTP codes.
 
+### Whose Google account is used?
+
+**Always the person using the extension — never the developer's.** The `oauth2.client_id` in
+`manifest.json` identifies the *extension* to Google, the way a package name does. It is not an
+account and carries no credentials, which is why Google documents it as public. Each install mints
+a token for whoever signs in on **that** computer and writes to **that** person's own private Drive
+folder. Nobody can read anyone else's backup, the developer included. Nothing is pre-connected:
+Cloud sync starts disconnected until you press **Connect**.
+
+There is one real limitation. `chrome.identity.getAuthToken` uses the account the **Chrome profile**
+is signed into and offers no account picker, so if you're signed into Chrome as one account but want
+backups in another, it can't be expressed. Settings says so plainly, and **Switch account** explains
+the two ways out.
+
+**To get a full account chooser**, fill in `WEB_CLIENT_ID` in [`js/authConfig.js`](js/authConfig.js).
+Sign-in then goes through `chrome.identity.launchWebAuthFlow` with `prompt=select_account`, so any
+Google account can be picked regardless of Chrome's own, and **Switch account** in Settings → Cloud
+sync moves to a different one at any time. It needs a second OAuth client — Application type
+**Web application** (not "Chrome Extension" — that type has no redirect URIs) with the redirect URI
+`https://<YOUR_EXTENSION_ID>.chromiumapp.org/`. Full steps are in the file's header comment.
+
+Either way the short-lived access token is kept under its own storage key and is **never** written
+into an export or a Drive backup, and **Disconnect** revokes the grant and clears every cached
+token for the extension.
+
 ## Design
 
 Implements the "Stash — Tab Manager" Claude Design project (in `new design/`): option **1a**
@@ -218,8 +255,10 @@ js/spacesStore.js  collections storage (chrome.storage.local), no DOM
 js/bookmarks.js    Library view (bookmarks as card grid)
 js/tags.js         tags data + editor popover + Tags view (mind-graph)
 js/duplicates.js   Duplicates view (finds repeated links across collections + bookmarks)
-js/drive.js        Google Drive cloud backup/restore (chrome.identity + Drive appData)
-js/sw.js           background service worker (identity token broker for incognito pages)
+js/drive.js        Google Drive cloud backup/restore (Drive appData REST + connect/switch/disconnect)
+js/auth.js         Google sign-in, shared by page + worker (getAuthToken or account-chooser flow)
+js/authConfig.js   which sign-in path to use — and what the OAuth client ID is/isn't
+js/sw.js           background service worker (reminder alarms + token broker for incognito pages)
 js/ticker.js       market ticker (CoinGecko crypto + open.er-api FX marquee)
 js/settings.js     Settings view (typography, ticker, backup, cloud)
 js/backup.js       full JSON backup/restore (spaces, collections, settings, bookmarks)

@@ -18,12 +18,16 @@
 
 import { getKey, setKey } from './store.js';
 import { buildBackup, applyBackup } from './backup.js';
+import { mintToken, forgetToken, forgetAllTokens, canChooseAccount } from './auth.js';
 
 export const CLOUD_KEY = 'stacknest:cloud'; // { connected, email, lastBackupAt, lastRestoreAt }
 const DEV_FILE_KEY = 'stacknest:cloud:devfile'; // preview-only simulated Drive file
 const FILE_NAME = 'stacknest-backup.json';
-const SCOPES = ['https://www.googleapis.com/auth/drive.appdata', 'https://www.googleapis.com/auth/userinfo.email'];
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
+
+// Whether Settings can offer an account picker. False = Chrome decides the account
+// from the profile it is signed into (see js/authConfig.js for how to change that).
+export { canChooseAccount };
 
 // running inside a real extension (has chrome.identity + a runtime id). Incognito
 // pages may not expose chrome.identity at all, but they still count as live —
@@ -58,19 +62,19 @@ async function patchState(patch) {
 
 /* ————————————————————————— OAuth (live) ————————————————————————— */
 
-async function getToken(interactive) {
+async function getToken(interactive, { chooseAccount = false } = {}) {
+  const loginHint = chooseAccount ? null : (await loadCloudState()).email || null;
   if (inIncognito()) {
-    const r = await chrome.runtime.sendMessage({ type: 'auth:getToken', interactive }).catch(() => null);
-    if (!r?.token) { if (r?.error) console.error('getAuthToken (via sw):', r.error); throw authError(r?.error, interactive); }
+    const r = await chrome.runtime.sendMessage({ type: 'auth:getToken', interactive, chooseAccount, loginHint }).catch(() => null);
+    if (!r?.token) { if (r?.error) console.error('getToken (via sw):', r.error); throw authError(r?.error, interactive); }
     return r.token;
   }
-  return new Promise((resolve, reject) => {
-    chrome.identity.getAuthToken({ interactive, scopes: SCOPES }, (token) => {
-      const err = chrome.runtime.lastError;
-      if (err || !token) { if (err) console.error('getAuthToken:', err.message); reject(authError(err?.message, interactive)); }
-      else resolve(token);
-    });
-  });
+  try {
+    return await mintToken({ interactive, chooseAccount, loginHint });
+  } catch (e) {
+    console.error('getToken:', e?.message);
+    throw authError(e?.message, interactive);
+  }
 }
 // turn Chrome's raw OAuth lastError into a message a person can act on
 function authError(raw, interactive) {
@@ -84,7 +88,11 @@ function authError(raw, interactive) {
 }
 function dropToken(token) {
   if (inIncognito()) return chrome.runtime.sendMessage({ type: 'auth:removeToken', token }).catch(() => {});
-  return new Promise((resolve) => { try { chrome.identity.removeCachedAuthToken({ token }, resolve); } catch { resolve(); } });
+  return forgetToken(token);
+}
+function dropAllTokens() {
+  if (inIncognito()) return chrome.runtime.sendMessage({ type: 'auth:removeAll' }).catch(() => {});
+  return forgetAllTokens();
 }
 
 class DriveError extends Error {
@@ -167,15 +175,27 @@ async function downloadLive(token) {
 // connected shows the account label; email may be null if userinfo was unavailable
 export function getAccount(state) { return state?.email || (state?.connected ? 'Google Drive' : null); }
 
-export async function connect() {
+export async function connect({ chooseAccount = false } = {}) {
   if (isLive()) {
     if (!isConfigured()) throw NOT_CONFIGURED();
-    const token = await getToken(true);            // first sign-in: interactive consent
+    const token = await getToken(true, { chooseAccount }); // first sign-in: interactive consent
     const email = await fetchEmail(token);
     return patchState({ connected: true, email });
   }
   // preview: simulate a connected account
-  return patchState({ connected: true, email: 'you@gmail.com (preview)' });
+  return patchState({ connected: true, email: chooseAccount ? 'someone.else@gmail.com (preview)' : 'you@gmail.com (preview)' });
+}
+
+// Move Drive sync to a different Google account. Only meaningful on the web-auth path;
+// with getAuthToken the account is whichever one Chrome itself is signed into, so say
+// so plainly rather than reconnecting the same account and looking broken.
+export async function switchAccount() {
+  if (isLive() && !canChooseAccount()) {
+    throw new Error('Chrome signs Drive in with the Google account this Chrome profile uses, and offers no picker. Use a different Chrome profile, or turn on the account chooser — see js/authConfig.js.');
+  }
+  await dropAllTokens();
+  await patchState({ connected: false, email: null });
+  return connect({ chooseAccount: true });
 }
 
 export async function disconnect() {
@@ -184,8 +204,8 @@ export async function disconnect() {
       const t = await getToken(false);
       // actually revoke the grant so "Disconnect" severs access, not just hides the label
       try { await fetch(`${REVOKE_URL}?token=${encodeURIComponent(t)}`, { method: 'POST' }); } catch { /* best effort */ }
-      await dropToken(t);
     } catch { /* nothing cached to revoke */ }
+    await dropAllTokens();                          // leave nothing behind for the next account
   }
   return patchState({ connected: false, email: null });
 }
@@ -219,4 +239,4 @@ export async function restoreLatest() {
   return { collections: Array.isArray(data.collections) ? data.collections.length : 0 };
 }
 
-export const cloud = { CLOUD_KEY, isLive, isConfigured, loadCloudState, getAccount, connect, disconnect, backupNow, restoreLatest };
+export const cloud = { CLOUD_KEY, isLive, isConfigured, canChooseAccount, loadCloudState, getAccount, connect, switchAccount, disconnect, backupNow, restoreLatest };
