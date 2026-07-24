@@ -348,6 +348,39 @@ to the 3:1 non-text bar for idle icons only.
 Smoke-tested after: all six views render, notes add/toggle/persist, no console errors or
 unhandled rejections, and no horizontal overflow at any of the four interface-size zoom levels.
 
+### Follow-up: two gaps the token audit could not have caught
+
+A parallel design-research pass (Nothing's published language, three judged directions) landed
+after the first push. Most of its spec was **not** adopted — it wanted the palette rewritten to
+warm greys on brand claims ("N-Grey #DCD7D2") that could not be sourced, against a palette
+already measured on the live page. But it made two objective accessibility claims that were
+verified and were both real:
+
+1. **Fading with `opacity` is unmeasurable, and it failed.** The token audit compared *colours
+   against surfaces*; it never evaluated a *rendered element with `opacity` applied*.
+   `.mos-acts .icb { opacity: .58 }` composited to **1.95:1** and `.mos-grip { opacity: .55 }`
+   to 2.30:1 — both under the 3:1 that WCAG 1.4.11 requires of controls. No token change can
+   repair this, because `opacity` multiplies the alpha of whatever colour it is given. The rule
+   now is: **fade with colour, never with opacity.** Idle controls take `--text-ghost` (already
+   floored at 3:1) and brighten to `--text-soft` on hover. `opacity` survives only where the
+   element is genuinely hidden (`.acts` at 0, revealed on hover) or WCAG-exempt (`[disabled]`,
+   `.dragging`) — hidden content has no contrast requirement.
+2. **A border that IS the control needs 3:1.** Measured: `.searchbox` 1.25, `.btnx.ghosty` 1.25,
+   `.set-select` 1.53, `.addtab` 1.53, unchecked `.todo-check` ~1.4. These are components whose
+   only visual definition is their outline. `--line-strong` could not simply be darkened because
+   it doubles as a decorative hairline, so a new additive token **`--edge`** (0.45 alpha light /
+   0.38 dark, both 3:1) was introduced and pointed at the 13 controls where the border is the
+   sole affordance. Dividers keep `--line` / `--line-strong` and stay quiet.
+
+A third claim — that a translucent `--bg-col` over the dot lattice makes contrast inside a column
+indeterminate — is true in principle and was measured at a **~3% luminance swing** between a lit
+and an unlit lattice cell (backdrop varies #F8F8F8–#FFFFFF). Rejected: making columns opaque
+would delete the "structure shows through" idea, which is the whole point of the dot ground, for
+a variation that moves no ratio past a rounding place.
+
+Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
+across both themes and all four surfaces.
+
 ## Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10)
 
 The single-line "todo" was really a reminder, so it was renamed — and **to-do** now means a card

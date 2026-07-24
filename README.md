@@ -302,9 +302,20 @@ and colour** instead of size, which keeps the smaller text fully readable. Steps
 half-pixels so stems stay crisp.
 
 **Contrast.** Every text token clears WCAG AA on every surface it is used on, in both themes —
-the worst case is **4.8:1** against a 4.5 requirement, measured with proper alpha compositing.
-Idle icons (`--text-ghost`) are held to the 3:1 non-text bar and are never used for text;
-placeholders use `--text-faint`, since a placeholder *is* text.
+worst case **4.8:1** against a 4.5 requirement, measured with proper alpha compositing. Every
+non-text element that has to be seen clears the 3:1 bar — worst case **3.0:1**. Idle icons
+(`--text-ghost`) are never used for text, and placeholders use `--text-faint`, since a
+placeholder *is* text.
+
+Two rules keep it that way:
+
+- **Fade with colour, never with `opacity`.** A half-transparent icon composites to whatever the
+  backdrop makes of it — `opacity: .58` on a card action measured 1.95:1. `opacity` is now
+  reserved for genuinely hidden things (hover-revealed actions) and WCAG-exempt states
+  (`[disabled]`, `.dragging`).
+- **A border that *is* the control uses `--edge`** (3:1), not the decorative `--line` /
+  `--line-strong` hairlines. Outlined buttons, selects, unchecked boxes and dashed drop targets
+  have no other visual definition, so their outline has to carry it.
 
 Hanken Grotesk + JetBrains Mono, bundled in `fonts/` — no webfont requests. The `new design/`
 folder is earlier reference material — delete it before packaging for the Web Store.

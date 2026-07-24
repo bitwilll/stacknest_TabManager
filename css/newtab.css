@@ -127,6 +127,10 @@
      softness reads as consumer app */
   --r1: 4px;  --r2: 6px;  --r3: 8px; --r4: 10px; --r5: 12px; --r6: 14px;
   --dot-gap: 16px;   /* dot-matrix pitch */
+  /* 3.0:1 on paper — the boundary of a control whose border IS the control
+     (outlined buttons, selects, unchecked boxes, dashed drop targets). Distinct
+     from --line-strong, which stays a decorative hairline. */
+  --edge: rgba(0, 0, 0, 0.45);
   --app-zoom: 1;
 }
 
@@ -177,6 +181,7 @@
   --shadow-tile: none;
   --shadow-btn:  none;
   --shadow-pop:  0 18px 44px -14px rgba(0, 0, 0, 0.85);
+  --edge:        rgba(255, 255, 255, 0.38);   /* 3.0:1 on black */
 }
 
 * { box-sizing: border-box; }
@@ -426,7 +431,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   padding: 0 12px;
   border-radius: var(--r4);
   background: var(--bg-inset);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   color: var(--text-mut);
   cursor: text;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -459,7 +464,7 @@ kbd {
 .theme-seg {
   display: flex;
   background: var(--bg-inset);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
   border-radius: var(--r4);
   padding: 3px;
 }
@@ -753,7 +758,7 @@ kbd {
   justify-content: center;
   gap: 6px;
   padding: 8px;
-  border: 1px dashed var(--line-strong);
+  border: 1px dashed var(--edge);
   border-radius: var(--r4);
   color: var(--text-faint);
   font: 600 var(--t3) var(--grot);
@@ -780,7 +785,7 @@ kbd {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  border: 1.5px dashed var(--line-strong);
+  border: 1.5px dashed var(--edge);
   border-radius: var(--r6);
   color: var(--text-faint);
   background: transparent;
@@ -825,7 +830,7 @@ kbd {
 .tool-ghost {
   display: flex; align-items: center; gap: 6px;
   height: 32px; padding: 0 12px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--edge);
   border-radius: var(--r3);
   color: var(--text-soft);
   font: 600 var(--t3) var(--grot);
@@ -919,7 +924,7 @@ kbd {
   z-index: 40;
 }
 .undo-bar.show { opacity: 1; transform: none; pointer-events: auto; }
-.undo-ic { display: inline-flex; flex: none; opacity: 0.65; }
+.undo-ic { display: inline-flex; flex: none; }
 .undo-ic svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .undo-msg { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .undo-action {
@@ -1074,7 +1079,7 @@ kbd {
   font: 600 var(--t3) var(--grot);
   color: var(--text);
   background: var(--bg-inset);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--edge);
   border-radius: var(--r3);
   padding: 7px 10px;
   cursor: pointer;
@@ -1085,7 +1090,7 @@ kbd {
 .set-sample.sample-ui { font-family: var(--grot); }
 .set-sample.sample-mono { font-family: var(--mono); }
 
-.set-seg { display: flex; background: var(--bg-inset); border: 1px solid var(--line); border-radius: var(--r4); padding: 3px; gap: 2px; }
+.set-seg { display: flex; background: var(--bg-inset); border: 1px solid var(--edge); border-radius: var(--r4); padding: 3px; gap: 2px; }
 .set-seg-btn { font: 600 var(--t3) var(--grot); color: var(--text-soft); padding: 6px 11px; border-radius: var(--r2); cursor: pointer; transition: background 0.13s, color 0.13s; white-space: nowrap; }
 .set-seg-btn:hover { color: var(--text-strong); }
 .set-seg-btn.is-active { background: var(--bg); color: var(--accent-text); border: 1px solid var(--line-strong); }
@@ -1133,7 +1138,7 @@ kbd {
 .tagpop-x:hover { background: var(--hov); color: var(--red); }
 .tagpop-x svg { stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; }
 .tagpop-empty { font: 500 var(--t3) var(--grot); color: var(--text-mut); }
-.tagpop-input { width: 100%; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r3); background: var(--bg-inset); font: 500 var(--t3) var(--grot); color: var(--text); outline: none; }
+.tagpop-input { width: 100%; height: 32px; padding: 0 10px; border: 1px solid var(--edge); border-radius: var(--r3); background: var(--bg-inset); font: 500 var(--t3) var(--grot); color: var(--text); outline: none; }
 .tagpop-input:focus { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
 .tagpop-hint { font: 500 var(--t1) var(--grot); color: var(--text-mut); margin-top: 7px; }
 
@@ -1142,7 +1147,7 @@ kbd {
 .view-tags, .view-duplicates { overflow-y: auto; }
 .tagsview { padding: 22px 24px 44px; max-width: 1120px; }
 .tag-filterbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.tag-chip { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t3) var(--grot); color: var(--text-soft); background: var(--bg-inset); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; cursor: pointer; transition: background .13s, color .13s, border-color .13s; }
+.tag-chip { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t3) var(--grot); color: var(--text-soft); background: var(--bg-inset); border: 1px solid var(--edge); border-radius: 999px; padding: 5px 11px; cursor: pointer; transition: background .13s, color .13s, border-color .13s; }
 .tag-chip:hover { color: var(--text-strong); }
 .tag-chip.is-active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 .tag-chip-n { font: 600 var(--t1) var(--mono); color: var(--text-mut); }
@@ -1276,7 +1281,7 @@ kbd {
 .cloud-btns .btnx svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .cloud-meta { font: 500 var(--t2) var(--mono); color: var(--text-mut); margin-top: 8px; }
 .cloud-provider .set-actions { margin-top: 12px; }
-.btnx.ghosty { height: 34px; padding: 0 13px; color: var(--text-soft); border: 1px solid var(--line); border-radius: var(--r3); background: transparent; font: 600 var(--t3) var(--grot); }
+.btnx.ghosty { height: 34px; padding: 0 13px; color: var(--text-soft); border: 1px solid var(--edge); border-radius: var(--r3); background: transparent; font: 600 var(--t3) var(--grot); }
 .btnx.ghosty:hover { background: var(--hov); color: var(--text-strong); }
 .btnx[disabled] { opacity: 0.55; pointer-events: none; }
 .btnx.is-busy { opacity: 0.6; pointer-events: none; }
@@ -1307,7 +1312,7 @@ kbd {
 
 /* ticker config chips (Settings) */
 .tick-checks { display: flex; flex-wrap: wrap; gap: 6px; max-width: 320px; justify-content: flex-end; }
-.tick-check { font: 700 var(--t2) var(--mono); color: var(--text-soft); background: var(--bg-inset); border: 1px solid var(--line); border-radius: var(--r3); padding: 5px 9px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+.tick-check { font: 700 var(--t2) var(--mono); color: var(--text-soft); background: var(--bg-inset); border: 1px solid var(--edge); border-radius: var(--r3); padding: 5px 9px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
 .tick-check:hover { color: var(--text-strong); }
 .tick-check.is-active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 
@@ -1344,7 +1349,7 @@ kbd {
 
 /* composer: quick-add a task + a New menu that can start either kind */
 .mos-composer { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-.todo-addrow { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: var(--r4); background: var(--bg-inset); color: var(--text-soft); transition: border-color .13s, box-shadow .13s; }
+.todo-addrow { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--edge); border-radius: var(--r4); background: var(--bg-inset); color: var(--text-soft); transition: border-color .13s, box-shadow .13s; }
 .todo-addrow:focus-within { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
 .todo-addrow svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
 .todo-add { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font: 500 var(--t3) var(--grot); color: var(--text); }
@@ -1396,7 +1401,7 @@ kbd {
 .todo-check {
   width: calc(18px * var(--card-scale, 1)); height: calc(18px * var(--card-scale, 1));
   flex: none; margin-top: calc(1px * var(--card-scale, 1));
-  border: 1.6px solid var(--line-strong); border-radius: var(--r2);
+  border: 1.6px solid var(--edge); border-radius: var(--r2);
   display: flex; align-items: center; justify-content: center;
   color: var(--accent-contrast); cursor: pointer; transition: background .12s, border-color .12s;
 }
@@ -1424,8 +1429,8 @@ kbd {
 .check-row.is-done .line-md, .mos-card.is-done .line-md { color: var(--text-mut); text-decoration: line-through; }
 /* per-row delete stays hover-only: the row is small, and losing one item is cheap and undoable */
 .check-row .icb.row-x { flex: none; opacity: 0; width: 20px; height: 20px; }
-.check-row:hover .icb.row-x, .check-row:focus-within .icb.row-x { opacity: .5; }
-.check-row .icb.row-x:hover { opacity: 1; }
+.check-row:hover .icb.row-x, .check-row:focus-within .icb.row-x { opacity: 1; color: var(--text-ghost); }
+.check-row .icb.row-x:hover { opacity: 1; color: var(--red); }
 .check-add { display: flex; align-items: center; gap: 6px; margin-top: 7px; padding: 2px 0; font: 600 var(--t3) var(--grot); color: var(--text-mut); cursor: pointer; }
 .check-add:hover { color: var(--text-strong); }
 .check-add svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
@@ -1531,17 +1536,17 @@ kbd {
 /* Explicit drag handle. The card's own text fields now cover most of its surface and
    swallow drags (by design — dragging must never hijack an edit), so reordering needs
    a grabbable spot that isn't a field or a button. */
-.mos-grip { display: inline-flex; align-items: center; color: var(--text-faint); cursor: grab; opacity: .55; transition: opacity .12s, color .12s; }
+.mos-grip { display: inline-flex; align-items: center; color: var(--text-ghost); cursor: grab; transition: color .12s; }
 .mos-grip svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
-.mos-card:hover .mos-grip { opacity: 1; color: var(--text-soft); }
+.mos-card:hover .mos-grip { color: var(--text-soft); }
 .mos-card.dragging .mos-grip { cursor: grabbing; }
 /* every card action stays faintly visible rather than hover-only — hidden actions
    are undiscoverable, and a lone visible icon among invisible siblings sits oddly
    off the right edge. They brighten on hover/focus. */
 .mos-acts { display: flex; align-items: center; gap: 1px; margin-left: auto; }
-.mos-acts .icb { opacity: .58; }
-.mos-card:hover .mos-acts .icb, .mos-card:focus-within .mos-acts .icb { opacity: 1; }
-.mos-acts .icb.on { opacity: 1; color: var(--accent-text); }
+.mos-acts .icb { color: var(--text-ghost); }
+.mos-card:hover .mos-acts .icb, .mos-card:focus-within .mos-acts .icb { color: var(--text-soft); }
+.mos-acts .icb.on { color: var(--accent-text); }
 
 .notes-empty { font: 500 var(--t3) var(--grot); color: var(--text-soft); padding: 12px 4px; }
 .notes-empty.big { padding: 34px 4px; text-align: center; border: 1px dashed var(--card-line-2); border-radius: var(--r5); }
