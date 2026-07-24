@@ -31,7 +31,7 @@
 //   4. The markdown preview swap is driven by focus on that one card, never by a render.
 
 import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, shortDate } from './ui.js';
-import { getKey, update } from './store.js';
+import { getKey, update, queued } from './store.js';
 import { exportBackup } from './backup.js';
 import { backupNow, restoreLatest, loadCloudState } from './drive.js';
 import { pushHistory, flashDeleted } from './history.js';
@@ -91,7 +91,7 @@ export function initNotes(options) {
     if (consumeSelfWrite()) return;   // the echo of a write we just made — DOM is already right
     scheduleRender();                 // a genuine outside change (other tab, Drive restore, import)
   });
-  render();
+  repairStore().then(render);         // stabilise any invented ids before anything is painted
   rearmAlarms();                      // a restore/import can leave reminders with no alarm behind them
   return { render, rearmAlarms };
 }
@@ -109,28 +109,53 @@ function detectKind(x) {
 }
 
 const clampScale = (s) => (SCALES.includes(Number(s)) ? Number(s) : DEFAULT_SCALE);
+const isObj = (x) => !!x && typeof x === 'object';
 
-function normalizeRow(r) {
-  if (!r || typeof r !== 'object') r = {};
-  return { id: r.id || uid(), text: String(r.text ?? ''), done: !!r.done };
+// migrateNotes reports through this whether it had to INVENT or REPLACE an identity. An id
+// is only real once it's on disk: the card is painted with it, and every later save, tick,
+// delete and alarm addresses it. Symbol keys never survive JSON, so the flag can't leak into
+// the stored blob. See repairStore().
+const REPAIRED = Symbol('notes.repaired');
+
+// A bare-string row (`list: ["milk", "eggs"]`) is what a hand-written or third-party file
+// looks like. Dropping it destroyed the entire list in silence, so it is adopted instead.
+// Row ids are deduplicated because every row lookup is a first-match find().
+function normalizeRow(r, seen = new Set(), mark = () => {}) {
+  const src = isObj(r) ? r : { text: String(r ?? '') };
+  let id = String(src.id ?? '');
+  if (!id || seen.has(id)) { id = uid(); mark(); }
+  seen.add(id);
+  return { id, text: String(src.text ?? ''), done: !!src.done };
 }
 
 // NOTE: this is a whitelist and it runs on every read AND every write, so a field that
 // isn't constructed here is destroyed. Add new fields in all three branches.
-function normalize(x) {
-  if (!x || typeof x !== 'object') x = {};   // a null in a hand-edited file must not kill the view
+//
+// Deliberately NOT adding unknown-key passthrough: JSON.parse makes `__proto__` an own
+// enumerable key, so copying unknown keys off an imported object would re-parent the item
+// onto attacker-controlled data.
+function normalize(x, seen = new Set(), mark = () => {}) {
+  if (!isObj(x)) x = {};   // a null in a hand-edited file must not kill the view
   const kind = detectKind(x);
+  let id = String(x.id ?? '');
+  if (!id || seen.has(id)) { id = uid(); mark(); }
+  seen.add(id);
   const base = {
-    id: x.id || uid(), kind,
+    id, kind,
     tags: Array.isArray(x.tags) ? x.tags.filter(Boolean).map(String) : [],
     color: CARD_COLORS.some((c) => c.id === x.color) ? x.color : 'none',
     scale: clampScale(x.scale),
     createdAt: x.createdAt || now(),
   };
-  if (x.reminder?.at) base.reminder = { at: x.reminder.at, lead: Number(x.reminder.lead) || 0 };
+  // `at` must be a STRING: `'tomorrow'.at` resolves to String.prototype.at, which is truthy,
+  // and would store a function that JSON silently drops on the next save.
+  if (typeof x.reminder?.at === 'string' && x.reminder.at) {
+    base.reminder = { at: x.reminder.at, lead: Number(x.reminder.lead) || 0 };
+  }
   if (kind === 'reminder') return { ...base, text: String(x.text ?? ''), done: !!x.done };
   if (kind === 'todo') {
-    const list = (Array.isArray(x.list) ? x.list : []).filter((r) => r && typeof r === 'object').map(normalizeRow);
+    const rowSeen = new Set();   // rows only need to be unique within their own card
+    const list = (Array.isArray(x.list) ? x.list : []).map((r) => normalizeRow(r, rowSeen, mark));
     return { ...base, title: String(x.title ?? ''), list, updatedAt: x.updatedAt || base.createdAt };
   }
   return { ...base, title: String(x.title ?? ''), body: String(x.body ?? ''), updatedAt: x.updatedAt || base.createdAt };
@@ -142,16 +167,43 @@ export function migrateNotes(d) {
   if (Array.isArray(d?.items)) raw = d.items;
   else if (Array.isArray(d?.todos) || Array.isArray(d?.notes)) {
     // the original {todos,notes} split — those todos are single-line tasks, i.e. reminders
+    // (filter BEFORE the spread, or `{...null, kind:'note'}` becomes a phantom empty note)
     raw = [
-      ...(Array.isArray(d.notes) ? d.notes : []).map((n) => ({ ...n, kind: 'note' })),
-      ...(Array.isArray(d.todos) ? d.todos : []).map((t) => ({ ...t, kind: 'reminder' })),
+      ...(Array.isArray(d.notes) ? d.notes : []).filter(isObj).map((n) => ({ ...n, kind: 'note' })),
+      ...(Array.isArray(d.todos) ? d.todos : []).filter(isObj).map((t) => ({ ...t, kind: 'reminder' })),
     ].sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
   } else raw = [];
-  // drop junk entries rather than materialising phantom empty notes from them
-  return { v: SCHEMA_V, items: raw.filter((x) => x && typeof x === 'object').map(normalize) };
+  const seen = new Set();
+  let repaired = false;
+  const mark = () => { repaired = true; };
+  const out = { v: SCHEMA_V, items: raw.filter(isObj).map((x) => normalize(x, seen, mark)) };
+  if (repaired) out[REPAIRED] = true;
+  return out;
 }
 
-async function load() { return migrateNotes(await getKey(NOTES_KEY, {})); }
+// The read goes through the SAME serialized queue as every write. store.js's update() is
+// queued but getKey() is not, so a render begun in the same turn as a debounced save issued
+// its chrome.storage.local.get BEFORE the save's read-modify-write even started, and then
+// repainted the pre-edit value over what the user had just typed. Nothing repaired the DOM
+// afterwards, because the save's own storage echo is (correctly) swallowed as a self-write.
+async function load() { return migrateNotes(await queued(() => getKey(NOTES_KEY, {}))); }
+
+// Persist invented/deduplicated ids ONCE, at startup. Without this an id-less record gets a
+// fresh uid on every read: the card renders as X, then the first keystroke's mutate() re-reads
+// and mints Y, findItem(X) misses, and the edit is silently discarded — and delete does nothing.
+// Runs off the read path (never from load()) so it can't loop.
+async function repairStore() {
+  let repaired = false;
+  await update(NOTES_KEY, null, (raw) => {
+    if (!isObj(raw)) return undefined;          // nothing stored yet — leave it alone
+    const fixed = migrateNotes(raw);
+    if (!fixed[REPAIRED]) return undefined;     // nothing to repair — don't write
+    repaired = true;
+    selfWrites.push(Date.now());
+    return fixed;
+  });
+  return repaired;
+}
 
 // Re-create alarms for every future reminder. chrome.alarms only ever gained entries at
 // set-time, so an import, a Drive restore or a fresh profile left reminders with nothing
@@ -182,6 +234,11 @@ function consumeSelfWrite() {
 }
 
 async function mutate(fn, { rerender = true } = {}) {
+  // Any structural change flushes queued keystrokes FIRST. Doing this here rather than at each
+  // call site is the point: a new call site that forgot to flush would re-render from storage
+  // that predates the user's typing and silently revert it. (flushSaves passes rerender:false,
+  // so this cannot recurse.)
+  if (rerender) await flushSaves();
   selfWrites.push(Date.now());
   await update(NOTES_KEY, {}, (d) => { const draft = migrateNotes(d); fn(draft); return draft; });
   if (rerender) await render();
