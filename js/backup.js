@@ -4,7 +4,7 @@ import { toast, exportDownload, pickFile, confirmDialog } from './ui.js';
 import { getKey, setKey, queued } from './store.js';
 import { SPACES_KEY, WORKSPACES_KEY, ACTIVE_WS_KEY, ensureWorkspaces } from './spacesStore.js';
 import { SETTINGS_KEY } from './settings.js';
-import { NOTES_KEY } from './notes.js';
+import { NOTES_KEY, migrateNotes, rearmAlarms } from './notes.js';
 
 function stamp() {
   const d = new Date();
@@ -44,7 +44,7 @@ export async function buildBackup(includeBookmarks) {
     workspaces,
     collections,
     settings,
-    notes, // { todos, notes } — the Notes & Todos view, so backup/Drive carry them
+    notes, // { v, items } — the Notes & Todos view, so backup/Drive carry them
   };
   if (includeBookmarks) backup.bookmarks = await exportBookmarkTree();
   return backup;
@@ -83,8 +83,15 @@ export async function applyBackup(data) {
     if (Array.isArray(data.collections)) await setKey(SPACES_KEY, data.collections);
     if (data.settings && typeof data.settings === 'object') await setKey(SETTINGS_KEY, data.settings);
     if (data.activeWorkspace) await setKey(ACTIVE_WS_KEY, data.activeWorkspace);
-    if (data.notes && typeof data.notes === 'object' && !Array.isArray(data.notes)) await setKey(NOTES_KEY, data.notes);
+    // migrate on the way IN, so an old backup can't park a legacy shape in storage — and
+    // so a restore of a pre-checklist backup still lands as reminders rather than as
+    // malformed lists. Writing raw here was how stale shapes used to survive a round-trip.
+    if (data.notes && typeof data.notes === 'object' && !Array.isArray(data.notes)) {
+      await setKey(NOTES_KEY, migrateNotes(data.notes));
+    }
   });
+  // a restore brings reminders that have no chrome.alarms entry behind them
+  await rearmAlarms().catch(() => {});
   // repair a missing/invalid active-space pointer and reattach any orphaned collections,
   // so an older / hand-edited / partial backup can never leave the board stranded-empty
   await ensureWorkspaces();

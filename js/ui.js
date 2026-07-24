@@ -54,6 +54,14 @@ const ICONS = {
   bell:     '<path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8Z"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/>',
   palette:  '<path d="M12 21a9 9 0 1 1 9-9c0 2-1.6 3-3 3h-1.5a1.8 1.8 0 0 0-1.2 3.1c.4.5.2 1.4-.6 1.7-.5.2-1.1.2-1.7.2Z"/><circle cx="8" cy="12.5" r="1.1"/><circle cx="9.8" cy="8.6" r="1.1"/><circle cx="14" cy="8" r="1.1"/>',
   help:     '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2.1-2.5 3.8"/><path d="M12 17.2h.01"/>',
+  // ——— text formatting ———
+  bold:      '<path d="M7.2 5h5.2a3.5 3.5 0 0 1 0 7H7.2z"/><path d="M7.2 12h6.2a3.5 3.5 0 0 1 0 7H7.2z"/>',
+  italic:    '<path d="M15 5h-5"/><path d="M14 19H9"/><path d="M13.4 5 10.6 19"/>',
+  underline: '<path d="M7 4v6.5a5 5 0 0 0 10 0V4"/><path d="M5.5 20h13"/>',
+  strike:    '<path d="M4.5 12h15"/><path d="M8.8 8.2A3.2 3.2 0 0 1 12 5.2h1.2a3.2 3.2 0 0 1 2.9 1.9"/><path d="M8 15.8a3.2 3.2 0 0 0 3.2 3h1.4a3.2 3.2 0 0 0 2.8-1.7"/>',
+  textUp:    '<path d="m2.5 18.5 5-12 5 12"/><path d="M4.3 14.6h6.4"/><path d="M17.5 10.5v7"/><path d="M14 14h7"/>',
+  textDown:  '<path d="m2.5 18.5 5-12 5 12"/><path d="M4.3 14.6h6.4"/><path d="M14 14h7"/>',
+  checklist: '<path d="m3 5.5 1.5 1.5L7.4 4"/><path d="m3 12.5 1.5 1.5L7.4 11"/><path d="m3 19.5 1.5 1.5L7.4 18"/><path d="M11 6h10M11 13h10M11 20h10"/>',
   person:   '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   swap:     '<path d="M4 8h13m0 0-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7m0 0 3.5 3.5M7 16l3.5-3.5"/>',
 };

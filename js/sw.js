@@ -37,21 +37,39 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 const NOTES_KEY = 'stacknest:notes';
 const REMINDER_PREFIX = 'reminder:';
 
+// A card is "finished" — and needs no nag — when a reminder is ticked, or when every row
+// of a to-do list is ticked. Reading only a top-level `done` would keep pestering about a
+// checklist the user has fully completed, because a list card has no top-level done.
+function isFinished(item) {
+  if (Array.isArray(item.list)) return item.list.length > 0 && item.list.every((r) => r.done);
+  return !!item.done;
+}
+
+// What to call the card in the notification. Checklists lead with their title; a reminder
+// (old shape: kind 'todo' with `text`) leads with its line.
+function titleOf(item) {
+  if (Array.isArray(item.list)) return item.title || 'StackNest list';
+  return item.text || item.title || 'StackNest reminder';
+}
+
 chrome.alarms?.onAlarm.addListener(async (alarm) => {
   if (!alarm.name?.startsWith(REMINDER_PREFIX)) return;
   const id = alarm.name.slice(REMINDER_PREFIX.length);
   try {
     const store = (await chrome.storage.local.get(NOTES_KEY))[NOTES_KEY] || {};
-    // current shape is { items }; tolerate the older { todos, notes } split
+    // current shape is { v, items }; tolerate the original { todos, notes } split
     const list = Array.isArray(store.items) ? store.items : [...(store.todos || []), ...(store.notes || [])];
     const item = list.find((x) => x.id === id);
-    if (!item || item.done) return; // completed or deleted — nothing to nag about
+    if (!item || isFinished(item)) return; // completed or deleted — nothing to nag about
     const when = item.reminder?.at ? new Date(item.reminder.at) : null;
-    const ctx = when ? `Due ${when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Reminder';
+    let ctx = when ? `Due ${when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Reminder';
+    if (Array.isArray(item.list) && item.list.length) {
+      ctx += ` · ${item.list.filter((r) => !r.done).length} of ${item.list.length} left`;
+    }
     chrome.notifications.create(alarm.name, {
       type: 'basic',
       iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-      title: item.text || item.title || 'StackNest reminder',
+      title: titleOf(item),
       message: ctx,
       contextMessage: 'StackNest',
       priority: 2,

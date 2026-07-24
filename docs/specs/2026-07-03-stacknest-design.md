@@ -296,6 +296,92 @@ Settings row sits above the footer at the bottom-left (left: 12px), renders the 
 the Settings view (title + populated `#settings-root`) with the accent-soft active treatment, and
 toggles off when leaving. No console errors.
 
+## Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10)
+
+The single-line "todo" was really a reminder, so it was renamed — and **to-do** now means a card
+holding a **checklist**, which is what "add todo under the same list" asks for.
+
+| Kind | Shape |
+|---|---|
+| `note` | `{ title, body }` — body is Markdown |
+| `todo` | `{ title, list: [{ id, text, done }] }` — the checklist |
+| `reminder` | `{ text, done }` — the old single-line todo |
+
+All three keep `tags[]`, `color`, `scale`, `createdAt` and an optional `reminder`.
+
+**The migration is the dangerous part, and it is shape-driven, not name-driven.** The change renames
+`kind:'todo'` → `'reminder'` *and* reuses the name `'todo'` for something with a different shape.
+Every record already in `chrome.storage`, in every export and in every Drive backup says
+`kind:'todo'`, and the stored blob carried **no version** (only the notes-only export had one). So
+`detectKind()` asks about shape first: **a `list` array means a checklist; a `todo` without one is a
+legacy single-line task, i.e. a reminder.** A blind rename in either direction destroys one of the
+two populations. A stamp (`v: 3`) is written going forward so later changes have something cheaper
+to read, but correctness never depends on it. Verified lossless and idempotent from all three
+historical shapes, and non-throwing on `null`/junk entries (which previously crashed the view).
+
+A parallel survey of the codebase before writing any code turned up ~90 sites that assumed exactly
+two kinds. The ones that would have failed silently:
+
+- `normalize()` is a **whitelist run on every read *and* every write** — an unlisted field isn't
+  just ignored, it is destroyed and the destruction is persisted. Every new field (`list`, `scale`)
+  had to be constructed in all three branches.
+- Focus restore was keyed on `(card id, first CSS class)`. A checklist has N fields sharing
+  `.check-text`, so `querySelector` would return row 0 and **throw the caret from row 5 to the top**
+  on any render. The key now includes the **row id**.
+- `queueSave` was a flat `id → field` map and could not address `list[3].text`; paths are now either
+  a field name or `row:<rowId>`.
+- The nav badge counted `kind === 'todo' && !done` — a checklist has no top-level `done`, so it
+  would have read 0 forever. It now counts unticked reminders **plus** unticked checklist rows.
+- `sw.js` suppressed a notification on a top-level `done`, so a **fully completed checklist would
+  still nag**. It now treats "every row ticked" as finished, and adds "N of M left" to the message.
+- `applyBackup` wrote the incoming notes blob **raw**, so restoring an old backup parked a legacy
+  shape in storage. It now migrates on the way in — and re-arms alarms, closing a pre-existing gap
+  where a restore or import left reminders with no `chrome.alarms` entry behind them.
+- `mergeIn` re-issued only the top-level id; checklist **row** ids could collide across imported
+  cards and cross-wire row-addressed saves. Rows are re-issued too.
+- The delete confirm's `hasContent` returned false for a checklist full of items, so a populated
+  list would have been deleted with no confirmation.
+
+**Markdown** (`js/markdown.js`) is hand-rolled because there is no build step and a strict CSP. It
+renders text that may have been pasted or imported, so the ordering is the whole security argument:
+escape `& < > " '` **first**, then apply rules that emit only tags we construct, and pass link URLs
+through a scheme allowlist (`http`, `https`, `mailto`, `#`). There is no ordering in which raw user
+text becomes an element. Two deliberate details: `<u>`/`</u>` is un-escaped by an exact-match rule
+(markdown has no underline) that admits no attributes, so no event handler can ride along; and
+emitted tags are parked in NUL-delimited slots so a later rule can't chew through one already built
+(an asterisk inside an href turning into an `<em>`). 22 payloads — `javascript:` in every casing and
+with embedded tabs, `data:` URLs, `onerror`, attribute break-outs — produce zero dangerous nodes.
+
+**Formatting** (`js/format.js`) writes Markdown into the text rather than styling a rich-text
+document, so what the toolbar does survives export, import and Drive sync. Three things it gets
+right that a naive version doesn't:
+
+- **Native undo.** Assigning `field.value` destroys the browser's undo stack, so ⌘Z would stop
+  working inside a note the moment you pressed B once. Edits go through the deprecated-but-only
+  `document.execCommand('insertText')`, with a `setRangeText` fallback.
+- **`*` vs `**`.** A plain string compare makes italic eat one asterisk off each of bold's markers
+  (`**bold**` → `*bold*`). Repeated-character markers compare **run length** instead.
+- **Markers hug the text.** Markdown ignores `** spaced **`, so wrapping a selection with trailing
+  whitespace would silently render as literal asterisks; whitespace is left outside the markers.
+
+A caret with no selection formats the word it is in — an empty `****` you have to retype into is
+useless — and multi-line selections toggle per line, since `**` doesn't span a newline.
+
+**Where the toolbar lives.** Not on the card: the footer already carries a grip, a date and four
+actions inside a 250px column, and six more buttons would overflow it. It is **one shared bar** in
+`<body>`, moved to whichever field has focus, with `mousedown` prevented so it never steals focus.
+
+**Formatting has to be visible**, or the buttons just litter the text with markers. So every field
+renders its markdown at rest and shows source while editing — the note body in full, single lines
+(checklist rows, reminders) inline-only. A line with no markdown never swaps at all, staying a
+directly-typable input. Each swap is driven by that one field's own focus/blur, never by a render,
+so it cannot disturb the caret anywhere else; `restoreFocus` reveals a hidden input before focusing
+it, since focusing a `display:none` node silently does nothing.
+
+**A+/A−** is a per-card `--card-scale` custom property (0.85–1.5, five steps) driving every text
+size on the card, with the checkbox sized in the same unit so it doesn't detach from its line. It is
+independent of the global interface-size setting, which is implemented as root `zoom`.
+
 ## Notes: typing bug, task chaining, contrast, guide, undo (2026-07-09)
 
 **The typing bug** (reported: "semicolon and shift then a capital letter won't type sometimes").

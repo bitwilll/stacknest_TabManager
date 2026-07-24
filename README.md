@@ -101,15 +101,27 @@ duplicated link it keeps one copy and removes the rest (with a confirm first). L
 not be nagged about get a **Forget** button — they move to a **Forgotten links** section at the
 bottom, excluded from scans and from the one-click clean, restorable any time.
 
-**Notes & Todos** — a calm scratchpad in the sidebar (below Duplicates), laid out as a **mosaic**
-where notes and tasks sit side by side as cards. Quick-add a task from the composer, or use **New**
-to start either a note or a todo. Notes are title + body; tasks are a single live line. Everything
-**auto-saves as you type** — there is no Save button.
+**Notes & Todos** — a calm scratchpad in the sidebar (below Duplicates), laid out as a **mosaic** of
+three kinds of card:
+
+| Kind | What it is |
+|---|---|
+| **Note** | A title and a free-form body. The body understands **Markdown**. |
+| **To-do list** | A title and a **checklist** — press Enter in an item to add the next one under it, so a whole list lives on one card. |
+| **Reminder** | A single checkable line on its own card, optionally with a date/time notification. |
+
+Everything **auto-saves as you type** — there is no Save button. Quick-add a reminder from the bar at
+the top, or use **New ▾** for any of the three.
+
+> **If you used StackNest before this:** what used to be called a *todo* — one checkable line per
+> card — is now a **reminder**, and *to-do list* is the new checklist card. Your existing tasks
+> migrate to reminders automatically, keeping their tick state, tags, colour and reminders. Nothing
+> needs doing, and old exports and Drive backups still import correctly.
 
 Writing a list is meant to flow: the composer **keeps focus** after Enter so you can rattle off
-tasks one after another, **Enter inside a task** creates the next one directly below and jumps to
-it, and **Backspace in an empty task** removes it and steps back up, so a stray Enter never strands
-a blank card. Every card can be:
+reminders one after another, **Enter inside a checklist item** creates the next one directly below
+and jumps to it, and **Backspace in an empty item** removes it and steps back up, so a stray Enter
+never strands a blank row. Every card can be:
 
 - **Dragged** by the ⣿ handle in its footer to reorder (drop above or below any other card).
 - **Tagged** — add as many labels as you like; each gets its own colour dot.
@@ -120,14 +132,28 @@ a blank card. Every card can be:
   open (a `chrome.alarms` entry wakes the service worker). Times are your **local** timezone;
   completing or deleting a task cancels its reminder. Notes can carry reminders too.
 - **Undone** — deleting a card is reversible: a snackbar offers **Undo**, and **⌘Z / Ctrl+Z** puts
-  it back where it was with its tags, colour and reminder intact (**⌘⇧Z / Ctrl+Y** to redo).
+  it back where it was with its items, tags, colour and reminder intact (**⌘⇧Z / Ctrl+Y** to redo).
+
+**Formatting.** Click into any text field and a formatting bar appears beneath it: **B / I / U / S**
+and **A+ / A−**. With nothing selected, B/I/U/S formats the word the caret is in; press again to
+remove it. **⌘B / ⌘I / ⌘U** do the same from the keyboard. Formatting is written as Markdown into the
+text itself — so it survives export, import and Drive sync — and each field **renders** that
+formatting when you click away, showing the source again the moment you edit it. **A+ / A−** scales
+all the text on that one card through five steps, independently of the global interface size in
+Settings.
+
+**Markdown** works in a note body: `#` headings, `**bold**`, `*italic*`, `~~strikethrough~~`,
+`` `code` ``, `<u>underline</u>`, `- ` bullets, `1.` numbered lists, `> ` quotes, ` ``` ` fences,
+`---` rules, `- [ ]` task lines and `[links](https://example.com)`. Anything you paste or import is
+escaped before it is rendered, and only `http`, `https` and `mailto` links are clickable — a note
+carrying `<script>` or a `javascript:` link renders as inert text.
 
 The **?** button in the toolbar opens a guide covering all of the above. The nav badge counts open
-tasks. Everything lives in `chrome.storage`, so it rides along in your backups and Google Drive
-sync. The toolbar offers **Export** (full backup incl. notes, or notes-only), **Import** (a file,
-or paste from **Apple Notes** — a browser extension can't read Apple Notes directly, so you paste
-exported text, optionally splitting on blank lines), and **Drive** back-up / fetch (uses the same
-backup, so notes sync with everything else).
+work — unticked reminders plus unticked checklist items. Everything lives in `chrome.storage`, so it
+rides along in your backups and Google Drive sync. The toolbar offers **Export** (full backup incl.
+notes, or notes-only), **Import** (a file, or paste from **Apple Notes** — a browser extension can't
+read Apple Notes directly, so you paste exported text, optionally splitting on blank lines), and
+**Drive** back-up / fetch (uses the same backup, so notes sync with everything else).
 
 > **Typing is never interrupted.** The view builds its header and composer once and only ever
 > rebuilds the mosaic, ignores the storage echo of its own auto-save, and restores focus and caret
@@ -262,6 +288,9 @@ js/sw.js           background service worker (reminder alarms + token broker for
 js/ticker.js       market ticker (CoinGecko crypto + open.er-api FX marquee)
 js/settings.js     Settings view (typography, ticker, backup, cloud)
 js/backup.js       full JSON backup/restore (spaces, collections, settings, bookmarks)
+js/notes.js        Notes & Todos mosaic — note / to-do list / reminder cards, migration
+js/markdown.js     escape-first Markdown renderer (no dependencies, XSS-safe by construction)
+js/format.js       B/I/U/S selection formatting + per-card text scale, native undo preserved
 js/history.js      command-based undo/redo + snackbar
 js/store.js        serialized chrome.storage.local write-queue
 js/ui.js           DOM helpers, icons, letter-tiles, toast, favicons, drag helpers

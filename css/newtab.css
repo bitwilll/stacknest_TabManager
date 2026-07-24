@@ -1278,23 +1278,129 @@ kbd {
 :root[data-theme='dark'] .c-teal   { --tint: hsl(172 70% 55% / .16); }
 :root[data-theme='dark'] .c-green  { --tint: hsl(132 60% 55% / .16); }
 
-/* todo card */
+/* reminder card — a single checkable line (this is what used to be called a todo) */
 .todo-line { display: flex; align-items: flex-start; gap: 10px; }
-.todo-check { width: 18px; height: 18px; flex: none; margin-top: 1px; border: 1.6px solid var(--line-strong); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--accent-contrast); cursor: pointer; transition: background .12s, border-color .12s; }
+/* the box scales with the card's text, or it visually detaches from the line at A+/A− */
+.todo-check {
+  width: calc(18px * var(--card-scale, 1)); height: calc(18px * var(--card-scale, 1));
+  flex: none; margin-top: calc(1px * var(--card-scale, 1));
+  border: 1.6px solid var(--line-strong); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent-contrast); cursor: pointer; transition: background .12s, border-color .12s;
+}
 .todo-check.is-done { background: var(--accent); border-color: var(--accent); }
-.todo-check svg { stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.todo-check svg { stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; width: 72%; height: 72%; }
+
+/* to-do list card — a checklist, items added one under the other in the same card */
+.check-rows { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; }
+.check-row { display: flex; align-items: flex-start; gap: 8px; }
+.check-row .todo-check {
+  width: calc(15px * var(--card-scale, 1)); height: calc(15px * var(--card-scale, 1));
+  margin-top: calc(2px * var(--card-scale, 1)); border-radius: 5px; border-width: 1.5px;
+}
+.check-text { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; outline: none; font: 500 13.5px/1.45 var(--grot); color: var(--text-body); }
+.check-text::placeholder { color: var(--text-ghost); }
+.check-row.is-done .check-text { color: var(--text-mut); text-decoration: line-through; }
+
+/* a single line rendered from its markdown, shown while the field is at rest */
+.line-md { flex: 1; min-width: 0; font: 500 13.5px/1.45 var(--grot); color: var(--text-body); cursor: text; overflow-wrap: anywhere; }
+.mos-card .line-md { font-size: calc(13.5px * var(--card-scale)); }
+.line-md strong { font-weight: 800; color: var(--text-strong); }
+.line-md s { color: var(--text-mut); }
+.line-md code { font: 500 0.88em var(--mono); background: var(--bg-inset); border: 1px solid var(--line); border-radius: 5px; padding: 0.5px 4px; }
+.line-md a { color: var(--text-strong); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--line-strong); }
+.check-row.is-done .line-md, .mos-card.is-done .line-md { color: var(--text-mut); text-decoration: line-through; }
+/* per-row delete stays hover-only: the row is small, and losing one item is cheap and undoable */
+.check-row .icb.row-x { flex: none; opacity: 0; width: 20px; height: 20px; }
+.check-row:hover .icb.row-x, .check-row:focus-within .icb.row-x { opacity: .5; }
+.check-row .icb.row-x:hover { opacity: 1; }
+.check-add { display: flex; align-items: center; gap: 6px; margin-top: 7px; padding: 2px 0; font: 600 12px var(--grot); color: var(--text-mut); cursor: pointer; }
+.check-add:hover { color: var(--text-strong); }
+.check-add svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.check-prog { margin-top: 7px; font: 500 10.5px var(--mono); color: var(--text-soft); }
 /* the task text is a live field, not click-to-edit: it survives re-renders with the
    caret intact, and Enter can chain straight into the next task */
 .todo-text-in { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; outline: none; font: 500 13.5px/1.45 var(--grot); color: var(--text-body); }
 .todo-text-in::placeholder { color: var(--text-ghost); }
 .mos-card.is-done .todo-text-in { color: var(--text-mut); text-decoration: line-through; }
 
-/* note card */
+/* note card — and the shared card title, used by notes and to-do lists alike */
 .note-lines { display: flex; flex-direction: column; }
-.note-title { border: 0; background: transparent; outline: none; font: 700 14px var(--grot); color: var(--text-strong); padding: 0 0 5px; width: 100%; }
-.note-title::placeholder { color: var(--text-ghost); }
+.card-title { border: 0; background: transparent; outline: none; font: 700 14px var(--grot); color: var(--text-strong); padding: 0 0 5px; width: 100%; }
+.card-title::placeholder { color: var(--text-ghost); }
 .note-body { border: 0; background: transparent; outline: none; resize: none; width: 100%; font: 500 13px/1.5 var(--grot); color: var(--text-body); padding: 0; min-height: 42px; }
 .note-body::placeholder { color: var(--text-ghost); }
+
+/* ————— per-card text scale (A+ / A−) —————
+   One custom property drives every text size on the card, so the control is uniform
+   across notes, todo lists and reminders. The floor is deliberate: 0.85 of a 13px base
+   is ~11px, still legible and still inside the contrast work above. */
+.mos-card { --card-scale: 1; }
+.mos-card .card-title    { font-size: calc(14px   * var(--card-scale)); }
+.mos-card .note-body,
+.mos-card .note-md       { font-size: calc(13px   * var(--card-scale)); }
+.mos-card .todo-text-in,
+.mos-card .check-text    { font-size: calc(13.5px * var(--card-scale)); }
+
+/* ————— shared formatting bar —————
+   One bar, moved to whichever field has focus. Six more buttons on every card would
+   overflow a 250px column that already carries a grip, a date and four actions. */
+.fmt-bar {
+  position: fixed; z-index: 70; display: flex; align-items: center; gap: 2px; padding: 4px;
+  background: var(--bg-side); border: 1px solid var(--line-strong); border-radius: var(--r3);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.45);
+}
+.fmt-bar[hidden] { display: none; }
+.fmt-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 7px; color: var(--text-soft); cursor: pointer; transition: background .12s, color .12s;
+}
+.fmt-btn:hover { background: var(--hov); color: var(--text-strong); }
+.fmt-btn svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.fmt-sep { width: 1px; height: 17px; background: var(--line-strong); margin: 0 3px; flex: none; }
+
+/* ————— rendered markdown (note preview) ————— */
+.note-md { font: 500 13px/1.55 var(--grot); color: var(--text-body); cursor: text; overflow-wrap: anywhere; }
+.note-md > :first-child { margin-top: 0; }
+.note-md > :last-child { margin-bottom: 0; }
+.note-md p { margin: 0 0 7px; }
+.note-md h1, .note-md h2, .note-md h3,
+.note-md h4, .note-md h5, .note-md h6 {
+  margin: 11px 0 5px; color: var(--text-strong); font-family: var(--grot); font-weight: 800; letter-spacing: -0.01em; line-height: 1.3;
+}
+.note-md h1 { font-size: 1.32em; }
+.note-md h2 { font-size: 1.18em; }
+.note-md h3 { font-size: 1.06em; }
+.note-md h4, .note-md h5, .note-md h6 { font-size: 1em; }
+.note-md ul, .note-md ol { margin: 0 0 7px; padding-left: 18px; }
+.note-md li { margin: 2px 0; }
+.note-md li::marker { color: var(--text-mut); }
+.note-md blockquote {
+  margin: 0 0 7px; padding: 1px 0 1px 10px;
+  border-left: 2px solid var(--line-strong); color: var(--text-soft);
+}
+.note-md code {
+  font: 500 0.88em var(--mono); background: var(--bg-inset);
+  border: 1px solid var(--line); border-radius: 5px; padding: 0.5px 4px;
+}
+.note-md pre {
+  margin: 0 0 8px; padding: 8px 10px; overflow-x: auto;
+  background: var(--bg-inset); border: 1px solid var(--line); border-radius: var(--r2);
+}
+.note-md pre code { background: none; border: 0; padding: 0; font-size: 0.85em; line-height: 1.5; }
+.note-md hr { margin: 10px 0; border: 0; border-top: 1px solid var(--line-strong); }
+.note-md a { color: var(--text-strong); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--line-strong); }
+.note-md a:hover { text-decoration-color: currentColor; }
+.note-md strong { font-weight: 800; color: var(--text-strong); }
+.note-md s { color: var(--text-mut); }
+/* read-only task lines inside rendered markdown — the clickable checklist is a todo card */
+.note-md li.md-task { list-style: none; margin-left: -18px; display: flex; align-items: baseline; gap: 7px; }
+.note-md li.md-task.is-done { color: var(--text-mut); text-decoration: line-through; }
+.note-md .md-box {
+  flex: none; width: 12px; height: 12px; border: 1.4px solid var(--line-strong); border-radius: 3px;
+  font: 700 9px/10px var(--grot); text-align: center; color: var(--accent-contrast); align-self: center;
+}
+.note-md li.md-task.is-done .md-box { background: var(--accent); border-color: var(--accent); }
 
 /* chips row (reminder + tags) */
 .mos-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
