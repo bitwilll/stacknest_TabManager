@@ -259,10 +259,55 @@ token for the extension.
 
 ## Design
 
-Implements the "Stash — Tab Manager" Claude Design project (in `new design/`): option **1a**
-is the light theme, option **1c** the dark theme. Hanken Grotesk + JetBrains Mono, bundled
-in `fonts/`. The `new design/` folder is reference material — delete it before packaging
-for the Web Store.
+The interface follows **Nothing's design psychology** — the London phone maker's argument that
+technology should ask for less of your attention, not more. Four rules, and everything in
+`css/newtab.css` follows from them:
+
+1. **Monochrome, so attention is a budget.** The chrome is pure greyscale. Colour belongs to
+   *your* data — space and collection dots, tag dots, note tints — and to exactly one signal:
+   **red**. Red is permitted on the live-tabs pulse, destructive actions, an overdue reminder,
+   the duplicate count, and ticker-down. Nowhere else. If red appears twice on one screen, one
+   of them is a bug.
+2. **Flat.** No gradients, no glows, no coloured shadows anywhere. Depth is a hairline and one
+   honest step of background value. The only real elevation is the floating layer (modals,
+   popovers), and it uses a single neutral shadow token shared by both themes.
+3. **Structure is visible.** Hairline rules between sections and a **dot-matrix ground** on the
+   board, the tag graph and every empty state — the grid the layout sits on, left exposed
+   rather than painted over. It is Nothing's transparent back panel, applied to software.
+4. **Neutral greys, true black.** The greys carry no blue cast, and dark mode is **#000000**,
+   not a soft charcoal — on OLED that is Nothing's whole point, and on a monitor it keeps the
+   same uncompromising character.
+
+Selection **inverts** to solid ink rather than tinting, so a chosen chip is unmistakable; the
+active nav row adds a hard marker on its leading edge. Micro-labels are mono, uppercase and
+widely tracked — the app's signature piece of type.
+
+**Type scale — 1.125 (major second), 13px base.** The sheet previously used fifteen unrelated
+sizes (9, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 16, 17, 18, 19px). Seven steps on
+one ratio replace them, exposed as custom properties:
+
+| Token | Size | Role |
+|---|---|---|
+| `--t1` | 10.5px | micro — mono uppercase section labels |
+| `--t2` | 11.5px | meta — counts, timestamps, domains |
+| `--t3` | 13px | base — body, nav, buttons, inputs |
+| `--t4` | 14.5px | title — card and collection titles |
+| `--t5` | 16.5px | section headings |
+| `--t6` | 18.5px | view titles |
+| `--t7` | 21px | display numerals |
+
+1.125 is deliberately tight — an editorial 1.25 makes a dense tool shout. Where two roles
+converged on 13px (a settings label and its description, say) the hierarchy moved to **weight
+and colour** instead of size, which keeps the smaller text fully readable. Steps are rounded to
+half-pixels so stems stay crisp.
+
+**Contrast.** Every text token clears WCAG AA on every surface it is used on, in both themes —
+the worst case is **4.8:1** against a 4.5 requirement, measured with proper alpha compositing.
+Idle icons (`--text-ghost`) are held to the 3:1 non-text bar and are never used for text;
+placeholders use `--text-faint`, since a placeholder *is* text.
+
+Hanken Grotesk + JetBrains Mono, bundled in `fonts/` — no webfont requests. The `new design/`
+folder is earlier reference material — delete it before packaging for the Web Store.
 
 ## Development
 

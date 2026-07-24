@@ -296,6 +296,58 @@ Settings row sits above the footer at the bottom-left (left: 12px), renders the 
 the Settings view (title + populated `#settings-root`) with the accent-soft active treatment, and
 toggles off when leaving. No console errors.
 
+## Redesign: Nothing's design psychology, type scale, contrast (2026-07-11)
+
+A full visual pass — CSS only, no markup or feature changes — moving the app from "monochrome
+because it looks calm" to actually applying Nothing's *reasoning*.
+
+**The psychology, not the motifs.** Nothing's position is that a device should ask for less of
+your attention. The design consequences we adopted: colour is a budget spent once; flatness
+removes fake depth that implies importance; exposed structure (the transparent back) treats the
+user as someone who wants to understand the tool. The cargo-cult version of this is "black UI
+with dots on it", which we deliberately avoided — the dot ground appears only where there is
+genuinely nothing else (board canvas, tag graph, empty states), and never behind dense text.
+
+- **One accent.** `--red: #c9141c` light / `#ff4d4d` dark, with an exhaustive permitted-use list
+  written into the token comment: the live-tabs pulse, destructive confirm + armed delete, an
+  overdue reminder, the duplicate-count badge, ticker-down. The tray pulse moved from green to
+  red because that indicator does the same job as a recording light. It is the only permanently
+  visible red, and it is 8px.
+  Nothing's own red is `#D71921`; ours is a shade deeper because `#D71921` measured **4.35:1**
+  as text on `--bg-inset`, under AA. Fidelity lost an argument to legibility, on purpose.
+- **Flat everywhere.** Every gradient deleted (`.logo-tile`, `.foot-tile`, `.cloud-dot.pro`,
+  `.cloud-badge`), every `--shadow-*` is `none` in both themes, and the raised-chip shadows on
+  segmented controls became a fill + hairline. Five hand-rolled rgba blurs on the floating layer
+  collapsed into one `--shadow-pop` token so light and dark stay in step.
+- **True black.** Dark `--bg` went `#101216` → `#000000`, and the whole grey ramp lost its blue
+  cast (`#16181d` → `#171717`, `#868c98` → `#5e5e5e`).
+- **Selection inverts.** `--accent-soft` (#e2e2e2) against `--bg-inset` (#ebebeb) was a ~1.04:1
+  step — a selected ticker chip was effectively invisible. Chips now invert to solid ink; the
+  active nav row keeps the soft fill but gains a 3px marker on its leading edge.
+
+**Type scale — 1.125, base 13px.** Fifteen unrelated sizes became seven tokens (`--t1`..`--t7`),
+applied by script across 109 rules, then hand-tuned. Where roles collapsed onto one size, the
+hierarchy moved to weight + colour — which is *more* readable than shrinking the subordinate
+text, and is what the brief asked for. Verified: the rendered ratios hold at 1.095–1.138
+(rounding to half-pixels for crisp stems is the only deviation), and the app renders exactly 7
+text sizes. The remaining off-scale values are all legitimate and were checked individually — a
+UA-default `13.333px` on a text-less checkbox `<input>`, and the favicon letter-tiles whose size
+is computed from the tile dimension in JS.
+
+Radii tightened one step throughout (`6/8/10/12/14/16` → `4/6/8/10/12/14`) across 61 rules;
+precision reads as instrument, softness reads as consumer app.
+
+**Contrast, measured not assumed.** The first pass produced six AA failures, all on
+`--bg-inset` — the surface a naive "check it on the main background" audit misses. Fixed by
+lifting `--text-faint` (both themes), deepening red and green, and opening the dark
+mut/faint gap. Final worst case across every text token × every surface × both themes:
+**4.82:1**. Separately, `--text-ghost` was being used for `::placeholder` at 2.8:1 — a
+placeholder is text, so those four rules moved to `--text-faint`, and `--text-ghost` was pinned
+to the 3:1 non-text bar for idle icons only.
+
+Smoke-tested after: all six views render, notes add/toggle/persist, no console errors or
+unhandled rejections, and no horizontal overflow at any of the four interface-size zoom levels.
+
 ## Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10)
 
 The single-line "todo" was really a reminder, so it was renamed — and **to-do** now means a card
