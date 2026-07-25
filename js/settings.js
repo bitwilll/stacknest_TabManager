@@ -50,6 +50,40 @@ export const DEFAULT_SETTINGS = {
 
 const pick = (list, id) => list.find((x) => x.id === id) || list[0];
 
+/* ————— is this font actually on this machine? —————
+   A CSS font stack fails silently: pick "Consolas" on a Mac and the browser quietly
+   serves the next family in the stack, so the user chooses a font, sees no change, and
+   concludes the setting is broken. Measure instead of assuming.
+
+   The test renders a string with wildly uneven advance widths in "<candidate>, <base>"
+   and in <base> alone. If the candidate is missing, both fall to <base> and the widths
+   match exactly. Repeat against three bases, because a candidate can happen to match one
+   of them by coincidence but not all three. */
+const GENERIC = new Set(['system-ui', 'ui-monospace', 'ui-sans-serif', 'ui-serif', 'monospace', 'sans-serif', 'serif', 'cursive', 'fantasy']);
+
+// the first real family in a stack: "'Hanken Grotesk', system-ui, sans-serif" -> Hanken Grotesk
+export function primaryFamily(stack) {
+  return String(stack).split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+}
+
+let probeCtx = null;
+export function fontAvailable(stack) {
+  const fam = primaryFamily(stack);
+  // a generic keyword is resolved by the engine by definition — always "available",
+  // even when it resolves to the same face as the base we would compare it against
+  if (GENERIC.has(fam.toLowerCase())) return true;
+  try {
+    probeCtx = probeCtx || document.createElement('canvas').getContext('2d');
+    const probe = 'MMMWWWiiillrr 0123456789 @#%&';
+    return ['monospace', 'serif', 'sans-serif'].some((base) => {
+      probeCtx.font = `72px ${base}`;
+      const bare = probeCtx.measureText(probe).width;
+      probeCtx.font = `72px "${fam}", ${base}`;
+      return probeCtx.measureText(probe).width !== bare;
+    });
+  } catch { return true; }   // no canvas — don't cry wolf
+}
+
 const validId = (list, id, fallback) => (list.some((x) => x.id === id) ? id : fallback);
 const validArr = (allowed, arr, fallback) => (Array.isArray(arr) ? arr.filter((x) => allowed.includes(x)) : fallback);
 
@@ -237,16 +271,35 @@ function withBusy(fn) {
 function fontRow(labelText, subText, list, current, onPick, sampleClass) {
   const select = el('select', { class: 'set-select', 'aria-label': labelText });
   for (const f of list) {
-    const opt = el('option', { value: f.id, text: f.label });
+    const here = fontAvailable(f.stack);
+    // Each option renders in its OWN face, so the menu is the preview — you can see
+    // what you are choosing before you choose it, not after.
+    const opt = el('option', { value: f.id, style: `font-family:${f.stack}`,
+      text: here ? f.label : `${f.label} — not installed` });
+    if (!here) opt.dataset.missing = '1';
     if (f.id === current) opt.selected = true;
     select.append(opt);
   }
-  select.addEventListener('change', () => onPick(select.value));
+
+  // Live sample of what is ACTUALLY rendering, plus the resolved family — so a silent
+  // fallback is visible rather than mysterious.
   const sample = el('span', { class: `set-sample ${sampleClass}`, text: 'Ag 123 — quick brown fox' });
+  const note = el('div', { class: 'set-fontnote' });
+  const refresh = (id) => {
+    const f = pick(list, id);
+    const here = fontAvailable(f.stack);
+    sample.style.fontFamily = f.stack;
+    note.textContent = here ? '' : `${primaryFamily(f.stack)} isn’t installed — falling back to ${primaryFamily(f.stack.split(',').slice(1).join(',')) || 'the system default'}.`;
+    note.hidden = here;
+  };
+  refresh(current);
+  select.addEventListener('change', () => { refresh(select.value); onPick(select.value); });
+
   return el('div', { class: 'set-row' },
     el('div', { class: 'set-row-text' },
       el('div', { class: 'set-label', text: labelText }),
       el('div', { class: 'set-sub', text: subText }),
+      note,
     ),
     el('div', { class: 'set-control' }, select, sample),
   );

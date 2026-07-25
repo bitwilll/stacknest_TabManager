@@ -1087,8 +1087,12 @@ kbd {
 }
 .set-select:focus-visible { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
 .set-sample { font-size: var(--t3); color: var(--text-mut); width: 172px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the inline font-family set by fontRow() wins; these are the pre-JS defaults */
 .set-sample.sample-ui { font-family: var(--grot); }
 .set-sample.sample-mono { font-family: var(--mono); }
+/* shown only when the chosen family isn't on this machine — the silent-fallback case */
+.set-fontnote { margin-top: var(--s1); font: 500 var(--t2)/1.45 var(--grot); color: var(--red); max-width: 46ch; }
+.set-fontnote[hidden] { display: none; }
 
 .set-seg { display: flex; background: var(--bg-inset); border: 1px solid var(--edge); border-radius: var(--r4); padding: 3px; gap: 2px; }
 .set-seg-btn { font: 600 var(--t3) var(--grot); color: var(--text-soft); padding: 6px 11px; border-radius: var(--r2); cursor: pointer; transition: background 0.13s, color 0.13s; white-space: nowrap; }

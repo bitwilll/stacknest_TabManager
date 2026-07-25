@@ -161,9 +161,16 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
 > waits until you click away rather than yanking the field you're typing in.
 
 **Settings** (in the sidebar):
-- **Typography** — pick the **interface font** and **monospace font** (offline-safe stacks, live
-  preview) and an **interface size** (Compact · Default · Comfortable · Large). Applied instantly
-  and saved.
+- **Typography** — pick the **interface font** and **monospace font** and an **interface size**
+  (Compact · Default · Comfortable · Large). Applied instantly to the whole app and saved. Each
+  entry in the menu is **rendered in its own typeface**, so the list is the preview.
+
+  StackNest also **checks whether the font is actually on your machine**. A CSS font stack fails
+  silently — ask for Consolas on a Mac and the browser quietly serves something else, so it looks
+  like the setting did nothing. Missing faces are labelled **"— not installed"** and, if you pick
+  one anyway, the row tells you exactly what you'll get instead. Only *Hanken Grotesk* and
+  *JetBrains Mono* ship with the extension and are guaranteed everywhere; the rest are system
+  fonts, so availability depends on your OS.
 - **Backup & restore** — **Export** everything (spaces, collections, settings) to a JSON file,
   optionally **including your Chrome bookmarks**. **Import** restores from that file (replaces
   your spaces/collections/settings after a confirm; bookmarks, if present, are added under a new
