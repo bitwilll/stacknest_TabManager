@@ -1248,6 +1248,47 @@ kbd {
 .modal-msg { margin: 0 0 18px; font: 500 var(--t3)/1.55 var(--grot); color: var(--text-soft); }
 /* a choice that belongs to the decision, sitting between the message and the buttons */
 .modal-choice { margin: -6px 0 18px; }
+
+/* ————— PIN dialogs ————— */
+
+.pin-field { display: flex; flex-direction: column; gap: var(--s2); margin: -4px 0 18px; }
+.pin-lbl {
+  display: flex; align-items: center; gap: var(--s3);
+  font: 600 var(--t3) var(--grot); color: var(--text-soft);
+}
+.pin-lbl > :first-child { flex: none; min-width: 74px; }
+.pin-lbl.col { flex-direction: column; align-items: stretch; gap: var(--s1); }
+.pin-lbl.col > :first-child { min-width: 0; }
+.pin-input {
+  flex: 1; min-width: 0;
+  height: 36px; padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r3);
+  background: var(--bg-inset);
+  color: var(--text);
+  font: 600 var(--t4) var(--mono);
+  letter-spacing: 0.18em;
+  outline: none;
+}
+.pin-input.wide { font: 500 var(--t3) var(--grot); letter-spacing: normal; }
+.pin-input:focus { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
+.pin-q-sel { width: 100%; }
+.pin-q { font: 600 var(--t3) var(--grot); color: var(--text-strong); }
+.pin-sep { height: 1px; background: var(--line-strong); margin: var(--s2) 0; }
+.pin-err { min-height: 17px; font: 600 var(--t2) var(--grot); color: var(--text-mut); }
+.pin-err.is-warn { color: var(--red); }
+/* the consequence of getting it wrong, stated before you get it wrong */
+.pin-warn { margin: var(--s2) 0 0; font: 500 var(--t2)/1.5 var(--grot); color: var(--text-soft); max-width: 46ch; }
+
+/* ————— Vault + My Space ————— */
+
+.lock-caveat { max-width: 68ch; }
+.lock-out { color: var(--red); max-width: 68ch; }
+.tile-locked { background: var(--bg-inset); color: var(--text-soft); }
+/* the shut Vault: a plain statement and one way in, not a wall of chrome */
+.vault-shut { display: flex; flex-direction: column; align-items: center; padding: 54px 16px; color: var(--text-soft); }
+.vault-shut svg { stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vault-shut p { margin: 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .modal-btn {
   height: 36px;

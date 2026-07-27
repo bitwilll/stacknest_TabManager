@@ -16,6 +16,7 @@ async function main() {
   const { initDuplicates } = await import('./duplicates.js');
   const { initTags } = await import('./tags.js');
   const { initNotes } = await import('./notes.js');
+  const { initMySpace } = await import('./myspace.js');
   const { initTicker } = await import('./ticker.js');
 
   // apply saved typography before first paint; guarantee a default space exists
@@ -59,6 +60,8 @@ async function main() {
   // — views (Collections board / Library) —
   const views = {
     board: { el: document.getElementById('view-board'), title: 'Collections' },
+    myspace: { el: document.getElementById('view-myspace'), title: 'My Space' },
+    vault: { el: document.getElementById('view-vault'), title: 'Vault' },
     library: { el: document.getElementById('view-library'), title: 'Library' },
     tags: { el: document.getElementById('view-tags'), title: 'Tags' },
     duplicates: { el: document.getElementById('view-duplicates'), title: 'Duplicates' },
@@ -126,6 +129,13 @@ async function main() {
     getQuery,
     countEl: document.getElementById('nav-notes-count'),
   });
+  const spaceCol = initMySpace({
+    spaceRoot: document.getElementById('myspace-root'),
+    vaultRoot: document.getElementById('vault-root'),
+    spaceCountEl: document.getElementById('nav-myspace-count'),
+    vaultCountEl: document.getElementById('nav-vault-count'),
+    getQuery,
+  });
   const ticker = initTicker({ root: document.getElementById('ticker') });
 
   // re-render whichever view is being opened, so it reflects the latest data
@@ -135,6 +145,7 @@ async function main() {
     else if (name === 'tags') tagsCol.render();
     else if (name === 'duplicates') dupCol.render();
     else if (name === 'notes') notesCol.render();
+    else if (name === 'myspace' || name === 'vault') spaceCol.render();
   }
 
   // topbar + tray actions
@@ -179,7 +190,7 @@ async function main() {
   });
 
   // — unified search —
-  const renderAll = () => { tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); notesCol.render(); };
+  const renderAll = () => { tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); notesCol.render(); spaceCol.render(); };
   let searchTimer;
   search.addEventListener('input', () => {
     clearTimeout(searchTimer);

@@ -6,6 +6,9 @@ import { getKey, update } from './store.js';
 import { exportBackup, importFlow } from './backup.js';
 import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
 import { confirmDialog } from './ui.js';
+import { LOCK_KEY, loadLock, hasPin, setPin, clearPin, verifyPin, validatePin,
+         isLockedOut, hasSecurityQuestion, promptSecurityAnswer,
+         SECURITY_QUESTIONS, MAX_FAILS } from './lock.js';
 
 export const SETTINGS_KEY = 'stacknest:settings';
 
@@ -151,7 +154,7 @@ let includeBookmarks = false; // export choice; survives settings-view re-render
 
 export function initSettings(options) {
   ({ root } = options);
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[SETTINGS_KEY] || c[CLOUD_KEY])) render(); });
+  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[SETTINGS_KEY] || c[CLOUD_KEY] || c[LOCK_KEY])) render(); });
   render();
   return { render };
 }
@@ -162,6 +165,194 @@ function shortWhen(iso) {
     const d = new Date(iso);
     return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   } catch { return 'recently'; }
+}
+
+/* ————————————————————————— the Vault's PIN ————————————————————————— */
+
+// Two fields, so a typo cannot silently become the PIN you have to remember. The security
+// question is asked here too — bolting it on later means the people who need it most (the
+// ones who forget) never set it.
+async function setPinFlow({ keepQuestion = false } = {}) {
+  const cloud = await loadCloudState();
+  const owner = cloud.email || null;
+
+  const a = el('input', { type: 'password', class: 'pin-input', inputmode: 'numeric', autocomplete: 'new-password', 'aria-label': 'New PIN' });
+  const b = el('input', { type: 'password', class: 'pin-input', inputmode: 'numeric', autocomplete: 'new-password', 'aria-label': 'Confirm PIN' });
+  const qSel = el('select', { class: 'set-select pin-q-sel', 'aria-label': 'Security question' });
+  for (const q of SECURITY_QUESTIONS) qSel.append(el('option', { value: q, text: q }));
+  const ans = el('input', { type: 'text', class: 'pin-input wide', autocomplete: 'off', 'aria-label': 'Answer' });
+  const err = el('div', { class: 'pin-err', role: 'alert' });
+
+  const parts = [
+    el('label', { class: 'pin-lbl' }, 'PIN', a),
+    el('label', { class: 'pin-lbl' }, 'Confirm', b),
+  ];
+  if (!keepQuestion) {
+    parts.push(
+      el('div', { class: 'pin-sep' }),
+      el('label', { class: 'pin-lbl col' }, 'Security question', qSel),
+      el('label', { class: 'pin-lbl col' }, 'Answer', ans),
+    );
+  }
+  // The recovery story is the thing people regret not reading, so it sits where the
+  // decision is made rather than in a paragraph they scrolled past.
+  parts.push(el('p', { class: 'pin-warn' }, owner
+    ? `Five wrong PINs locks the Vault. You can then recover it with the answer above, or by signing in again as ${owner}.`
+    : 'Five wrong PINs locks the Vault. No Google Drive account is connected, so the answer above would be your ONLY way back in — connect Drive below if you want a second route.'));
+  parts.push(err);
+  const extra = el('div', { class: 'pin-field' }, ...parts);
+
+  for (;;) {
+    err.textContent = '';
+    setTimeout(() => a.focus(), 60);
+    const ok = await confirmDialog({
+      title: keepQuestion ? 'Change your PIN' : 'Set a Vault PIN',
+      extra, confirmLabel: keepQuestion ? 'Change PIN' : 'Set PIN',
+      message: 'The Vault stays locked until this PIN is entered, and every new tab starts locked again.',
+    });
+    if (!ok) return false;
+    const bad = validatePin(a.value);
+    if (bad) { err.textContent = bad; continue; }
+    if (a.value !== b.value) { err.textContent = 'The two entries don\u2019t match.'; a.value = ''; b.value = ''; continue; }
+    if (!keepQuestion && !ans.value.trim()) { err.textContent = 'Answer the security question, or you may not get back in.'; continue; }
+    await setPin(a.value, keepQuestion
+      ? { ownerEmail: owner, question: (await loadLock()).question, answer: null }
+      : { ownerEmail: owner, question: qSel.value, answer: ans.value });
+    toast(keepQuestion ? 'PIN changed' : 'Vault PIN set');
+    return true;
+  }
+}
+
+// Changing the PIN requires the current one — otherwise the lock is decorative.
+async function requirePin() {
+  if (!(await hasPin())) return true;
+  const input = el('input', { type: 'password', class: 'pin-input', inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'PIN' });
+  const err = el('div', { class: 'pin-err', role: 'alert' });
+  const extra = el('div', { class: 'pin-field' }, input, err);
+  // the note survives the reopen, or "Wrong PIN" would be wiped before it was read
+  let note = '';
+  for (;;) {
+    input.value = '';
+    err.textContent = note;
+    err.classList.toggle('is-warn', !!note);
+    setTimeout(() => input.focus(), 60);
+    const ok = await confirmDialog({ title: 'Enter your current PIN', message: 'Confirm it\u2019s you.', extra, confirmLabel: 'Continue' });
+    if (!ok) return false;
+    const r = await verifyPin(input.value);
+    if (r.ok) return true;
+    if (r.lockedOut) { toast('Too many wrong PINs \u2014 the Vault is locked'); return false; }
+    note = `Wrong PIN \u2014 ${r.left} attempt${r.left === 1 ? '' : 's'} left.`;
+  }
+}
+
+/* Recovery route 1: the security question. Clears the lockout and unlocks for this
+   session, then sends you straight to setting a new PIN — a recovery that leaves the
+   forgotten PIN in place has not recovered anything. */
+async function recoverByQuestionFlow() {
+  if (!(await promptSecurityAnswer())) return;
+  toast('Vault unlocked \u2014 set a new PIN');
+  await setPinFlow();
+}
+
+/* Recovery route 2, exactly as specified: sign out of Google and sign back in. Signing in
+   as a DIFFERENT account is refused — otherwise "reset the PIN" would just mean "connect
+   any Google account", which proves nothing about owning this one.
+
+   Note on scope: an extension cannot verify a Chrome profile password or drive the
+   browser's own passkey for the signed-in Google account. Re-running the Google OAuth
+   sign-in is the strongest account proof available to this page, and it is what "sign in
+   to the respective account" reduces to in practice. */
+async function resetPinFlow() {
+  const lock = await loadLock();
+  const owner = lock.ownerEmail;
+  if (!owner) {
+    await confirmDialog({
+      title: 'No recovery account', confirmLabel: 'Close', cancelLabel: 'Close',
+      message: 'This PIN was set with no Google Drive account connected, so there is no account to prove ownership with. Use your security question instead.',
+    });
+    return;
+  }
+  const ok = await confirmDialog({
+    title: 'Reset PIN with Google?',
+    message: `You'll be signed out of Google Drive and asked to sign in again. Sign in as ${owner} and the PIN is cleared and the Vault unlocks. Signing in as any other account leaves it untouched.`,
+    confirmLabel: 'Sign out and reset', danger: true,
+  });
+  if (!ok) return;
+  await signOut({ revoke: false });
+  const state = await connect({ chooseAccount: true });
+  if (state?.email && owner && state.email !== owner) {
+    throw new Error(`Signed in as ${state.email}, but the PIN was set by ${owner}. The PIN is unchanged.`);
+  }
+  await clearPin();
+  toast('PIN cleared \u2014 set a new one to lock the Vault again');
+}
+
+async function vaultCard() {
+  const [lock, pinSet, lockedOut, hasQ] = await Promise.all([loadLock(), hasPin(), isLockedOut(), hasSecurityQuestion()]);
+  const card = el('section', { class: 'set-card' },
+    el('h2', { class: 'set-h' }, icon('lock', 16), 'Vault'),
+    el('p', { class: 'set-sub', text: 'The Vault holds bookmarks you have moved out of Chrome, behind a PIN. Move things into it from My Space, or straight from the Library.' }),
+  );
+
+  // Say what it is worth. A lock that oversells itself is worse than no lock.
+  card.append(el('p', { class: 'set-note lock-caveat' },
+    el('strong', {}, 'What this does and doesn\u2019t do. '),
+    'Moving a bookmark here really does remove it from Chrome, so it leaves the bookmarks bar, chrome://bookmarks and address-bar suggestions. But the Vault\u2019s contents are stored in plain text on this device: the PIN stops the UI from showing them, not someone reading storage directly. Treat it as a locked drawer, not a safe \u2014 and note that an export with bookmarks included does not contain them, since Chrome no longer has them.'));
+
+  if (!pinSet) {
+    card.append(el('div', { class: 'set-actions' },
+      el('button', { class: 'btnx primary', onclick: withBusy(async () => { if (await setPinFlow()) render(); }) },
+        el('span', { text: 'Set a Vault PIN' }))));
+    return card;
+  }
+
+  if (lockedOut) {
+    card.append(el('p', { class: 'set-note lock-out' },
+      el('strong', {}, 'The Vault is locked. '),
+      `${MAX_FAILS} wrong PINs in a row. Recover it below \u2014 guessing again won\u2019t help.`));
+  }
+
+  card.append(el('div', { class: 'set-row' },
+    el('div', { class: 'set-row-text' },
+      el('div', { class: 'set-label', text: 'PIN' }),
+      el('div', { class: 'set-sub', text: lockedOut
+        ? 'Locked after too many wrong attempts.'
+        : `Set. ${MAX_FAILS} wrong attempts in a row locks the Vault.` }),
+    ),
+    el('div', { class: 'set-control' },
+      el('button', { class: 'btnx ghosty', disabled: lockedOut ? 'true' : null,
+        onclick: withBusy(async () => { if (await requirePin() && await setPinFlow({ keepQuestion: true })) render(); }) },
+        el('span', { text: 'Change PIN' })),
+    ),
+  ));
+
+  card.append(el('div', { class: 'set-row' },
+    el('div', { class: 'set-row-text' },
+      el('div', { class: 'set-label', text: 'Recover with your security question' }),
+      el('div', { class: 'set-sub', text: hasQ ? lock.question : 'No security question was set for this PIN.' }),
+    ),
+    el('div', { class: 'set-control' },
+      el('button', { class: 'btnx ghosty', disabled: hasQ ? null : 'true',
+        onclick: withBusy(async () => { await recoverByQuestionFlow(); render(); }) },
+        el('span', { text: 'Answer question' })),
+    ),
+  ));
+
+  card.append(el('div', { class: 'set-row' },
+    el('div', { class: 'set-row-text' },
+      el('div', { class: 'set-label', text: 'Recover with Google' }),
+      el('div', { class: 'set-sub', text: lock.ownerEmail
+        ? `Sign out of Drive and back in as ${lock.ownerEmail} to clear the PIN.`
+        : 'No Google account was connected when this PIN was set, so this route is unavailable.' }),
+    ),
+    el('div', { class: 'set-control' },
+      el('button', { class: 'btnx ghosty', disabled: lock.ownerEmail ? null : 'true',
+        onclick: withBusy(async () => { await resetPinFlow(); render(); }) },
+        el('span', { text: 'Sign out and reset' })),
+    ),
+  ));
+
+  return card;
 }
 
 /* Signing out drops every cached token and stops syncing. It used to be a button called
@@ -374,7 +565,7 @@ async function render() {
     el('p', { class: 'set-note', text: 'Import replaces your current spaces, collections and settings. Bookmarks, if present, are added under a new "StackNest Import" folder (nothing is overwritten).' }),
   );
 
-  frag.append(type, await tickerCard(), backup, await cloudCard());
+  frag.append(type, await tickerCard(), await vaultCard(), backup, await cloudCard());
   root.replaceChildren(frag);
 }
 

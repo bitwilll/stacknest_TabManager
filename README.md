@@ -36,7 +36,7 @@ normal-profile window.
 
 ## The layout
 
-- **Sidebar** — switch views (**Collections**, **Library**, **Settings**), pick your active
+- **Sidebar** — switch views (**Collections**, **My Space**, **Vault**, **Library**, **Settings**), pick your active
   **Space** (environment), and
   see every open **window** and every collection with live counts. Click a window to
   expand it into a tab list — click a tab to jump to it, hover to close it, or **drag it**
@@ -59,6 +59,36 @@ normal-profile window.
   per-window rows — switch to it, save it, stash it — stay in the sidebar; those are
   window actions, not a tab list.
 - **Board** — your collections as columns on a dotted canvas.
+
+## My Space and the Vault
+
+Chrome bookmarks are visible everywhere: the bookmarks bar, `chrome://bookmarks`, address-bar
+suggestions. Hiding one behind a PIN inside a new-tab page would be theatre. So StackNest does
+the only thing that actually works — it **moves the bookmark out of Chrome** into its own
+storage.
+
+- **My Space** — bookmarks kept in StackNest only. In the **Library**, the move action on any
+  bookmark or folder takes it out of Chrome and puts it here. A folder moves as a group and its
+  name becomes the heading. Every move is reversible: **Put back in Chrome** recreates it.
+- **Vault** — the same store, behind a PIN. Right-click the move action to send something
+  straight here. The Vault relocks on **every new tab**, not on a timer.
+
+**Set the PIN in Settings → Vault.** It is stored as a PBKDF2-SHA256 hash over a random salt —
+the PIN itself is never written down. **Five wrong attempts in a row lock the Vault**, and a
+correct PIN is refused after that; the counter lives in storage, so closing the tab does not
+hand back a fresh five. Getting back in then needs one of two proofs of ownership:
+
+1. **Your security question** — set alongside the PIN, answer compared case- and
+   space-insensitively.
+2. **Google** — sign out of Drive and sign back in as the account that set the PIN. Signing in
+   as a different account is refused.
+
+> **What this is worth.** Moving a bookmark here genuinely removes it from Chrome's surfaces.
+> But the Vault's contents live in `chrome.storage.local` in plain text: the PIN stops the
+> interface from showing them, not someone reading storage directly with devtools. It is a
+> locked drawer, not a safe. (An extension also cannot verify a Chrome profile password or
+> drive the browser's own passkey — re-running the Google sign-in is the strongest account
+> proof a page like this has.)
 
 ## What it does
 

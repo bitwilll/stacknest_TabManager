@@ -2,6 +2,8 @@
 
 import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget, confirmDialog } from './ui.js';
 import { TAGS_KEY, loadTags, tagChips, openTagEditor } from './tags.js';
+import { moveFromLibrary } from './myspace.js';
+import { hasPin } from './lock.js';
 
 const BM_MIME = 'text/x-stacknest-bm';
 const TAB_MIME = 'text/x-stacknest-tab';
@@ -162,6 +164,7 @@ function folderCard(node) {
     ),
     el('span', { class: 'acts' },
       actionBtn('external', 'Open all as a new window', () => openAll(node)),
+      moveOutBtn(node),
       actionBtn('rename', 'Rename', () => startRename(card, node)),
       deleteBtn(node, `Delete folder and its ${count} items`),
     ),
@@ -184,6 +187,7 @@ function bookmarkCard(node, tagsMap) {
     ),
     el('span', { class: 'acts' },
       actionBtn('tag', 'Edit tags', (_, btn) => openTagEditor(btn, { url: node.url, title: node.title || node.url })),
+      moveOutBtn(node),
       actionBtn('rename', 'Rename', () => startRename(card, node)),
       deleteBtn(node, 'Delete bookmark'),
     ),
@@ -241,6 +245,23 @@ function startRename(card, node) {
     if (e.key === 'Escape') render();
   });
   input.addEventListener('blur', commit);
+}
+
+/* Take this out of Chrome. Left-click moves it to My Space; the Vault needs a PIN, so
+   when none is set the action says why instead of silently doing the lesser thing. */
+function moveOutBtn(node) {
+  const isFolder = !node.url;
+  const btn = actionBtn('box', isFolder ? 'Move folder out of Chrome, into My Space' : 'Move out of Chrome, into My Space',
+    async () => { await moveFromLibrary(node, { vault: false }); });
+  // right-click sends it straight to the Vault — the same move, one step further
+  btn.addEventListener('contextmenu', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!(await hasPin())) { toast('Set a Vault PIN in Settings first'); return; }
+    await moveFromLibrary(node, { vault: true });
+  });
+  btn.title += ' · right-click for the Vault';
+  return btn;
 }
 
 function deleteBtn(node, label) {

@@ -28,6 +28,14 @@
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="7" height="15" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="9" rx="1.5"/></svg></span>Collections
           <span class="nav-count" id="nav-collections-count"></span>
         </button>
+        <button class="navx view-link" id="nav-myspace" data-view="myspace">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 12 3.5l8 4v9L12 20.5 4 16.5Z"/><path d="M4 7.5 12 11.5l8-4"/><path d="M12 11.5v9"/></svg></span>My Space
+          <span class="nav-count" id="nav-myspace-count"></span>
+        </button>
+        <button class="navx view-link" id="nav-vault" data-view="vault">
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></span>Vault
+          <span class="nav-count" id="nav-vault-count"></span>
+        </button>
         <button class="navx view-link" id="nav-library" data-view="library">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="4.5" rx="1.2"/><path d="M5.5 8.5v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9"/><path d="M10 12.5h4"/></svg></span>Library
         </button>
@@ -132,6 +140,8 @@
 
       <div class="mini-nav" aria-hidden="true">
         <button class="chipx view-link is-active" data-view="board">Collections</button>
+        <button class="chipx view-link" data-view="myspace">My Space</button>
+        <button class="chipx view-link" data-view="vault">Vault</button>
         <button class="chipx view-link" data-view="library">Library</button>
         <button class="chipx view-link" data-view="tags">Tags</button>
         <button class="chipx view-link" data-view="duplicates">Duplicates</button>
@@ -154,6 +164,14 @@
 
       <section class="view view-board" id="view-board">
         <div class="board" id="board-root"></div>
+      </section>
+
+      <section class="view view-myspace" id="view-myspace" hidden>
+        <div class="library" id="myspace-root"></div>
+      </section>
+
+      <section class="view view-vault" id="view-vault" hidden>
+        <div class="library" id="vault-root"></div>
       </section>
 
       <section class="view view-library" id="view-library" hidden>
