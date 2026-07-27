@@ -153,9 +153,25 @@ async function main() {
     renderAll();
   });
 
-  // moving the tab strip between the header and the sidebar changes what each surface
-  // has to draw, so the live-tabs column repaints for the new home
-  document.addEventListener('stacknest:tabsbar', () => tabsCol.render());
+  /* ——— where the open-tabs bar lives ———
+     Horizontal keeps it in .main under the header. Vertical moves the same element out
+     to sit between the sidebar and .main, so it reads as a rail of its own rather than a
+     panel folded into the sidebar. Moving one node beats shipping two copies of the
+     markup: the ids, the listeners and the render path all stay single. */
+  const tabsBar = document.getElementById('tabs-bar');
+  const appEl = document.querySelector('.app');
+  const mainEl = document.querySelector('.main');
+  const mountTabsBar = (mode) => {
+    const wantParent = mode === 'side' ? appEl : mainEl;
+    const wantBefore = mode === 'side' ? mainEl : mainEl.querySelector('.view');
+    if (tabsBar.parentElement === wantParent && tabsBar.nextElementSibling === wantBefore) return;
+    wantParent.insertBefore(tabsBar, wantBefore);
+  };
+  mountTabsBar(document.documentElement.dataset.tabsbar);
+  document.addEventListener('stacknest:tabsbar', (e) => {
+    mountTabsBar(e.detail);
+    tabsCol.render(); // the chips are built per mode, so the new home gets fresh ones
+  });
 
   // dropping an open tab on the Library nav item bookmarks it in the open folder
   addDropTarget(document.getElementById('nav-library'), 'text/x-stacknest-tab', async ({ title, url }) => {
@@ -177,7 +193,12 @@ async function main() {
       search.blur();
     }
     if (e.key === 'Enter') {
-      const first = document.querySelector('.tray-chips .chip-tab:not(.filtered)')
+      // Only offer a live tab if the bar is actually on screen. The horizontal strip is
+      // board-only, so off the board its chips are still in the DOM but invisible — Enter
+      // would have jumped to a tab the user could not see instead of the first result in
+      // the view they were looking at. offsetParent is null under any display:none ancestor.
+      const barShowing = !!tabsBar.offsetParent;
+      const first = (barShowing && document.querySelector('.tray-chips .chip-tab:not(.filtered)'))
         || document.querySelector(`#view-${currentView} .tcard:not(.filtered)`)
         || document.querySelector('.board .tcard:not(.filtered)');
       first?.click();

@@ -62,16 +62,16 @@ export async function render() {
   const current = byWindow.get(focusedId) || [];
   trayCount.textContent = `${current.length} open tab${current.length === 1 ? '' : 's'}`;
 
-  // Build the chips only when the strip is the chosen home. Hidden-but-present chips would
-  // still be found by search's Enter-to-open shortcut, so pressing Enter would activate a
-  // tab the user cannot see instead of the first result in the view they are looking at.
-  if (barMode() === 'top') {
+  // Build the chips only when the bar is on — 'off' hides it entirely, and hidden-but-present
+  // chips would still be found by search's Enter-to-open shortcut, so pressing Enter would
+  // activate a tab the user cannot see instead of the first result in the view they're on.
+  if (barMode() === 'off') {
+    trayRoot.replaceChildren();
+  } else {
     trayRoot.replaceChildren(...current.map((t) => chip(t, q)));
     if (!current.length) {
       trayRoot.append(el('span', { class: 'tray-empty', text: 'Nothing else open in this window.' }));
     }
-  } else {
-    trayRoot.replaceChildren();
   }
 
   // ——— sidebar WINDOWS section (collapsible per window) ———
@@ -122,12 +122,10 @@ function chip(tab, q) {
 function windowBlock(windowId, tabs, n, isCurrent, q) {
   const label = isCurrent ? 'This window' : `Window ${n}`;
   const hasMatch = q && tabs.some((t) => matches(q, t.title, t.url || t.pendingUrl));
-  const openByDefault = barMode() === 'side' && isCurrent;
-  // Searching peeks inside windows — but not into the focused one while the horizontal
-  // strip is showing its tabs as chips, or every query would list those same tabs twice.
-  const peek = hasMatch && !(barMode() === 'top' && isCurrent);
-  const isOpen = peek
-    || (winOverride.has(windowId) ? winOverride.get(windowId) : openByDefault);
+  // Searching peeks inside windows — but never into the focused one while the bar is
+  // showing its tabs, in either orientation, or every query would list them twice.
+  const peek = hasMatch && !(barMode() !== 'off' && isCurrent);
+  const isOpen = peek || (winOverride.get(windowId) === true);
 
   const block = el('div', { class: 'win-block' });
   const row = el('div', {

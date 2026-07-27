@@ -40,8 +40,8 @@ export const SCALES = [
    Whichever you pick, the per-window rows (switch to it, save it, stash it) stay in the
    sidebar: those are window actions, not a tab list, and nothing here removes them. */
 export const TAB_BARS = [
-  { id: 'top', label: 'Horizontal', sub: 'A strip of tab chips under the header.' },
-  { id: 'side', label: 'Vertical', sub: 'A list inside the sidebar’s Windows panel.' },
+  { id: 'top', label: 'Horizontal', sub: 'A strip of tab chips under the header, on the board.' },
+  { id: 'side', label: 'Vertical', sub: 'Its own rail beside the sidebar, on every view.' },
   { id: 'off', label: 'Hidden', sub: 'Neither — expand a window in the sidebar to reach its tabs.' },
 ];
 

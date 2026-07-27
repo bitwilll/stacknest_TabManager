@@ -139,7 +139,11 @@
         <button class="chipx view-link" data-view="settings">Settings</button>
       </div>
 
-      <div class="tray">
+      <!-- The open-tabs bar. ONE element with two homes: horizontal mode leaves it here,
+           under the header inside .main; vertical mode moves it out to sit between the
+           sidebar and .main as its own rail (see mountTabsBar() in js/app.js). Same
+           markup, same ids, same render path — only the parent and the axis change. -->
+      <div class="tray" id="tabs-bar">
         <div class="tray-live">
           <span class="pulse" aria-hidden="true"><span></span><span></span></span>
           <span class="tray-count" id="tray-count">0 open tabs</span>

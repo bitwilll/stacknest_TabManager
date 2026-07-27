@@ -605,10 +605,91 @@ kbd {
 .viewmode-seg { display: none; }
 :root[data-view='board'] .viewmode-seg { display: flex; }
 
-/* vertical mode: the Windows panel is the tab list, so it earns the height */
-:root[data-tabsbar='side'] #windows-root { max-height: calc(52vh / var(--app-zoom, 1)); }
-
 .tray-empty { font: 500 var(--t3) var(--grot); color: var(--text-mut); }
+
+/* ————— open-tabs bar, vertical —————
+   The same element, re-parented by mountTabsBar() to sit between the sidebar and the main
+   column, and turned on its side. It stays on in every view, not just the board: a rail
+   that vanished when you opened Notes would not be a tab bar, it would be a board widget.
+
+   The chips stop being chips here. Two hundred bordered boxes stacked in a 232px column
+   is a wall; as rows they read like the sidebar lists they now sit beside, and the active
+   tab is marked the way the active nav row is — a soft fill and a lit leading edge. */
+:root[data-tabsbar='side'] .tray {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 232px;
+  flex: none;
+  height: 100%;
+  gap: var(--s2);
+  padding: var(--s3) var(--s3) var(--s3);
+  background: var(--bg-side);
+  border-bottom: 0;
+  border-right: 1px solid var(--line);
+}
+:root[data-tabsbar='side'] .tray-live { padding: 4px var(--s2) 0; }
+:root[data-tabsbar='side'] .tray-chips {
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 1px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0;
+}
+:root[data-tabsbar='side'] .chip-tab {
+  width: 100%;
+  height: 32px;
+  padding: 0 6px 0 8px;
+  border-color: transparent;
+  border-radius: var(--r3);
+  background: transparent;
+}
+:root[data-tabsbar='side'] .chip-tab:hover { background: var(--hov); }
+:root[data-tabsbar='side'] .chip-tab .title { flex: 1; max-width: none; font-weight: 500; color: var(--text-soft); }
+:root[data-tabsbar='side'] .chip-tab:hover .title { color: var(--text-strong); }
+:root[data-tabsbar='side'] .chip-tab.is-active {
+  position: relative;
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+:root[data-tabsbar='side'] .chip-tab.is-active .title { color: var(--text-strong); font-weight: 600; }
+:root[data-tabsbar='side'] .chip-tab.is-active .icb { color: var(--text-faint); }
+:root[data-tabsbar='side'] .chip-tab.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  translate: 0 -50%;
+  width: 3px; height: 15px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+:root[data-tabsbar='side'] .tray-empty { padding: 0 var(--s2); line-height: 1.5; }
+:root[data-tabsbar='side'] #save-all-btn { justify-content: center; width: 100%; }
+/* it is its own column now, so the sidebar's Windows panel goes back to window rows only */
+:root[data-tabsbar='side'] #windows-root { max-height: calc(34vh / var(--app-zoom, 1)); }
+
+@media (max-width: 880px) {
+  /* No room for a rail beside a stacked layout. The bar is a flex sibling of .main here,
+     so turning .app into a column is what puts it above the content instead of next to
+     it — then it lays out exactly like the horizontal strip. */
+  :root[data-tabsbar='side'] .app { flex-direction: column; }
+  :root[data-tabsbar='side'] .tray {
+    width: auto; height: auto; flex: none;
+    flex-direction: row; align-items: center; flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  :root[data-tabsbar='side'] .tray-live { padding: 0; }
+  :root[data-tabsbar='side'] .tray-chips { flex: 1; flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 8px; }
+  :root[data-tabsbar='side'] .chip-tab { width: auto; height: 34px; padding: 0 10px 0 8px; }
+  :root[data-tabsbar='side'] .chip-tab .title { max-width: 140px; flex: none; }
+  :root[data-tabsbar='side'] .chip-tab.is-active::before { content: none; }
+  :root[data-tabsbar='side'] #save-all-btn { width: auto; }
+}
 
 .tray-live { display: flex; align-items: center; gap: 8px; flex: none; }
 /* THE red dot. These tabs are live right now — the same job Nothing's recording

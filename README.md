@@ -47,11 +47,17 @@ normal-profile window.
 - **Topbar** — search (`⌘K` or `/`), the light/dark theme toggle, and **Stash window**.
 - **Open tabs bar** — the current window's live tabs. Click to jump, hover to close,
   **drag one anywhere** — onto a collection, the board, or the Library — to save it.
-  Settings → Appearance chooses where it lives: **Horizontal** (a strip of chips under the
-  header), **Vertical** (a list inside the sidebar's Windows panel) or **Hidden**. It used
-  to render in both places at once, which is the same tabs twice and 64px of the board
-  spent on the copy. Whichever you pick, the per-window rows — switch to it, save it,
-  stash it — stay in the sidebar; those are window actions, not a tab list.
+  Settings → Appearance chooses where it lives:
+  - **Horizontal** — a strip of chips under the header, on the board.
+  - **Vertical** — its own rail beside the sidebar, on every view. A rail that vanished
+    when you opened Notes would be a board widget, not a tab bar.
+  - **Hidden** — neither; expand a window in the sidebar to reach its tabs.
+
+  It is one element with two homes, re-parented rather than duplicated, so the ids,
+  listeners and render path stay single. It used to render in both places at once, which
+  is the same tabs twice and 64px of the board spent on the copy. Whichever you pick, the
+  per-window rows — switch to it, save it, stash it — stay in the sidebar; those are
+  window actions, not a tab list.
 - **Board** — your collections as columns on a dotted canvas.
 
 ## What it does
