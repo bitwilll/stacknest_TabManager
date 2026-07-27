@@ -36,7 +36,7 @@ import { exportBackup } from './backup.js';
 import { backupNow, restoreLatest, loadCloudState } from './drive.js';
 import { pushHistory, flashDeleted } from './history.js';
 import { tagColor } from './tags.js';
-import { renderMarkdown, renderInline, hasInlineMarkdown } from './markdown.js';
+import { renderMarkdown, renderInline } from './markdown.js';
 import { toggleFormat, stepScale, DEFAULT_SCALE, SCALES } from './format.js';
 
 export const NOTES_KEY = 'stacknest:notes';
@@ -368,10 +368,10 @@ function buildShell() {
 
 function headerBar(sub) {
   return el('div', { class: 'notes-head' },
-    el('div', { class: 'notes-h-text' },
-      el('h2', { class: 'notes-title', text: 'Notes & Todos' }),
-      sub,
-    ),
+    // No heading here: the topbar h1 already says "Notes & Todos" ~50px above, in the same
+    // weight and size. This is the only view that printed its own title twice. The sub-line
+    // stays, because it carries live state ("3 open · 2 lists · 5 notes") rather than a name.
+    el('div', { class: 'notes-h-text' }, sub),
     el('div', { class: 'notes-tools' },
       menuButton('Export', 'download', [
         { label: 'Full backup (incl. notes)', run: () => exportBackup(false) },
@@ -659,7 +659,11 @@ function noteBody(it) {
 // A single-line field therefore renders its inline markdown at rest and shows the source
 // the moment you edit it — the same deal as a note body, and the swap is local to this one
 // field (driven by its own focus/blur), so it can never disturb the caret anywhere else.
-// A line with no markdown in it never swaps at all: the input stays, directly typable.
+//
+// Every non-empty line swaps, not just the ones containing markdown. An <input> cannot
+// wrap, so a plain reminder longer than its column was silently cut off mid-word with no
+// way to read the rest; the rendered span wraps. Empty lines keep the input on show so
+// the placeholder still reads. renderInline() escapes, so plain text stays plain text.
 function lineView(input) {
   const view = el('span', { class: 'line-md', title: 'Click to edit' });
   const showSource = (focusIt) => {
@@ -667,7 +671,7 @@ function lineView(input) {
     if (focusIt) { input.focus(); try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* ignore */ } }
   };
   const showView = () => {
-    if (!hasInlineMarkdown(input.value)) { showSource(false); return; }
+    if (!input.value.trim()) { showSource(false); return; }
     view.innerHTML = renderInline(input.value);
     view.hidden = false; input.hidden = true;
   };

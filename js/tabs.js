@@ -6,7 +6,15 @@ import { addSpace } from './spacesStore.js';
 const TAB_MIME = 'text/x-stacknest-tab';
 
 let trayRoot, trayCount, windowsRoot, getQuery;
-const expandedWindows = new Set(); // windowIds whose tab list is open in the sidebar
+
+// Explicit open/closed state the user set by clicking a window row. Absent means "use the
+// default for the current tab-bar mode" — vertical mode opens the focused window, because
+// in that mode the sidebar IS the tab list and an all-collapsed sidebar would show none.
+const winOverride = new Map();
+
+// 'top' (horizontal strip) | 'side' (in the sidebar) | 'off'. Written to the root element
+// by applySettings(), which runs before initTabs(), so reading it here needs no import.
+const barMode = () => document.documentElement.dataset.tabsbar || 'top';
 
 export function initTabs(options) {
   ({ trayRoot, trayCount, windowsRoot, getQuery } = options);
@@ -50,14 +58,20 @@ export async function render() {
   const q = getQuery();
   const { byWindow, focusedId } = await windowMap();
 
-  // ——— tray: the focused window's tabs as chips ———
+  // ——— horizontal strip: the focused window's tabs as chips ———
   const current = byWindow.get(focusedId) || [];
   trayCount.textContent = `${current.length} open tab${current.length === 1 ? '' : 's'}`;
 
-  const chips = current.map((t) => chip(t, q));
-  trayRoot.replaceChildren(...chips);
-  if (!current.length) {
-    trayRoot.append(el('span', { class: 'tray-empty', style: 'font: 500 12px var(--grot); color: var(--text-mut)', text: 'Nothing else open in this window.' }));
+  // Build the chips only when the strip is the chosen home. Hidden-but-present chips would
+  // still be found by search's Enter-to-open shortcut, so pressing Enter would activate a
+  // tab the user cannot see instead of the first result in the view they are looking at.
+  if (barMode() === 'top') {
+    trayRoot.replaceChildren(...current.map((t) => chip(t, q)));
+    if (!current.length) {
+      trayRoot.append(el('span', { class: 'tray-empty', text: 'Nothing else open in this window.' }));
+    }
+  } else {
+    trayRoot.replaceChildren();
   }
 
   // ——— sidebar WINDOWS section (collapsible per window) ———
@@ -108,7 +122,12 @@ function chip(tab, q) {
 function windowBlock(windowId, tabs, n, isCurrent, q) {
   const label = isCurrent ? 'This window' : `Window ${n}`;
   const hasMatch = q && tabs.some((t) => matches(q, t.title, t.url || t.pendingUrl));
-  const isOpen = expandedWindows.has(windowId) || hasMatch; // searching peeks into windows
+  const openByDefault = barMode() === 'side' && isCurrent;
+  // Searching peeks inside windows — but not into the focused one while the horizontal
+  // strip is showing its tabs as chips, or every query would list those same tabs twice.
+  const peek = hasMatch && !(barMode() === 'top' && isCurrent);
+  const isOpen = peek
+    || (winOverride.has(windowId) ? winOverride.get(windowId) : openByDefault);
 
   const block = el('div', { class: 'win-block' });
   const row = el('div', {
@@ -118,11 +137,7 @@ function windowBlock(windowId, tabs, n, isCurrent, q) {
     'aria-expanded': String(isOpen),
     title: isOpen ? 'Hide tabs' : 'Show tabs in this window',
   });
-  const toggle = () => {
-    if (expandedWindows.has(windowId)) expandedWindows.delete(windowId);
-    else expandedWindows.add(windowId);
-    render();
-  };
+  const toggle = () => { winOverride.set(windowId, !isOpen); render(); };
   row.addEventListener('click', toggle);
   row.addEventListener('keydown', (e) => { if (e.key === 'Enter') toggle(); });
 

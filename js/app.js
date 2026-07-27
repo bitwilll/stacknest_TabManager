@@ -22,25 +22,30 @@ async function main() {
   applySettings(await loadSettings());
   await ensureWorkspaces();
 
-  // — theme —
-  const lightBtn = document.getElementById('theme-light');
-  const darkBtn = document.getElementById('theme-dark');
-  const applyTheme = (theme) => {
-    document.documentElement.dataset.theme = theme;
-    lightBtn.classList.toggle('is-active', theme === 'light');
-    darkBtn.classList.toggle('is-active', theme === 'dark');
+  // — theme: one button that flips, showing the icon for the theme it will switch TO —
+  const themeBtn = document.getElementById('theme-toggle');
+  let theme;
+  const applyTheme = (next) => {
+    theme = next;
+    document.documentElement.dataset.theme = next;
+    themeBtn.setAttribute('aria-pressed', String(next === 'dark'));
+    const to = next === 'dark' ? 'light' : 'dark';
+    themeBtn.title = `Switch to ${to} theme`;
+    themeBtn.setAttribute('aria-label', `Switch to ${to} theme`);
   };
   applyTheme(localStorage.getItem(THEME_KEY)
     || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-  lightBtn.addEventListener('click', () => { localStorage.setItem(THEME_KEY, 'light'); applyTheme('light'); });
-  darkBtn.addEventListener('click', () => { localStorage.setItem(THEME_KEY, 'dark'); applyTheme('dark'); });
+  themeBtn.addEventListener('click', () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
 
   // — board layout (columns / tiles) —
   const BOARD_MODE_KEY = 'stacknest:boardmode';
   const boardEl = document.getElementById('board-root');
   const colBtn = document.getElementById('view-columns');
   const tileBtn = document.getElementById('view-tiles');
-  const viewmodeSeg = document.getElementById('viewmode-seg');
   const applyBoardMode = (mode) => {
     const tiles = mode === 'tiles';
     boardEl.classList.toggle('tiles', tiles);
@@ -61,15 +66,17 @@ async function main() {
     settings: { el: document.getElementById('view-settings'), title: 'Settings' },
   };
   const viewTitle = document.getElementById('view-title');
-  const tray = document.querySelector('.tray');
   let currentView = 'board';
   const showView = (name) => {
     if (!views[name]) return;
     currentView = name;
     for (const [key, v] of Object.entries(views)) v.el.hidden = key !== name;
     viewTitle.textContent = views[name].title;
-    tray.style.display = name === 'board' ? '' : 'none'; // the open-tabs tray only matters on the board
-    viewmodeSeg.style.display = name === 'board' ? '' : 'none'; // the layout toggle only applies to the board
+    // Which view is open is a root-level fact, so the stylesheet can decide what belongs
+    // on screen (the tab strip and the board-layout toggle are board-only). Doing this in
+    // CSS rather than inline styles lets the "Open tabs bar" setting override it without
+    // the two mechanisms fighting over `style.display`.
+    document.documentElement.dataset.view = name;
     refreshView(name); // show current data when a view is opened
     document.querySelectorAll('.view-link').forEach((btn) => {
       btn.classList.toggle('is-active', btn.dataset.view === name);
@@ -94,7 +101,6 @@ async function main() {
     navRoot: document.getElementById('collections-nav'),
     wsRoot: document.getElementById('spaces-nav'),
     navCount: document.getElementById('nav-collections-count'),
-    statsEl: document.getElementById('side-stats'),
     getQuery,
     ensureBoardVisible: () => showView('board'),
     clearSearch: () => { search.value = ''; renderAll(); },
@@ -146,6 +152,10 @@ async function main() {
     applySettings(await loadSettings());
     renderAll();
   });
+
+  // moving the tab strip between the header and the sidebar changes what each surface
+  // has to draw, so the live-tabs column repaints for the new home
+  document.addEventListener('stacknest:tabsbar', () => tabsCol.render());
 
   // dropping an open tab on the Library nav item bookmarks it in the open folder
   addDropTarget(document.getElementById('nav-library'), 'text/x-stacknest-tab', async ({ title, url }) => {

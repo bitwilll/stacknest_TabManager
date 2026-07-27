@@ -144,7 +144,8 @@ export function tagChips(map, url, max = 3) {
 /* ————————————————————————— Tags view (graph + grid) ————————————————————————— */
 
 let root, getQuery, countEl, jumpToUrl;
-let activeTag = null; // null = overview (graph)
+let activeTag = null; // null = overview across all tags
+let tagMode = 'graph'; // overview reading: 'graph' (tags as hubs) or 'list' (the cards)
 
 // Mind-graph camera (pan offset + zoom). Kept at module scope so a background
 // re-render (a storage/bookmark event) re-frames to where the user left the
@@ -208,9 +209,24 @@ export async function render() {
   frag.append(bar);
 
   if (activeTag === null) {
-    frag.append(buildGraph(tagList, items));
-    frag.append(el('h3', { class: 'tag-section-h', text: 'All tagged links' }));
-    frag.append(itemGrid(items, getQuery()));
+    // Graph and list are two readings of ONE set of links, so they are alternates rather
+    // than a stack. Showing both meant every tagged link was drawn twice on one screen —
+    // once as a dot, once as a card — and the graph pushed the cards below the fold.
+    const seg = el('div', { class: 'set-seg tag-modeseg', role: 'group', 'aria-label': 'Tag view' });
+    for (const m of [{ id: 'graph', label: 'Graph' }, { id: 'list', label: 'List' }]) {
+      const btn = el('button', {
+        class: `set-seg-btn${m.id === tagMode ? ' is-active' : ''}`,
+        text: m.label,
+        'aria-pressed': String(m.id === tagMode),
+      });
+      btn.addEventListener('click', () => { tagMode = m.id; render(); });
+      seg.append(btn);
+    }
+    frag.append(el('div', { class: 'tag-sectionrow' },
+      el('h3', { class: 'tag-section-h', text: `All tagged links · ${items.length}` }),
+      seg,
+    ));
+    frag.append(tagMode === 'graph' ? buildGraph(tagList, items) : itemGrid(items, getQuery()));
   } else {
     const subset = items.filter((it) => it.tags.includes(activeTag));
     frag.append(el('h3', { class: 'tag-section-h' },

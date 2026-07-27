@@ -38,9 +38,17 @@
       greys are dead neutral; a cool cast reads as "tech product", a neutral one
       reads as paper and ink.
 
-   Dark is TRUE BLACK (#000), not a soft charcoal. On an OLED phone that is
-   Nothing's whole point — unlit pixels — and on a monitor it keeps the same
-   uncompromising character.
+   Dark is GRAPHITE (#171717), not true black. The sheet used to run #000 on the
+   OLED-phone argument — unlit pixels — but this is not a phone held at arm's
+   length in the dark, it is a desktop surface stared at for hours in a lit room,
+   and #fff on #000 is 21:1. That much contrast makes stems shimmer (halation)
+   and forces the iris to work against the surround; it reads as glare, not as
+   crispness. Lifting the canvas to #171717 and bringing the brightest text down
+   to #e9e9e9 lands the top end at 14.8:1 — far above AA's 4.5, comfortably
+   below the point where it fights the eye. Everything else keeps its rank, and
+   every token was re-measured against the LIGHTEST surface it can land on
+   (--bg-inset), not against the canvas, which is where lifting a dark ramp
+   silently breaks contrast.
    ———————————————————————————————————————————————————————————— */
 
 :root {
@@ -127,6 +135,14 @@
      softness reads as consumer app */
   --r1: 4px;  --r2: 6px;  --r3: 8px; --r4: 10px; --r5: 12px; --r6: 14px;
   --dot-gap: 16px;   /* dot-matrix pitch */
+
+  /* ——— MEASURE — how wide a view's content is allowed to run ———
+     Five view containers used to carry four unrelated max-widths (1180, 1120, 1180, 880,
+     720) and repeat the same padding five times. Three measures, each with a reason. */
+  --measure:      1180px;   /* grid + mosaic views: library, tags, notes */
+  --measure-list:  880px;   /* single-column stacks of full-width rows: duplicates */
+  --measure-form:  720px;   /* labelled form rows: settings */
+
   /* 3.0:1 on paper — the boundary of a control whose border IS the control
      (outlined buttons, selects, unchecked boxes, dashed drop targets). Distinct
      from --line-strong, which stays a decorative hairline. */
@@ -135,53 +151,57 @@
 }
 
 :root[data-theme='dark'] {
-  /* ——— chalk on true black (dark) ——— */
-  --bg:          #000000;   /* unlit */
-  --bg-side:     #0a0a0a;
-  --bg-tray:     #0a0a0a;
-  --bg-inset:    #1a1a1a;
-  --bg-card:     #0e0e0e;
-  --bg-col:      rgba(255, 255, 255, 0.035);
-  --bg-kbd:      #141414;
+  /* ——— chalk on graphite (dark) ———
+     Ratios below are measured against --bg-inset, the LIGHTEST surface each token can
+     land on; every one of them is higher on the canvas. Text floor 4.5:1, non-text 3:1. */
+  --bg:          #171717;   /* canvas — graphite, not black */
+  --bg-side:     #1e1e1e;   /* sidebar + strip: one step up, as in light one step down */
+  --bg-tray:     #1e1e1e;
+  --bg-card:     #212121;
+  --bg-inset:    #2a2a2a;   /* chips, insets, wells — the highest surface */
+  --bg-col:      rgba(255, 255, 255, 0.030);  /* translucent: the dot ground reads through */
+  --bg-kbd:      #242424;
 
-  --text-strong: #ffffff;
-  --text:        #f0f0f0;
-  --text-body:   #e0e0e0;
-  --text-soft:   #b4b4b4;
-  --text-mut:    #9a9a9a;   /* 7.5 black / 6.2 inset */
-  --text-faint:  #8a8a8a;   /* 6.1 black / 5.0 inset */
-  --text-ghost:  #676767;   /* NON-TEXT only: idle icons — 3.6 black / 3.1 inset */
+  --text-strong: #e9e9e9;   /* 11.8 inset / 14.8 canvas — deliberately not #fff */
+  --text:        #dcdcdc;   /* 10.5 */
+  --text-body:   #cbcbcb;   /*  8.9 */
+  --text-soft:   #a9a9a9;   /*  6.1 */
+  --text-mut:    #989898;   /*  5.0 */
+  --text-faint:  #949494;   /*  4.7 — the quietest real text, still over the line */
+  --text-ghost:  #777777;   /* NON-TEXT only: idle icons — 3.2 inset / 4.0 canvas */
 
-  --line:        rgba(255, 255, 255, 0.11);
+  /* hairlines carry more alpha than they did on black: white over a lifted surface
+     separates less, so matching the old apparent weight costs a point of opacity */
+  --line:        rgba(255, 255, 255, 0.12);
   --line-strong: rgba(255, 255, 255, 0.20);
-  --card-line:   rgba(255, 255, 255, 0.09);
-  --card-line-2: rgba(255, 255, 255, 0.14);
+  --card-line:   rgba(255, 255, 255, 0.10);
+  --card-line-2: rgba(255, 255, 255, 0.15);
 
-  --accent:          #ffffff;   /* chalk is the accent */
-  --accent-2:        #ffffff;
-  --accent-text:     #ffffff;
-  --accent-contrast: #000000;
-  --accent-soft:     rgba(255, 255, 255, 0.13);
-  --accent-soft-txt: #ffffff;
+  --accent:          #e9e9e9;   /* chalk is the accent — same value as --text-strong */
+  --accent-2:        #e9e9e9;
+  --accent-text:     #e9e9e9;
+  --accent-contrast: #171717;   /* a chalk fill's label is the canvas showing through */
+  --accent-soft:     rgba(255, 255, 255, 0.12);
+  --accent-soft-txt: #e9e9e9;
   --accent-border:   rgba(255, 255, 255, 0.30);
-  --accent-ring:     rgba(255, 255, 255, 0.18);
+  --accent-ring:     rgba(255, 255, 255, 0.16);
   --accent-glow:     rgba(255, 255, 255, 0.10);
 
-  /* the same signal, lifted so it still clears AA on black (6.4:1) */
-  --red:         #ff4d4d;
-  --green:       #4cc38a;
+  /* the same signal, softened with the rest of the ramp — 5.2 inset / 6.5 canvas */
+  --red:         #ff6b6b;
+  --green:       #4ec98c;
 
-  --hov:         rgba(255, 255, 255, 0.07);
+  --hov:         rgba(255, 255, 255, 0.06);
   --hovsh:       none;
   --hovbr:       rgba(255, 255, 255, 0.26);
-  --sb:          rgba(255, 255, 255, 0.15);
-  --sbh:         rgba(255, 255, 255, 0.28);
-  --dotgrid:     rgba(255, 255, 255, 0.075);
+  --sb:          rgba(255, 255, 255, 0.14);
+  --sbh:         rgba(255, 255, 255, 0.26);
+  --dotgrid:     rgba(255, 255, 255, 0.055);
   --shadow-app:  none;
   --shadow-tile: none;
   --shadow-btn:  none;
-  --shadow-pop:  0 18px 44px -14px rgba(0, 0, 0, 0.85);
-  --edge:        rgba(255, 255, 255, 0.38);   /* 3.0:1 on black */
+  --shadow-pop:  0 18px 44px -14px rgba(0, 0, 0, 0.7);
+  --edge:        rgba(255, 255, 255, 0.36);   /* 3.2:1 on inset, 3.4:1 on canvas */
 }
 
 * { box-sizing: border-box; }
@@ -261,25 +281,41 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 
 .side-sec { padding: 2px 12px 4px; }
+.side-sec-nav { padding-top: 6px; }   /* no caption above it, so it takes the caption's air */
 /* logo, primary nav, settings and footer stay pinned; only the middle scrolls */
-.side > .side-sec, .side-logo, .side-foot { flex-shrink: 0; }
+.side > .side-sec, .side-logo { flex-shrink: 0; }
 .side-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 .side-sec-grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
-/* The section label is the app's signature piece of type: mono, uppercase,
-   widely tracked. Nothing uses exactly this to caption a block of information
-   without competing with it. Every micro-label in the app now matches it. */
-.side-label {
+/* ——— THE MICRO-LABEL ———
+   The app's signature piece of type: mono, uppercase, widely tracked. Nothing uses
+   exactly this to caption a block of information without competing with it.
+
+   It had been copy-pasted into nine selectors and drifted — some at 600, some 700,
+   some --text-mut, some --text-faint — so the quietest content in the app was set
+   nine slightly different ways. One rule now, and it is the ONLY place this recipe
+   is written down. New micro-labels join the selector list; they do not restate it. */
+.side-label,
+.tray-count,
+.tagpop-h,
+.rem-h,
+.help-h,
+.dup-src-kind,
+.dup-forgot-h,
+.cloud-badge {
   font: 600 var(--t1) var(--mono);
   letter-spacing: var(--tr-label);
   text-transform: uppercase;
   color: var(--text-mut);
-  padding: 14px 8px 7px;
 }
+/* 14/7 was off the 4px scale and spent 34.5px per caption — four of them cost 138px of
+   a 262px sidebar. 8/4 is on the scale and returns 48px to the lists themselves. */
+.side-label { padding: 8px 8px 4px; }
 .side-label-row { display: flex; align-items: center; justify-content: space-between; padding-right: 2px; }
 
-/* hairline between sidebar blocks — structure made visible rather than implied */
-.side-scroll > .side-sec + .side-sec { border-top: 1px solid var(--line); }
+/* No hairlines between sidebar blocks. Each block already has a tracked-mono caption with
+   air above it; a rule as well is the separation drawn twice, and four of them in a 262px
+   column is most of what made it read as busy. Whitespace does the job. */
 
 .navx {
   width: 100%;
@@ -296,9 +332,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .navx:hover { background: var(--hov); color: var(--text-strong); }
 /* Selection is a filled block plus a hard marker on the leading edge — a
    lit segment, not a tinted pill. Reads instantly in both themes. */
+/* Two devices, not three: a filled block and a lit leading edge. The weight bump that used
+   to come with them also reflowed the label, so the row shifted as you moved between views. */
 .navx.is-active {
   position: relative;
-  font-weight: 700;
   color: var(--text-strong);
   background: var(--accent-soft);
 }
@@ -317,9 +354,16 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
    Settings — starts on the same vertical rail */
 .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin: 0 4px; }
 .nav-sq  { width: 9px; height: 9px; border-radius: 3px; flex: none; margin: 0 3.5px; }
-.nav-count { margin-left: auto; font: 600 var(--t2) var(--mono); color: var(--accent-soft-txt); }
+/* Counts are secondary to the labels they count, so they are quieter than them — this was
+   at full-strength ink while its own label sat at --text-soft, and the two count styles in
+   the sidebar (.nav-count, .nav-n) pointed in opposite directions. One weight now. */
+.nav-count { margin-left: auto; font: 600 var(--t2) var(--mono); color: var(--text-mut); }
+/* the active row's fill lifts the surface, so its count lifts with it */
+.navx.is-active .nav-count { color: var(--text-soft); }
 .navx .nav-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.navx .nav-n { margin-left: auto; font: 600 var(--t2) var(--mono); color: var(--text-ghost); }
+/* a tab count is text, not an icon — --text-ghost is the non-text token and put this at
+   3.5:1, under AA. Caught by measuring rendered elements rather than tokens. */
+.navx .nav-n { margin-left: auto; font: 600 var(--t2) var(--mono); color: var(--text-faint); }
 .navx .nav-acts { display: none; margin-left: auto; gap: 1px; }
 .navx:hover .nav-acts, .navx:focus-within .nav-acts { display: flex; }
 .navx:hover .nav-n, .navx:focus-within .nav-n { display: none; }
@@ -384,31 +428,20 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .nav-ic svg { display: block; }
 
-.side-foot {
-  padding: 8px 12px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.side-foot { border-top: 1px solid var(--line); }
-.foot-tile {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  background: var(--accent);              /* flat */
-  color: var(--accent-contrast);
-  display: flex; align-items: center; justify-content: center;
-  font: 700 var(--t3) var(--grot);
-}
-.foot-meta { min-width: 0; }
-.foot-name { font: 600 var(--t3) var(--grot); color: var(--text-strong); }
-.foot-sub { font: 500 var(--t2) var(--mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The sidebar footer is gone. It was 53px spent on an "SN" avatar that repeated the
+   wordmark 700px above it, the product name repeated a second time, and a stats line
+   whose two numbers are already the badges on Collections and on the space rows. */
 
 /* ————— main / topbar ————— */
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
 
+/* 66px was carrying a 38px control on 14px of air top and bottom. 52 keeps 7px, which is
+   the same air the tray and the cards use, and hands 14px back to the board — where, with
+   the tray's 12px and the board padding's 6px, the fixed chrome above the first saved tab
+   drops from 219px to 187px. */
 .top {
-  height: 66px;
+  height: 52px;
   flex: none;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -427,7 +460,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 38px;
+  height: 34px;
   padding: 0 12px;
   border-radius: var(--r4);
   background: var(--bg-inset);
@@ -474,21 +507,43 @@ kbd {
 }
 .chipx:active { transform: translateY(1px); }
 .theme-seg .chipx {
-  width: 30px; height: 28px;
+  width: 30px; height: 26px;
   border-radius: var(--r2);
   display: flex; align-items: center; justify-content: center;
   color: var(--text-mut);
 }
 /* flat: the selected segment is a plain fill with a hairline, never a raised chip */
-.theme-seg .chipx.is-active { background: var(--bg); color: var(--accent-text); border: 1px solid var(--line-strong); }
+.theme-seg .chipx.is-active { background: var(--bg); color: var(--accent-text); border: 1px solid var(--edge); }
 .theme-seg .chipx:not(.is-active):hover { color: var(--text-soft); }
+
+/* ——— a lone square icon button in the topbar (theme toggle) ———
+   Shows the icon for the theme it will switch TO, so the button states its effect
+   rather than its current value — a two-cell segment existed only to say the latter. */
+.iconbtn {
+  width: 34px; height: 34px;
+  flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--edge);
+  border-radius: var(--r4);
+  background: var(--bg-inset);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: color 0.13s, border-color 0.13s, background 0.13s;
+}
+.iconbtn:hover { color: var(--text-strong); border-color: var(--accent-border); }
+.iconbtn svg { display: block; }
+/* in light we are heading to dark, so show the moon — and vice versa */
+.iconbtn .ic-moon { display: block; }
+.iconbtn .ic-sun { display: none; }
+:root[data-theme='dark'] .iconbtn .ic-moon { display: none; }
+:root[data-theme='dark'] .iconbtn .ic-sun { display: block; }
 
 .btnx { transition: transform 0.08s, box-shadow 0.15s, filter 0.15s; cursor: pointer; }
 .btnx:hover { filter: brightness(1.05); }
 .btnx:active { transform: translateY(1px); }
 .btnx.primary {
   display: flex; align-items: center; gap: 8px;
-  height: 38px; padding: 0 15px;
+  height: 34px; padding: 0 14px;
   border-radius: var(--r4);
   background: var(--accent);
   color: var(--accent-contrast);
@@ -520,18 +575,40 @@ kbd {
 }
 .mini-nav .chipx.is-active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 
-/* ————— open-tabs tray ————— */
+/* ————— open-tabs strip (horizontal mode) —————
+   Live tabs have one home, chosen in Settings → Appearance → Open tabs bar:
+     top   the strip below — horizontal chips, board view only
+     side  the sidebar's Windows panel, expanded
+     off   neither; reachable by expanding a window in the sidebar
+   Both the mode and the current view are attributes on <html>, so this is decided here
+   rather than by JS writing style.display — which is what let the strip and the sidebar
+   list both be on screen at once, showing the same tabs twice. */
 
+/* 52px, not less: .tray-chips is an overflow-x scroll container holding a 34px chip inside
+   2px padding, and `scrollbar-width: thin` means a real scrollbar appears — and adds
+   height — the moment the chips overflow, which for a tab manager is the steady state.
+   The strip sits on the canvas rather than its own --bg-tray fill, so the top of the app
+   is one surface with two hairlines instead of three stacked bands of different value. */
 .tray {
-  height: 64px;
+  display: none;
+  height: 52px;
   flex: none;
   border-bottom: 1px solid var(--line);
-  background: var(--bg-tray);
-  display: flex;
+  background: var(--bg);
   align-items: center;
   gap: 12px;
   padding: 0 20px;
 }
+:root[data-tabsbar='top'][data-view='board'] .tray { display: flex; }
+
+/* the board-layout toggle (columns / tiles) has nothing to act on off the board */
+.viewmode-seg { display: none; }
+:root[data-view='board'] .viewmode-seg { display: flex; }
+
+/* vertical mode: the Windows panel is the tab list, so it earns the height */
+:root[data-tabsbar='side'] #windows-root { max-height: calc(52vh / var(--app-zoom, 1)); }
+
+.tray-empty { font: 500 var(--t3) var(--grot); color: var(--text-mut); }
 
 .tray-live { display: flex; align-items: center; gap: 8px; flex: none; }
 /* THE red dot. These tabs are live right now — the same job Nothing's recording
@@ -539,13 +616,7 @@ kbd {
 .pulse { position: relative; display: flex; width: 8px; height: 8px; }
 .pulse span:first-child { position: absolute; inset: 0; border-radius: 50%; background: var(--red); opacity: 0.3; }
 .pulse span:last-child { position: absolute; inset: 2px; border-radius: 50%; background: var(--red); }
-.tray-count {
-  font: 600 var(--t1) var(--mono);
-  letter-spacing: var(--tr-label);
-  text-transform: uppercase;
-  color: var(--text-mut);
-  white-space: nowrap;
-}
+.tray-count { white-space: nowrap; }   /* type comes from the shared micro-label rule */
 
 .tray-chips {
   flex: 1;
@@ -556,19 +627,31 @@ kbd {
   padding: 2px 0;
 }
 
+/* The chip used to be --bg-card on --bg-tray: two adjacent steps of the same ramp, which
+   in dark measured 1.03:1 — under the just-noticeable difference, so the chip had no body
+   at all — carried by a hairline at 1.5:1, under the 3:1 non-text minimum. It now sits on
+   the canvas as an inset with a real --edge, the same "control on canvas" pairing the
+   search box and the segments already use. */
 .chip-tab {
   flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
+  height: 34px;
   padding: 0 10px 0 8px;
-  border: 1px solid var(--card-line-2);
+  border: 1px solid var(--edge);
   border-radius: var(--r4);
-  background: var(--bg-card);
+  background: var(--bg-inset);
 }
 .chip-tab .title { font: 600 var(--t3) var(--grot); color: var(--text-body); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-.chip-tab.is-active { border-color: var(--accent-border); box-shadow: inset 0 0 0 1px var(--accent-border); }
+/* The active tab is a filled block, matching how the sidebar marks the active view —
+   a border-colour swap alone was a 2.7:1 state change against its neighbours. */
+.chip-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.chip-tab.is-active .title { color: var(--accent-contrast); }
+.chip-tab.is-active .icb { color: var(--accent-contrast); }
 
 /* ————— card motion (design .tcard) ————— */
 
@@ -584,10 +667,32 @@ kbd {
 .tcard:hover .acts, .tcard:focus-within .acts { opacity: 1; }
 @media (hover: none) { .acts { opacity: 1; } }
 
+/* ——— hover actions do not reserve space ———
+   At rest these are invisible, but they still occupied 80px of every row card, squeezing
+   the title+domain block from 213px to 122px in a 300px column and wrapping the tag row on
+   cards with two long tags. Taking them out of flow gives that width back permanently and
+   costs nothing, since they are only ever painted on a hovered card. */
+.tabcard, .bmcard { position: relative; }
+.tabcard > .acts, .bmcard > .acts {
+  position: absolute;
+  top: 9px; right: 9px;
+  padding-left: 18px;   /* lead-in so the fade starts before the first icon */
+  border-radius: var(--r3);
+  background: linear-gradient(90deg, transparent 0, var(--hov) 18px);
+}
+.bmcard > .acts { top: 12px; right: 12px; }
+/* Without hover there is nothing to reveal them, so they are permanently visible — an
+   overlay would then sit on top of the title forever. Keep them in flow there. */
+@media (hover: none) {
+  .tabcard > .acts, .bmcard > .acts { position: static; padding-left: 0; background: none; }
+}
+
 .icb {
   width: 26px; height: 26px;
   border-radius: var(--r2);
-  color: var(--text-ghost);
+  /* --text-ghost is 3.2:1 on the plain surfaces but only 2.6:1 once a row is
+     selected and its background lifts; --text-faint clears 3:1 on both. */
+  color: var(--text-faint);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -602,11 +707,13 @@ kbd {
 
 /* ————— letter tiles ————— */
 
+/* No hairline around the favicon. Every tab card, bookmark card, tray chip and sidebar row
+   carries one of these, so the box was drawing 20-40 small rectangles per screen around
+   artwork that is already a distinct shape on the card surface. */
 .tile {
   position: relative;
   flex: none;
   border-radius: var(--r3);
-  border: 1px solid var(--card-line);
   box-shadow: var(--shadow-tile);
   display: flex;
   align-items: center;
@@ -629,7 +736,7 @@ kbd {
 .view-board {
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 18px;
+  padding: 12px;
   background-image: radial-gradient(circle at 1px 1px, var(--dotgrid) 1px, transparent 0);
   background-size: var(--dot-gap) var(--dot-gap);
 }
@@ -687,7 +794,9 @@ kbd {
   border-radius: var(--r2);
   padding: 2px 6px;
 }
-.col-note { font: 400 var(--t2)/1.4 var(--grot); color: var(--text-mut); margin-top: 7px; }
+/* "Updated Jan 1" is the quietest thing in the header, so it is set as one — at --t2/1.4
+   with 7px above it cost 23px of every column header, permanently, for a timestamp. */
+.col-note { font: 500 var(--t1)/1.2 var(--mono); color: var(--text-faint); margin-top: 4px; }
 /* header actions: hidden until you hover the column, then they take the count's place
    (the base `.acts { opacity: 0 }` only ever revealed on `.tcard` hover, which the header
    is not — so these were permanently invisible) */
@@ -810,8 +919,25 @@ kbd {
 
 /* ————— library ————— */
 
+/* ——— THE VIEW CONTAINER ———
+   Every scrolling view is the same box: one padding, one of three measures. This used to
+   be five separate declarations carrying four unrelated max-widths. */
+.library, .tagsview, .notesview, .duplicates, .settings {
+  padding: var(--s6) var(--s6) var(--s9);
+  max-width: var(--measure);
+}
+.duplicates { max-width: var(--measure-list); }
+.settings   { max-width: var(--measure-form); }
+
+/* ——— THE VIEW SUBTITLE ———
+   The line of state under a view's heading. It had disagreed between the views that have
+   one (--t3/--text-soft here, --t3 1.5/--text-mut there). */
+.notes-sub, .dup-sub, .set-sub, .dup-forgot-sub {
+  font: 500 var(--t3)/1.5 var(--grot);
+  color: var(--text-soft);
+}
+
 .view-library { overflow-y: auto; }
-.library { padding: 22px 24px 44px; max-width: 1180px; }
 
 .crumbs {
   display: flex;
@@ -825,7 +951,7 @@ kbd {
 .crumb { color: var(--text-mut); padding: 5px 8px; border-radius: var(--r2); transition: background 0.13s, color 0.13s; }
 .crumb:not(.current):hover { color: var(--accent-text); background: var(--hov); }
 .crumb.current { color: var(--text-strong); font-weight: 700; cursor: default; }
-.crumb-sep { color: var(--text-ghost); }
+.crumb-sep { color: var(--text-faint); }
 .bm-toolbar { margin-left: auto; }
 .tool-ghost {
   display: flex; align-items: center; gap: 6px;
@@ -1056,7 +1182,7 @@ kbd {
 /* ————— settings page ————— */
 
 .view-settings { overflow-y: auto; }
-.settings { padding: 22px 24px 44px; max-width: 720px; display: flex; flex-direction: column; gap: 18px; }
+.settings { display: flex; flex-direction: column; gap: 18px; }   /* box comes from the shared view-container rule */
 
 .set-card {
   background: var(--bg-col);
@@ -1072,7 +1198,7 @@ kbd {
 .set-card .set-h + .set-row { border-top: 0; }
 .set-row-text { flex: 1; min-width: 0; }
 .set-label { font: 700 var(--t3) var(--grot); color: var(--text-strong); }
-.set-sub { font: 500 var(--t3) var(--grot); color: var(--text-mut); margin-top: 2px; }
+.set-sub { margin-top: 2px; }
 
 .set-control { display: flex; align-items: center; gap: 12px; flex: none; }
 .set-select {
@@ -1094,10 +1220,15 @@ kbd {
 .set-fontnote { margin-top: var(--s1); font: 500 var(--t2)/1.45 var(--grot); color: var(--red); max-width: 46ch; }
 .set-fontnote[hidden] { display: none; }
 
+/* what the currently-selected segment actually does — an option's consequence should be
+   readable without having to pick it and watch */
+.set-seghint { margin-top: var(--s1); font: 500 var(--t2)/1.45 var(--grot); color: var(--text-faint); max-width: 52ch; }
+.set-seghint:empty { display: none; }
+
 .set-seg { display: flex; background: var(--bg-inset); border: 1px solid var(--edge); border-radius: var(--r4); padding: 3px; gap: 2px; }
 .set-seg-btn { font: 600 var(--t3) var(--grot); color: var(--text-soft); padding: 6px 11px; border-radius: var(--r2); cursor: pointer; transition: background 0.13s, color 0.13s; white-space: nowrap; }
 .set-seg-btn:hover { color: var(--text-strong); }
-.set-seg-btn.is-active { background: var(--bg); color: var(--accent-text); border: 1px solid var(--line-strong); }
+.set-seg-btn.is-active { background: var(--bg); color: var(--accent-text); border: 1px solid var(--edge); }
 
 .set-toggle { display: flex; align-items: center; gap: 9px; font: 600 var(--t3) var(--grot); color: var(--text-soft); margin: 4px 0 14px; cursor: pointer; }
 .set-check { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
@@ -1133,7 +1264,7 @@ kbd {
   padding: 12px;
   display: flex; flex-direction: column; /* lets the chip list scroll when height is capped */
 }
-.tagpop-h { font: 700 var(--t1) var(--mono); text-transform: uppercase; letter-spacing: var(--tr-label); color: var(--text-mut); margin-bottom: 8px; flex: none; }
+.tagpop-h { margin-bottom: 8px; flex: none; }
 .tagpop-chips { display: flex; flex-wrap: wrap; gap: 5px; min-height: 22px; margin-bottom: 9px; overflow-y: auto; flex: 0 1 auto; align-content: flex-start; }
 .tagpop-add, .tagpop-hint { flex: none; }
 .tagpop-chip { display: inline-flex; align-items: center; gap: 5px; font: 600 var(--t2) var(--grot); color: var(--text-body); background: var(--bg-inset); border: 1px solid var(--line); border-radius: 999px; padding: 2px 3px 2px 8px; max-width: 100%; }
@@ -1149,7 +1280,7 @@ kbd {
 /* ————— Tags view (filter + mind-graph + grid) ————— */
 
 .view-tags, .view-duplicates { overflow-y: auto; }
-.tagsview { padding: 22px 24px 44px; max-width: 1120px; }
+
 .tag-filterbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .tag-chip { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t3) var(--grot); color: var(--text-soft); background: var(--bg-inset); border: 1px solid var(--edge); border-radius: 999px; padding: 5px 11px; cursor: pointer; transition: background .13s, color .13s, border-color .13s; }
 .tag-chip:hover { color: var(--text-strong); }
@@ -1157,6 +1288,10 @@ kbd {
 .tag-chip-n { font: 600 var(--t1) var(--mono); color: var(--text-mut); }
 .tag-chip.is-active .tag-chip-n { color: var(--accent-contrast); opacity: .75; }
 .tag-section-h { display: flex; align-items: center; gap: 8px; margin: 22px 0 12px; font: 700 var(--t4) var(--grot); color: var(--text-strong); }
+/* heading and its graph/list switch share one baseline row */
+.tag-sectionrow { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
+.tag-sectionrow .tag-section-h { margin-bottom: 12px; }
+.tag-modeseg { flex: none; }
 .tag-graph-wrap {
   position: relative;
   border: 1px solid var(--card-line-2);
@@ -1230,19 +1365,18 @@ kbd {
 
 /* ————— Duplicates view ————— */
 
-.duplicates { padding: 22px 24px 44px; max-width: 880px; }
 .dup-head { margin-bottom: 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .dup-h-text { min-width: 0; }
 .dup-clean { height: 34px; padding: 0 14px; flex: none; margin-top: 2px; }
 .dup-forget { flex: none; height: 30px; }
 .dup-title { margin: 0; font: 800 var(--t6) var(--grot); letter-spacing: var(--tr-tight); color: var(--text-strong); }
-.dup-sub { margin: 5px 0 0; font: 500 var(--t3)/1.5 var(--grot); color: var(--text-mut); max-width: 62ch; }
+.dup-sub { margin: 5px 0 0; max-width: 62ch; }
 .dup-card { border: 1px solid var(--card-line-2); border-radius: var(--r6); background: var(--bg-col); margin-bottom: 12px; overflow: hidden; }
 .dup-card-head { display: flex; align-items: center; gap: 11px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
 .dup-link { display: flex; flex-direction: column; min-width: 0; flex: 1; text-decoration: none; }
 .dup-link-title { font: 600 var(--t3) var(--grot); color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dup-link-url { font: 500 var(--t2) var(--mono); color: var(--text-faint); }
-.dup-badge { font: 700 var(--t2) var(--mono); color: var(--red); background: color-mix(in srgb, var(--red) 13%, transparent); border-radius: 999px; padding: 2px 8px; flex: none; }
+.dup-badge { font: 700 var(--t2) var(--mono); color: var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); border-radius: 999px; padding: 2px 8px; flex: none; }
 .dup-resolve { height: 30px; padding: 0 12px; flex: none; }
 .dup-occs { display: flex; flex-direction: column; }
 .dup-occ { display: flex; align-items: center; gap: 9px; padding: 8px 14px; cursor: pointer; transition: background .12s; }
@@ -1250,16 +1384,16 @@ kbd {
 .dup-occ:hover { background: var(--hov); }
 .dup-occ:has(.dup-keep:checked) { background: var(--accent-soft); }
 .dup-keep { width: 15px; height: 15px; margin: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
-.dup-src-ic { color: var(--text-ghost); display: inline-flex; flex: none; }
+.dup-src-ic { color: var(--text-faint); display: inline-flex; flex: none; }
 .dup-src-ic svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .dup-src { flex: 1; font: 500 var(--t3) var(--grot); color: var(--text-soft); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dup-src-kind { font: 700 var(--t1) var(--mono); letter-spacing: var(--tr-label); text-transform: uppercase; color: var(--text-faint); flex: none; }
+.dup-src-kind { flex: none; color: var(--text-soft); }   /* selected rows lift the surface under it */
 .dup-occ:has(.dup-keep:checked) .dup-src { color: var(--text-strong); font-weight: 600; }
 
 /* forgotten links — excluded from scans, restorable */
 .dup-forgot { margin-top: 28px; border-top: 1px dashed var(--line-strong); padding-top: 18px; }
-.dup-forgot-h { margin: 0 0 3px; font: 700 var(--t1) var(--mono); letter-spacing: var(--tr-label); text-transform: uppercase; color: var(--text-mut); }
-.dup-forgot-sub { margin: 0 0 10px; font: 500 var(--t3) var(--grot); color: var(--text-mut); }
+.dup-forgot-h { margin: 0 0 3px; }
+.dup-forgot-sub { margin: 0 0 10px; }
 .dup-forgot-row { display: flex; align-items: center; gap: 11px; padding: 8px 2px; }
 .dup-forgot-row + .dup-forgot-row { border-top: 1px solid var(--line); }
 .dup-forgot-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -1272,14 +1406,21 @@ kbd {
 .set-h { display: flex; align-items: center; gap: 8px; }
 .set-h svg { stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--accent-text); }
 .cloud-provider { border: 1px solid var(--line); border-radius: var(--r5); padding: 12px 14px; margin-top: 12px; background: var(--bg-inset); }
-.cloud-provider.is-soon { opacity: 0.72; }
+/* "Coming soon" is quieter, not translucent. `opacity: .72` here dropped its heading to
+   3.3:1 and its meta line to 1.7:1 in dark — fading a whole block with opacity destroys
+   the contrast of everything inside it, which is exactly why nothing else in this sheet
+   does it. Recede by choosing dimmer colours instead. */
+.cloud-provider.is-soon .cloud-name { color: var(--text-soft); }
+.cloud-provider.is-soon .cloud-dot { background: var(--text-faint); }
+.cloud-provider.is-soon .cloud-meta { color: var(--text-mut); }
 .cloud-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cloud-name { display: flex; align-items: center; gap: 8px; font: 700 var(--t3) var(--grot); color: var(--text-strong); min-width: 0; }
 .cloud-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 .cloud-dot.g { background: var(--green); }
 .cloud-dot.pro { background: var(--accent); }
 .cloud-acct { font: 600 var(--t3) var(--grot); color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cloud-badge { font: 800 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--accent-contrast); background: var(--accent); border-radius: var(--r1); padding: 2px 5px; }
+/* the one micro-label on a fill, so it overrides only the colour */
+.cloud-badge { color: var(--accent-contrast); background: var(--accent); border-radius: var(--r1); padding: 2px 5px; }
 .cloud-btns { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
 .cloud-btns .btnx { display: flex; align-items: center; gap: 6px; }
 .cloud-btns .btnx svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -1287,7 +1428,15 @@ kbd {
 .cloud-provider .set-actions { margin-top: 12px; }
 .btnx.ghosty { height: 34px; padding: 0 13px; color: var(--text-soft); border: 1px solid var(--edge); border-radius: var(--r3); background: transparent; font: 600 var(--t3) var(--grot); }
 .btnx.ghosty:hover { background: var(--hov); color: var(--text-strong); }
-.btnx[disabled] { opacity: 0.55; pointer-events: none; }
+/* A disabled button still has to be readable — you cannot act on a label you cannot read.
+   Dim by colour so the text keeps its contrast; the flat fill is what reads as inert. */
+.btnx[disabled] {
+  pointer-events: none;
+  background: var(--bg-inset);
+  border-color: var(--line-strong);
+  color: var(--text-mut);
+  box-shadow: none;
+}
 .btnx.is-busy { opacity: 0.6; pointer-events: none; }
 
 /* ————— market ticker (topbar marquee) ————— */
@@ -1324,7 +1473,6 @@ kbd {
 
 /* ————— Notes & Todos (mosaic) ————— */
 .view-notes { overflow-y: auto; }
-.notesview { padding: 22px 24px 44px; max-width: 1180px; }
 
 /* The bar reads as a bar: a rule under it, and controls that hold their own weight
    against the canvas. The sub-line used to be --text-mut (2.9:1 on paper — under AA);
@@ -1335,8 +1483,7 @@ kbd {
   padding-bottom: var(--s3); margin-bottom: var(--s4);
   border-bottom: 1px solid var(--line-strong);
 }
-.notes-title { margin: 0; font: 800 var(--t6) var(--grot); letter-spacing: var(--tr-tight); color: var(--text-strong); }
-.notes-sub { margin: 5px 0 0; font: 500 var(--t3) var(--grot); color: var(--text-soft); }
+.notes-sub { margin: 5px 0 0; }
 .notes-tools { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 
 .notes-menu-wrap { position: relative; }
@@ -1559,7 +1706,7 @@ kbd {
 
 /* reminder popover */
 .rem-pop { position: fixed; z-index: 60; width: 268px; background: var(--bg-side); border: 1px solid var(--line-strong); border-radius: var(--r5); box-shadow: var(--shadow-pop); padding: 14px; display: flex; flex-direction: column; gap: 11px; }
-.rem-h { display: flex; align-items: center; gap: 7px; font: 700 var(--t1) var(--mono); letter-spacing: var(--tr-label); text-transform: uppercase; color: var(--text-mut); }
+.rem-h { display: flex; align-items: center; gap: 7px; }
 .rem-h svg { stroke: currentColor; fill: none; stroke-width: 1.8; }
 .rem-field { display: flex; flex-direction: column; gap: 5px; }
 .rem-lbl { font: 600 var(--t2) var(--grot); color: var(--text-soft); }
@@ -1583,7 +1730,7 @@ kbd {
 .help-modal { width: min(640px, 100%); max-height: min(78vh, 720px); display: flex; flex-direction: column; }
 .help-modal .modal-msg { margin-bottom: 14px; }
 .help-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 2px 6px 4px 0; margin-bottom: 18px; }
-.help-h { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; font: 700 var(--t1) var(--mono); letter-spacing: var(--tr-label); text-transform: uppercase; color: var(--text-mut); }
+.help-h { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; }
 .help-h svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .help-list { margin: 0; display: grid; grid-template-columns: minmax(110px, 170px) 1fr; gap: 8px 16px; align-items: baseline; }
 .help-k { font: 700 var(--t3) var(--grot); color: var(--text-strong); }

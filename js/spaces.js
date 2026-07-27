@@ -22,10 +22,10 @@ const SPACE_MIME = 'text/x-stacknest-space';
 const WS_MIME = 'text/x-stacknest-workspace';
 const OPEN_ALL_CONFIRM = 10;
 
-let boardRoot, navRoot, wsRoot, navCount, statsEl, getQuery, ensureBoardVisible, clearSearch;
+let boardRoot, navRoot, wsRoot, navCount, getQuery, ensureBoardVisible, clearSearch;
 
 export function initSpaces(options) {
-  ({ boardRoot, navRoot, wsRoot, navCount, statsEl, getQuery, ensureBoardVisible, clearSearch } = options);
+  ({ boardRoot, navRoot, wsRoot, navCount, getQuery, ensureBoardVisible, clearSearch } = options);
 
   chrome.storage?.onChanged?.addListener((changes, area) => {
     if (area === 'local' && (changes[SPACES_KEY] || changes[WORKSPACES_KEY] || changes[ACTIVE_WS_KEY] || changes[TAGS_KEY])) render();
@@ -164,11 +164,8 @@ async function exportAll() {
 export async function render() {
   const q = getQuery();
   const [workspaces, activeId, spaces, tagsMap] = await Promise.all([loadWorkspaces(), getActiveWorkspaceId(), loadActiveSpaces(), loadTags()]);
-  const totalTabs = spaces.reduce((n, s) => n + s.tabs.length, 0);
 
   navCount.textContent = spaces.length ? String(spaces.length) : '';
-  const wsName = workspaces.find((w) => w.id === activeId)?.name || 'Space';
-  statsEl.textContent = `${wsName} · ${spaces.length} collection${spaces.length === 1 ? '' : 's'} · ${totalTabs} tab${totalTabs === 1 ? '' : 's'}`;
 
   renderWorkspaces(workspaces, activeId);
   renderBoard(spaces, q, tagsMap);

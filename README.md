@@ -45,8 +45,13 @@ normal-profile window.
   auto-expands windows that contain matches. Hovering a collection row reveals **rename**
   and **delete**.
 - **Topbar** — search (`⌘K` or `/`), the light/dark theme toggle, and **Stash window**.
-- **Tray** — the current window's open tabs as chips. Click to jump, hover to close,
-  **drag a chip anywhere** — onto a collection, the board, or the Library — to save it.
+- **Open tabs bar** — the current window's live tabs. Click to jump, hover to close,
+  **drag one anywhere** — onto a collection, the board, or the Library — to save it.
+  Settings → Appearance chooses where it lives: **Horizontal** (a strip of chips under the
+  header), **Vertical** (a list inside the sidebar's Windows panel) or **Hidden**. It used
+  to render in both places at once, which is the same tabs twice and 64px of the board
+  spent on the copy. Whichever you pick, the per-window rows — switch to it, save it,
+  stash it — stay in the sidebar; those are window actions, not a tab list.
 - **Board** — your collections as columns on a dotted canvas.
 
 ## What it does
@@ -161,8 +166,9 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
 > waits until you click away rather than yanking the field you're typing in.
 
 **Settings** (in the sidebar):
-- **Typography** — pick the **interface font** and **monospace font** and an **interface size**
-  (Compact · Default · Comfortable · Large). Applied instantly to the whole app and saved. Each
+- **Appearance** — pick the **interface font** and **monospace font**, an **interface size**
+  (Compact · Default · Comfortable · Large), and where the **open tabs bar** lives
+  (Horizontal · Vertical · Hidden). Applied instantly to the whole app and saved. Each
   entry in the menu is **rendered in its own typeface**, so the list is the preview.
 
   StackNest also **checks whether the font is actually on your machine**. A CSS font stack fails
@@ -281,9 +287,12 @@ technology should ask for less of your attention, not more. Four rules, and ever
 3. **Structure is visible.** Hairline rules between sections and a **dot-matrix ground** on the
    board, the tag graph and every empty state — the grid the layout sits on, left exposed
    rather than painted over. It is Nothing's transparent back panel, applied to software.
-4. **Neutral greys, true black.** The greys carry no blue cast, and dark mode is **#000000**,
-   not a soft charcoal — on OLED that is Nothing's whole point, and on a monitor it keeps the
-   same uncompromising character.
+4. **Neutral greys on graphite.** The greys carry no blue cast, and dark mode is **#171717**,
+   not #000. True black was the original call, on the OLED-phone argument — but this is a
+   desktop surface stared at for hours in a lit room, and #fff on #000 is 21:1. That much
+   contrast makes stems shimmer and reads as glare rather than crispness. The canvas sits at
+   #171717 and the brightest text at #e9e9e9, landing the top end at **14.8:1** — far above
+   AA's 4.5, comfortably below the point where it fights the eye.
 
 Selection **inverts** to solid ink rather than tinting, so a chosen chip is unmistakable; the
 active nav row adds a hard marker on its leading edge. Micro-labels are mono, uppercase and

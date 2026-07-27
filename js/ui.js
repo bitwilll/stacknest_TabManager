@@ -100,13 +100,45 @@ export function domainOf(url) {
   }
 }
 
+/* ——— the fallback letter's contrast, solved rather than assumed ———
+   The plate is hsl(h 58% 92%) and the letter used to be a flat hsl(h 56% 36%). HSL
+   lightness is not perceptual, so that one number meant very different contrast per hue:
+   measured, a yellow-ish domain landed at 3.5:1 and a blue one at 4.28:1 — both under AA
+   for a glyph that is the only thing identifying a site with no favicon. Darken the letter
+   until it actually clears 4.5:1 against its own plate. Memoised: there are only 360 hues. */
+const PLATE_S = 58, PLATE_L = 92, LETTER_S = 56;
+const letterLightness = new Map();
+
+// Rounded to 8-bit, because that is what the engine paints: solving in float and
+// letting hsl() round afterwards left hue 41 at 4.494:1, just under the line.
+function hslToRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))));
+  return [f(0), f(8), f(4)];
+}
+function relLum([r, g, b]) {
+  const c = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b);
+}
+function solveLetterL(h) {
+  if (letterLightness.has(h)) return letterLightness.get(h);
+  const plate = relLum(hslToRgb(h, PLATE_S, PLATE_L)) + 0.05;
+  let l = 36;
+  // walk down in 1% steps to 4.55 — a little over the floor, so nothing lands on the line
+  while (l > 10 && plate / (relLum(hslToRgb(h, LETTER_S, l)) + 0.05) < 4.55) l -= 1;
+  letterLightness.set(h, l);
+  return l;
+}
+
 export function tile(url, size = 34) {
   const domain = domainOf(url) || '?';
   const h = hueOf(domain);
   const letter = domain.charAt(0).toUpperCase();
   const wrap = el('span', {
     class: 'tile',
-    style: `width:${size}px;height:${size}px;background:hsl(${h} 58% 92%);color:hsl(${h} 56% 36%);font-size:${Math.round(size * 0.42)}px`,
+    style: `width:${size}px;height:${size}px;background:hsl(${h} ${PLATE_S}% ${PLATE_L}%);color:hsl(${h} ${LETTER_S}% ${solveLetterL(h)}%);font-size:${Math.round(size * 0.42)}px`,
   }, el('span', { class: 'tile-letter', text: letter }));
   const img = el('img', {
     src: faviconUrl(url, 64),

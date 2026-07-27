@@ -32,6 +32,19 @@ export const SCALES = [
   { id: 'large', label: 'Large', zoom: 1.2 },
 ];
 
+/* Where the live tabs of the focused window are shown. They used to appear in BOTH
+   places at once — a horizontal strip under the header and again inside the sidebar's
+   Windows panel — which is the same information twice and 64px of the board's height
+   spent on the duplicate. Now it is one place, and you choose which.
+
+   Whichever you pick, the per-window rows (switch to it, save it, stash it) stay in the
+   sidebar: those are window actions, not a tab list, and nothing here removes them. */
+export const TAB_BARS = [
+  { id: 'top', label: 'Horizontal', sub: 'A strip of tab chips under the header.' },
+  { id: 'side', label: 'Vertical', sub: 'A list inside the sidebar’s Windows panel.' },
+  { id: 'off', label: 'Hidden', sub: 'Neither — expand a window in the sidebar to reach its tabs.' },
+];
+
 // — market ticker options (used here + by ticker.js) —
 export const TICKER_BASES = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'CNY'];
 export const TICKER_CRYPTOS = [
@@ -43,6 +56,7 @@ export const TICKER_FX = ['EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'CNY', 'CHF'
 
 export const DEFAULT_SETTINGS = {
   fontUi: 'hanken', fontMono: 'jetbrains', scale: 'default',
+  tabsBar: 'top',
   tickerEnabled: false, tickerBase: 'USD',
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
   grammarEnabled: false,
@@ -95,6 +109,7 @@ export async function loadSettings() {
     fontUi: validId(FONT_UI, m.fontUi, DEFAULT_SETTINGS.fontUi),
     fontMono: validId(FONT_MONO, m.fontMono, DEFAULT_SETTINGS.fontMono),
     scale: validId(SCALES, m.scale, DEFAULT_SETTINGS.scale),
+    tabsBar: validId(TAB_BARS, m.tabsBar, DEFAULT_SETTINGS.tabsBar),
     tickerEnabled: !!m.tickerEnabled,
     tickerBase: TICKER_BASES.includes(m.tickerBase) ? m.tickerBase : DEFAULT_SETTINGS.tickerBase,
     tickerCrypto: validArr(TICKER_CRYPTOS.map((c) => c.id), m.tickerCrypto, DEFAULT_SETTINGS.tickerCrypto),
@@ -123,6 +138,10 @@ export function applySettings(s) {
   const zoom = pick(SCALES, s.scale).zoom;
   root.style.zoom = String(zoom);
   root.style.setProperty('--app-zoom', String(zoom));
+  // layout switches ride on the root element so the stylesheet owns what is shown —
+  // no inline display juggling, and nothing to re-apply on every view change
+  root.dataset.tabsbar = pick(TAB_BARS, s.tabsBar).id;
+  document.dispatchEvent(new CustomEvent('stacknest:tabsbar', { detail: pick(TAB_BARS, s.tabsBar).id }));
 }
 
 /* ————————————————————————— settings view ————————————————————————— */
@@ -309,14 +328,15 @@ async function render() {
   const s = await loadSettings();
   const frag = document.createDocumentFragment();
 
-  // — Typography —
+  // — Appearance: type, size, and where the live tabs live —
   const type = el('section', { class: 'set-card' },
-    el('h2', { class: 'set-h', text: 'Typography' }),
+    el('h2', { class: 'set-h', text: 'Appearance' }),
     fontRow('Interface font', 'Titles, cards, navigation — everything but code.', FONT_UI, s.fontUi,
       (v) => saveSettings({ fontUi: v }).then(() => toast('Interface font updated')), 'sample-ui'),
     fontRow('Monospace font', 'Counts, domains, labels and keyboard hints.', FONT_MONO, s.fontMono,
       (v) => saveSettings({ fontMono: v }).then(() => toast('Monospace font updated')), 'sample-mono'),
-    sizeRow(s.scale),
+    segRow('Interface size', 'Scales the whole interface, text and all.', SCALES, s.scale, 'scale'),
+    segRow('Open tabs bar', 'Where this window’s live tabs are listed.', TAB_BARS, s.tabsBar, 'tabsBar'),
   );
 
   // — Backup —
@@ -340,17 +360,28 @@ async function render() {
   root.replaceChildren(frag);
 }
 
-function sizeRow(current) {
-  const seg = el('div', { class: 'set-seg', role: 'group', 'aria-label': 'Interface size' });
-  for (const z of SCALES) {
-    const btn = el('button', { class: `set-seg-btn${z.id === current ? ' is-active' : ''}`, text: z.label });
-    btn.addEventListener('click', () => saveSettings({ scale: z.id }));
+// A labelled row whose control is a segmented button group. `sub` is the row's own
+// description; when an option carries its own `sub`, the selected one's is appended so
+// the consequence of the choice is readable without picking it first.
+function segRow(label, sub, list, current, key) {
+  const note = el('div', { class: 'set-seghint' });
+  const seg = el('div', { class: 'set-seg', role: 'group', 'aria-label': label });
+  const showHint = (id) => { note.textContent = list.find((x) => x.id === id)?.sub || ''; };
+  for (const opt of list) {
+    const btn = el('button', { class: `set-seg-btn${opt.id === current ? ' is-active' : ''}`, text: opt.label });
+    btn.addEventListener('click', () => {
+      for (const sib of seg.children) sib.classList.toggle('is-active', sib === btn);
+      showHint(opt.id);
+      saveSettings({ [key]: opt.id });
+    });
     seg.append(btn);
   }
+  showHint(current);
   return el('div', { class: 'set-row' },
     el('div', { class: 'set-row-text' },
-      el('div', { class: 'set-label', text: 'Interface size' }),
-      el('div', { class: 'set-sub', text: 'Scales the whole interface, text and all.' }),
+      el('div', { class: 'set-label', text: label }),
+      el('div', { class: 'set-sub', text: sub }),
+      note,
     ),
     el('div', { class: 'set-control' }, seg),
   );
