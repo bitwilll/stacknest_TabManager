@@ -4,7 +4,7 @@
 import { el, icon, toast } from './ui.js';
 import { getKey, update } from './store.js';
 import { exportBackup, importFlow } from './backup.js';
-import { CLOUD_KEY, loadCloudState, connect, switchAccount, disconnect, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
+import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
 import { confirmDialog } from './ui.js';
 
 export const SETTINGS_KEY = 'stacknest:settings';
@@ -164,6 +164,24 @@ function shortWhen(iso) {
   } catch { return 'recently'; }
 }
 
+/* Signing out drops every cached token and stops syncing. It used to be a button called
+   "Disconnect" that silently revoked the Google grant with no confirmation — a one-click,
+   hard-to-undo action that also made the next sign-in re-run the whole consent screen.
+   Now it asks first, and the revoke is an explicit choice rather than a hidden side effect. */
+async function signOutFlow() {
+  const revoke = el('input', { type: 'checkbox', class: 'set-check' });
+  const ok = await confirmDialog({
+    title: 'Sign out of Google Drive?',
+    message: 'StackNest will stop syncing and will forget this account on this device. Your backup file in Drive is not deleted — sign back in any time to restore from it.',
+    extra: el('label', { class: 'set-toggle modal-choice' }, revoke,
+      el('span', {}, 'Also remove StackNest’s access to my Google account')),
+    confirmLabel: 'Sign out',
+  });
+  if (!ok) return;
+  await signOut({ revoke: revoke.checked });
+  toast(revoke.checked ? 'Signed out and access removed' : 'Signed out of Google Drive');
+}
+
 async function cloudCard() {
   const cloud = await loadCloudState();
   const live = isLive();
@@ -195,7 +213,7 @@ async function cloudCard() {
         el('span', { class: 'cloud-name' }, el('span', { class: 'cloud-dot g' }), el('span', { class: 'cloud-acct', text: cloud.email || 'Google Drive' })),
         el('div', { class: 'cloud-btns' },
           el('button', { class: 'btnx ghosty', title: 'Sign in with a different Google account', onclick: withBusy(async () => { await switchAccount(); toast('Switched account'); }) }, icon('swap', 13), el('span', { text: 'Switch account' })),
-          el('button', { class: 'btnx ghosty', onclick: withBusy(async () => { await disconnect(); toast('Disconnected'); }) }, el('span', { text: 'Disconnect' })),
+          el('button', { class: 'btnx ghosty', title: 'Sign out of Google Drive on this device', onclick: withBusy(signOutFlow) }, icon('logout', 13), el('span', { text: 'Sign out' })),
         ),
       ),
       el('div', { class: 'cloud-meta', text: `Last backup ${shortWhen(cloud.lastBackupAt)} · last restore ${shortWhen(cloud.lastRestoreAt)}` }),

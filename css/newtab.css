@@ -1246,6 +1246,8 @@ kbd {
 .modal-scrim.show .modal { transform: none; }
 .modal-title { margin: 0 0 8px; font: 800 var(--t5) var(--grot); letter-spacing: var(--tr-tight); color: var(--text-strong); }
 .modal-msg { margin: 0 0 18px; font: 500 var(--t3)/1.55 var(--grot); color: var(--text-soft); }
+/* a choice that belongs to the decision, sitting between the message and the buttons */
+.modal-choice { margin: -6px 0 18px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .modal-btn {
   height: 36px;

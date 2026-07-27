@@ -198,17 +198,29 @@ export async function switchAccount() {
   return connect({ chooseAccount: true });
 }
 
-export async function disconnect() {
+/* Sign out of Drive on this device.
+   Always: drop every cached token and clear the connection, so nothing is left behind for
+   the next person to use this profile and syncing stops immediately.
+   With revoke: also tell Google to invalidate the grant, so StackNest disappears from the
+   account's "Third-party apps with account access" list. That is the stronger, slower
+   option — it needs a network round trip and makes the next sign-in show the full consent
+   screen again — so it is the user's choice at the moment of signing out, not a default
+   buried in a settings row. Your backup file in Drive is untouched either way. */
+export async function signOut({ revoke = false } = {}) {
   if (isLive()) {
-    try {
-      const t = await getToken(false);
-      // actually revoke the grant so "Disconnect" severs access, not just hides the label
-      try { await fetch(`${REVOKE_URL}?token=${encodeURIComponent(t)}`, { method: 'POST' }); } catch { /* best effort */ }
-    } catch { /* nothing cached to revoke */ }
-    await dropAllTokens();                          // leave nothing behind for the next account
+    if (revoke) {
+      try {
+        const t = await getToken(false);
+        try { await fetch(`${REVOKE_URL}?token=${encodeURIComponent(t)}`, { method: 'POST' }); } catch { /* best effort */ }
+      } catch { /* nothing cached to revoke */ }
+    }
+    await dropAllTokens();
   }
   return patchState({ connected: false, email: null });
 }
+
+// the name the rest of the app already imports; a disconnect is a revoking sign-out
+export const disconnect = () => signOut({ revoke: true });
 
 export async function backupNow(includeBookmarks) {
   const backup = await buildBackup(includeBookmarks);
@@ -239,4 +251,4 @@ export async function restoreLatest() {
   return { collections: Array.isArray(data.collections) ? data.collections.length : 0 };
 }
 
-export const cloud = { CLOUD_KEY, isLive, isConfigured, canChooseAccount, loadCloudState, getAccount, connect, switchAccount, disconnect, backupNow, restoreLatest };
+export const cloud = { CLOUD_KEY, isLive, isConfigured, canChooseAccount, loadCloudState, getAccount, connect, switchAccount, signOut, disconnect, backupNow, restoreLatest };

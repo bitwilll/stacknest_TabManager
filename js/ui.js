@@ -45,6 +45,7 @@ const ICONS = {
   download: '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/>',
   grip:     '<path d="M9 5v14M15 5v14"/>',
   undo:     '<path d="M9 14 4 9l5-5"/><path d="M4 9h9a5 5 0 0 1 0 10H9"/>',
+  logout:   '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8 6 12l4 4"/><path d="M6 12h9"/>',
   tag:      '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
   cloud:    '<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 9.5a3.5 3.5 0 0 1 .5 8.5H7Z"/>',
   refresh:  '<path d="M20 11a8 8 0 0 0-14-4.5L4 8m0 0V4m0 4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16m0 0v4m0-4h-4"/>',
@@ -252,13 +253,17 @@ export function pickFile(accept = '') {
 }
 
 // Promise-based confirm dialog styled to the app. Resolves true (confirm) / false (cancel).
-export function confirmDialog({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false } = {}) {
+// `extra` is an optional node dropped between the message and the buttons — for a choice
+// that belongs to the decision itself (e.g. "also revoke access" on sign-out) rather than
+// to a settings row you would have had to visit beforehand.
+export function confirmDialog({ title, message, extra = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false } = {}) {
   return new Promise((resolve) => {
     const confirmBtn = el('button', { class: `modal-btn confirm${danger ? ' danger' : ''}`, text: confirmLabel });
     const cancelBtn = el('button', { class: 'modal-btn cancel', text: cancelLabel });
     const modal = el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || 'Confirm' },
       el('h2', { class: 'modal-title', text: title || 'Are you sure?' }),
       message ? el('p', { class: 'modal-msg', text: message }) : null,
+      extra,
       el('div', { class: 'modal-actions' }, cancelBtn, confirmBtn),
     );
     const scrim = el('div', { class: 'modal-scrim' }, modal);
