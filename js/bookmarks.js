@@ -10,6 +10,36 @@ const TAB_MIME = 'text/x-stacknest-tab';
 const LAST_FOLDER_KEY = 'stacknest:folder';
 const OPEN_ALL_CONFIRM = 10; // matches the Collections board's confirm threshold
 
+/* Chrome's invisible tree root. Its children are the permanent roots — Bookmarks Bar,
+   Other Bookmarks, and Mobile Bookmarks where it exists.
+
+   The Library used to start inside Bookmarks Bar with a breadcrumb that only walked UP,
+   and the permanent roots are siblings with nothing above them — so "Other Bookmarks" was
+   unreachable: no crumb led to it and no card showed it. Browsing it now goes through
+   this level, which renders the roots as folder cards and sits at the head of every trail.
+
+   It is a real id to Chrome but a strange one: getSubTree('0') works while get('0')
+   throws, so everything here reads it through getTree() instead. */
+const ROOT_ID = '0';
+const isPermanentRoot = (node) => node.parentId === ROOT_ID;
+
+async function getFolder(id) {
+  if (id === ROOT_ID) {
+    const [root] = await chrome.bookmarks.getTree();
+    return { ...root, id: ROOT_ID, title: 'All bookmarks' };
+  }
+  const [node] = await chrome.bookmarks.getSubTree(id);
+  return node;
+}
+
+// A folder Chrome will actually accept writes into — never the tree root.
+async function writableFolder() {
+  const id = await ensureFolder();
+  if (id !== ROOT_ID) return id;
+  const roots = (await chrome.bookmarks.getTree())[0].children || [];
+  return (roots.find((r) => r.id === '1') || roots[0]).id;
+}
+
 let root, getQuery;
 let currentFolderId = null;
 
@@ -35,13 +65,14 @@ export function initBookmarks(options) {
 
 export async function saveHere({ title, url }) {
   if (!url) return;
-  const folderId = await ensureFolder();
+  const folderId = await writableFolder();
   await chrome.bookmarks.create({ parentId: folderId, title: title || url, url });
   const [folder] = await chrome.bookmarks.get(folderId);
   toast(`Saved to “${folder.title}”`);
 }
 
 async function ensureFolder() {
+  if (currentFolderId === ROOT_ID) return ROOT_ID;
   if (currentFolderId) {
     try {
       const [node] = await chrome.bookmarks.get(currentFolderId);
@@ -78,7 +109,7 @@ export async function render() {
   }
 
   const folderId = await ensureFolder();
-  const [subtree] = await chrome.bookmarks.getSubTree(folderId);
+  const subtree = await getFolder(folderId);
   const children = subtree.children || [];
   const folders = children.filter((n) => !n.url);
   const links = children.filter((n) => n.url);
@@ -86,7 +117,7 @@ export async function render() {
   frag.append(await crumbsBar(subtree));
 
   const newFolderSlot = el('div', { style: 'margin-bottom: 12px' });
-  frag.append(newFolderSlot);
+  if (folderId !== ROOT_ID) frag.append(newFolderSlot);
 
   if (children.length) {
     frag.append(el('div', { class: 'bm-grid' },
@@ -94,8 +125,9 @@ export async function render() {
       ...links.map((n) => bookmarkCard(n, tagsMap)),
     ));
   } else {
-    frag.append(el('div', { class: 'lib-empty' },
-      'This folder is empty. Drag a tab here from the tray to keep it.'));
+    frag.append(el('div', { class: 'lib-empty' }, folderId === ROOT_ID
+      ? 'No bookmark folders in this profile yet.'
+      : 'This folder is empty. Drag a tab here from the tray to keep it.'));
   }
 
   root.replaceChildren(frag);
@@ -104,25 +136,32 @@ export async function render() {
 
 async function crumbsBar(current) {
   const trail = [];
-  let node = current;
-  while (node && node.parentId && node.parentId !== '0') {
-    const [parent] = await chrome.bookmarks.get(node.parentId);
-    trail.unshift(parent);
-    node = parent;
+  if (current.id !== ROOT_ID) {
+    let node = current;
+    while (node && node.parentId && node.parentId !== ROOT_ID) {
+      const [parent] = await chrome.bookmarks.get(node.parentId);
+      trail.unshift(parent);
+      node = parent;
+    }
+    // "All bookmarks" heads every trail, so the permanent roots are always one click away
+    trail.unshift({ id: ROOT_ID, title: 'All bookmarks' });
   }
 
   const bar = el('nav', { class: 'crumbs', 'aria-label': 'Folder path' });
   for (const ancestor of trail) {
     const crumb = el('button', { class: 'crumb', text: ancestor.title || 'Bookmarks', onclick: () => openFolder(ancestor.id) });
-    acceptMoves(crumb, ancestor.id);
+    // nothing can be dropped INTO the tree root — Chrome rejects it
+    if (ancestor.id !== ROOT_ID) acceptMoves(crumb, ancestor.id);
     bar.append(crumb, el('span', { class: 'crumb-sep', text: '›', 'aria-hidden': 'true' }));
   }
   bar.append(el('span', { class: 'crumb current', text: current.title || 'Bookmarks' }));
 
-  bar.append(el('div', { class: 'bm-toolbar' },
-    el('button', { class: 'ghost tool-ghost', title: 'New folder here', onclick: startNewFolder },
-      icon('plus', 14), 'New folder'),
-  ));
+  if (current.id !== ROOT_ID) {
+    bar.append(el('div', { class: 'bm-toolbar' },
+      el('button', { class: 'ghost tool-ghost', title: 'New folder here', onclick: startNewFolder },
+        icon('plus', 14), 'New folder'),
+    ));
+  }
   return bar;
 }
 
@@ -155,7 +194,10 @@ function folderTile() {
 
 function folderCard(node) {
   const count = node.children?.length ?? 0;
-  const card = el('div', { class: 'tcard bmcard folder', role: 'button', tabindex: '0', draggable: 'true' });
+  // Bookmarks Bar and Other Bookmarks are Chrome's own: it refuses to rename, move or
+  // delete them, so those actions are absent rather than present-and-failing.
+  const permanent = isPermanentRoot(node);
+  const card = el('div', { class: `tcard bmcard folder${permanent ? ' is-root' : ''}`, role: 'button', tabindex: '0', draggable: String(!permanent) });
   card.append(
     folderTile(),
     el('span', { class: 'meta' },
@@ -164,14 +206,14 @@ function folderCard(node) {
     ),
     el('span', { class: 'acts' },
       actionBtn('external', 'Open all as a new window', () => openAll(node)),
-      moveOutBtn(node),
-      actionBtn('rename', 'Rename', () => startRename(card, node)),
-      deleteBtn(node, `Delete folder and its ${count} items`),
+      permanent ? null : moveOutBtn(node),
+      permanent ? null : actionBtn('rename', 'Rename', () => startRename(card, node)),
+      permanent ? null : deleteBtn(node, `Delete folder and its ${count} items`),
     ),
   );
   card.addEventListener('click', () => openFolder(node.id));
   card.addEventListener('keydown', (e) => { if (e.key === 'Enter') openFolder(node.id); });
-  makeDraggable(card, node);
+  if (!permanent) makeDraggable(card, node);
   acceptMoves(card, node.id);
   return card;
 }

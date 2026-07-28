@@ -59,6 +59,10 @@ normal-profile window.
   per-window rows — switch to it, save it, stash it — stay in the sidebar; those are
   window actions, not a tab list.
 - **Board** — your collections as columns on a dotted canvas.
+- **Library** — Chrome's bookmarks, browsed folder by folder. The breadcrumb starts at
+  **All bookmarks**, which lists Chrome's permanent roots (Bookmarks Bar, Other Bookmarks,
+  Mobile Bookmarks). Chrome refuses to rename, move or delete those, so on them the Library
+  offers only "open all" rather than buttons that would fail.
 
 ## My Space and the Vault
 
