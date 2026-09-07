@@ -836,6 +836,13 @@ kbd {
   color: var(--accent-contrast);
   background: color-mix(in srgb, var(--accent-contrast) 18%, transparent);
 }
+/* …but the vertical rail's active row is NOT inverted (an --accent-soft wash), so there the
+   close button keeps the ordinary danger hover — canvas-coloured ink would vanish on it */
+:root[data-tabsbar='side'] .chip-tab.is-active .icb:hover,
+:root[data-tabsbar='side'] .chip-tab.is-active .icb.danger:hover {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
 
 /* ——— actions: visible at rest, louder on hover — nothing important is hover-only ———
    Rest state is a COLOUR (--text-faint, ≥3:1 on its surface), never a group opacity that
@@ -974,6 +981,7 @@ kbd {
 .colhead .acts { display: flex; margin-left: auto; margin-right: -6px; }
 :where(.colcard:hover, .colcard:focus-within) .colhead .acts .icb:not(:where(:hover)) { color: var(--text-soft); }
 .colhead .acts .icb { width: 22px; height: 22px; border-radius: var(--r2); }
+.colhead .acts .icb.armed { width: auto; }   /* the two-click "sure?" label needs its width back */
 
 .colbody {
   flex: 1;
@@ -1304,6 +1312,7 @@ kbd {
   .board { flex-direction: column; height: auto; }
   .colcard { width: 100%; height: auto; }
   .colbody { max-height: none; overflow: visible; }
+  .board.mosaic .colbody { max-height: none; }   /* single column here: cards grow instead of spilling past a 64vh cap */
   .newcol { width: 100%; padding: 0; height: 64px; flex-direction: row; align-self: stretch; }
   .tray { height: auto; padding: 10px 16px; flex-wrap: wrap; }
 }
