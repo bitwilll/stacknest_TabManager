@@ -4,7 +4,7 @@
 
 import {
   el, icon, actionBtn, toast, tile, domainOf, shortDate, matches,
-  addDropTarget, normalizeUrl, confirmDialog, exportDownload,
+  addDropTarget, normalizeUrl, confirmDialog, exportDownload, emptyState,
 } from './ui.js';
 import {
   SPACES_KEY, WORKSPACES_KEY, ACTIVE_WS_KEY, DOT_COLORS, WS_COLORS,
@@ -35,15 +35,26 @@ export function initSpaces(options) {
   return { render, createEmpty, exportAll, newWorkspace };
 }
 
+// A freshly created collection / space opens straight into its rename field. The names are
+// display-only spans (never focusable), so the render that paints the new row starts the
+// rename itself. The marker stays armed until that rename commits or is cancelled: the
+// creation triggers more than one render (add, then activate), and a later render would
+// otherwise replace the row — and the rename input — that an earlier one had opened.
+let renameOnRender = null; // { kind: 'collection' | 'space', id }
+const disarmRename = (id) => { if (renameOnRender?.id === id) renameOnRender = null; };
+
 async function createEmpty() {
-  await addSpace('', []);
-  setTimeout(() => boardRoot.querySelector('.colcard .col-name')?.focus(), 80);
+  ensureBoardVisible();
+  const created = await addSpace('', []);
+  renameOnRender = { kind: 'collection', id: created.id };
+  await render();
 }
 
 async function newWorkspace() {
+  ensureBoardVisible();
   const ws = await addWorkspace('');
+  renameOnRender = { kind: 'space', id: ws.id };
   await setActiveWorkspace(ws.id);
-  setTimeout(() => wsRoot.querySelector('.ws-row.is-active .nav-label')?.focus?.(), 80);
 }
 
 function colorOf(space, index) {
@@ -166,6 +177,9 @@ export async function render() {
   const [workspaces, activeId, spaces, tagsMap] = await Promise.all([loadWorkspaces(), getActiveWorkspaceId(), loadActiveSpaces(), loadTags()]);
 
   navCount.textContent = spaces.length ? String(spaces.length) : '';
+  // the active Space's colour — the board title shows it as a swatch (CSS .view-title::before)
+  const activeWs = workspaces.find((w) => w.id === activeId);
+  document.documentElement.style.setProperty('--space-color', activeWs?.color || WS_COLORS[0]);
 
   renderWorkspaces(workspaces, activeId);
   renderBoard(spaces, q, tagsMap);
@@ -181,6 +195,7 @@ function renderWorkspaces(workspaces, activeId) {
     const row = el('div', {
       class: `navx ws-row${w.id === activeId ? ' is-active' : ''}`,
       role: 'button', tabindex: '0', draggable: 'true', title: w.name || 'untitled', dataset: { id: w.id },
+      style: `--ws-color:${w.color || WS_COLORS[0]}`, // the active rail takes the Space's own colour
     },
       el('span', { class: 'nav-dot', style: `background: ${w.color || WS_COLORS[0]}` }),
       label,
@@ -205,6 +220,9 @@ function renderWorkspaces(workspaces, activeId) {
     // drop a collection onto a space to move it there
     addDropTarget(row, SPACE_MIME, async ({ id }) => { await moveSpaceToWorkspace(id, w.id); toast(`Moved to “${w.name || 'space'}”`); });
     frag.append(row);
+    if (renameOnRender?.kind === 'space' && renameOnRender.id === w.id) {
+      setTimeout(() => { if (row.isConnected) startWsRename(row, label, w); }, 0); // after the row is in the DOM
+    }
   });
   wsRoot.replaceChildren(frag);
 }
@@ -253,6 +271,7 @@ function startWsRename(row, label, w) {
   const commit = async () => {
     if (done) return;
     done = true;
+    disarmRename(w.id);
     const name = input.value.trim();
     input.replaceWith(label);
     if (name !== (w.name || '')) { await renameWorkspace(w.id, name); toast('Renamed'); }
@@ -260,7 +279,7 @@ function startWsRename(row, label, w) {
   input.addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') commit();
-    if (e.key === 'Escape') { done = true; input.replaceWith(label); }
+    if (e.key === 'Escape') { done = true; disarmRename(w.id); input.replaceWith(label); }
   });
   input.addEventListener('blur', commit);
 }
@@ -295,9 +314,13 @@ function renderBoard(spaces, q, tagsMap) {
   frag.append(ghost);
 
   if (!spaces.length) {
-    frag.append(el('div', { class: 'board-empty' },
-      'No collections in this space yet.', el('br'),
-      'Drag a tab from the tray above, or hit ', el('strong', {}, 'Stash window'), ' to park this window.'));
+    frag.append(emptyState({
+      icon: 'archive',
+      title: q ? 'No collections match your search' : 'Nothing saved in this space yet',
+      hint: q ? 'Try another word, or clear the search.'
+        : ['Drag a tab down from the tray, press ', el('strong', {}, 'Stash window'), ' to park this whole window, or start an empty collection.'],
+      actions: q ? [] : [el('button', { class: 'btnx primary', onclick: createEmpty }, icon('plus', 14), el('span', { text: 'New collection' }))],
+    }));
   }
   boardRoot.replaceChildren(frag);
 }
@@ -388,6 +411,7 @@ function startColRename(nameSpan, space) {
   const commit = async () => {
     if (done) return;
     done = true;
+    disarmRename(space.id);
     const title = input.value.trim();
     nameSpan.textContent = title;
     input.replaceWith(nameSpan);
@@ -396,7 +420,7 @@ function startColRename(nameSpan, space) {
   input.addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') commit();
-    if (e.key === 'Escape') { done = true; input.replaceWith(nameSpan); }
+    if (e.key === 'Escape') { done = true; disarmRename(space.id); input.replaceWith(nameSpan); }
   });
   input.addEventListener('blur', commit);
 }
@@ -419,7 +443,8 @@ function navDeleteBtn(space) {
 
 function column(space, index, q, tagsMap) {
   const color = colorOf(space, index);
-  const col = el('section', { class: 'colcard', draggable: 'true', dataset: { id: space.id } });
+  // --col-color paints the 3px top edge (CSS) — the collection's colour as a wayfinding mark
+  const col = el('section', { class: 'colcard', draggable: 'true', dataset: { id: space.id }, style: `--col-color:${color}` });
   if (space.collapsed && !q) col.classList.add('collapsed');
 
   const titleMatch = matches(q, space.title);
@@ -450,13 +475,17 @@ function column(space, index, q, tagsMap) {
     deleteBtn(space),
   );
 
+  // two rows: the name gets the full width; date + actions share the line beneath it
   const head = el('div', { class: 'colhead' },
-    el('div', { class: 'colhead-row' }, chev, dot, name, el('span', { class: 'col-count', text: String(space.tabs.length) }), acts),
-    el('div', { class: 'col-note', text: `Updated ${shortDate(space.updatedAt || space.createdAt)}` }),
+    el('div', { class: 'colhead-row' }, chev, dot, name, el('span', { class: 'col-count', text: String(space.tabs.length) })),
+    el('div', { class: 'colhead-sub' }, el('div', { class: 'col-note', text: `Updated ${shortDate(space.updatedAt || space.createdAt)}` }), acts),
   );
 
   const body = el('div', { class: 'colbody' }, ...cards, addTabGhost(space));
   col.append(head, body);
+  if (renameOnRender?.kind === 'collection' && renameOnRender.id === space.id) {
+    setTimeout(() => { if (col.isConnected) { startColRename(name, space); col.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } }, 0);
+  }
 
   // the whole tile is a drag handle for reordering (works in column and tile views).
   // inner tab cards stopPropagation on their own dragstart; inputs/buttons are guarded out.

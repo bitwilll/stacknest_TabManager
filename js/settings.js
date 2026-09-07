@@ -1,11 +1,10 @@
 // Settings: typography (interface font, mono font, interface size) + backup panel.
 // Fonts are offline-safe stacks (bundled + system) so nothing hits the network.
 
-import { el, icon, toast } from './ui.js';
+import { el, icon, toast, confirmDialog } from './ui.js';
 import { getKey, update } from './store.js';
 import { exportBackup, importFlow } from './backup.js';
 import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
-import { confirmDialog } from './ui.js';
 import { LOCK_KEY, loadLock, hasPin, setPin, clearPin, verifyPin, validatePin,
          isLockedOut, hasSecurityQuestion, promptSecurityAnswer,
          SECURITY_QUESTIONS, MAX_FAILS } from './lock.js';
@@ -62,7 +61,6 @@ export const DEFAULT_SETTINGS = {
   tabsBar: 'top',
   tickerEnabled: false, tickerBase: 'USD',
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
-  grammarEnabled: false,
 };
 
 const pick = (list, id) => list.find((x) => x.id === id) || list[0];
@@ -117,7 +115,6 @@ export async function loadSettings() {
     tickerBase: TICKER_BASES.includes(m.tickerBase) ? m.tickerBase : DEFAULT_SETTINGS.tickerBase,
     tickerCrypto: validArr(TICKER_CRYPTOS.map((c) => c.id), m.tickerCrypto, DEFAULT_SETTINGS.tickerCrypto),
     tickerFx: validArr(TICKER_FX, m.tickerFx, DEFAULT_SETTINGS.tickerFx),
-    grammarEnabled: !!m.grammarEnabled, // was dropped here, so the flag never round-tripped
   };
 }
 

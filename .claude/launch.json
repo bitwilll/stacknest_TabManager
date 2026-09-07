@@ -4,8 +4,8 @@
     {
       "name": "stacknest-preview",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8768"],
-      "port": 8768
+      "runtimeArgs": ["-m", "http.server", "8771", "--bind", "127.0.0.1"],
+      "port": 8771
     }
   ]
 }

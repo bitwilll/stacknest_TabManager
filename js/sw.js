@@ -77,8 +77,8 @@ chrome.alarms?.onAlarm.addListener(async (alarm) => {
   } catch (e) { console.error('reminder alarm failed:', e); }
 });
 
-// clicking the notification opens a StackNest tab (the Notes view)
+// clicking the notification opens StackNest on the Notes view (app.js reads the hash)
 chrome.notifications?.onClicked.addListener((id) => {
   chrome.notifications.clear(id);
-  chrome.tabs.create({ url: 'chrome://newtab' });
+  chrome.tabs.create({ url: chrome.runtime.getURL('newtab.html#notes') });
 });

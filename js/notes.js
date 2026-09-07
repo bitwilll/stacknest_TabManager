@@ -30,14 +30,14 @@
 //      and "first match wins" would throw the caret from row 5 back to row 0.
 //   4. The markdown preview swap is driven by focus on that one card, never by a render.
 
-import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, shortDate } from './ui.js';
+import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, shortDate, viewHidden, emptyState } from './ui.js';
 import { getKey, update, queued } from './store.js';
 import { exportBackup } from './backup.js';
 import { backupNow, restoreLatest, loadCloudState } from './drive.js';
 import { pushHistory, flashDeleted } from './history.js';
 import { tagColor } from './tags.js';
 import { renderMarkdown, renderInline } from './markdown.js';
-import { toggleFormat, stepScale, DEFAULT_SCALE, SCALES } from './format.js';
+import { toggleFormat, toggleList, listContinuation, replaceText, stepScale, DEFAULT_SCALE, SCALES } from './format.js';
 
 export const NOTES_KEY = 'stacknest:notes';
 export const SCHEMA_V = 3;
@@ -303,6 +303,7 @@ export async function render() {
 
   const open = openCount(items);
   if (countEl) countEl.textContent = open ? String(open) : '';
+  if (viewHidden(root)) return; // nothing to paint — app.js re-renders the view when it opens
 
   if (!shell || !root.contains(shell.wrap)) buildShell();
   const lists = items.filter((i) => i.kind === 'todo').length;
@@ -312,15 +313,36 @@ export async function render() {
   const shown = q ? items.filter((i) => matches(q, ...searchText(i))) : items;
   const focus = snapshotFocus();
   if (!shown.length) {
-    shell.host.replaceChildren(el('div', { class: 'notes-empty big' },
-      q ? 'Nothing here matches your search.'
-        : el('span', {}, 'Nothing yet — add a reminder above, or start a ',
-            el('button', { class: 'linkbtn', onclick: () => newItem('todo') }, el('span', { text: 'to-do list' })), ' or a ',
-            el('button', { class: 'linkbtn', onclick: () => newItem('note') }, el('span', { text: 'note' })), '.')));
+    shell.host.replaceChildren(q
+      ? emptyState({ icon: 'search', title: 'No cards match', hint: 'Search looks at titles, bodies, checklist items and tags.' })
+      : emptyState({
+        icon: 'note',
+        title: 'A quiet scratchpad',
+        hint: 'Type a reminder in the bar above and press Enter, or start a note or a checklist. Everything saves as you type.',
+        actions: [
+          el('button', { class: 'btnx primary', onclick: () => newItem('note') }, icon('note', 14), el('span', { text: 'New note' })),
+          el('button', { class: 'btnx soft', onclick: () => newItem('todo') }, icon('checklist', 14), el('span', { text: 'New to-do list' })),
+        ],
+      }));
   } else {
+    // a tick rebuilds the card, so carry each checklist's previous --done across the rebuild:
+    // the progress bar then eases from the old width instead of jumping
+    const prevDone = new Map();
+    shell.host.querySelectorAll('.mos-card[data-id] .check-prog').forEach((p) => {
+      const id = p.closest('.mos-card')?.dataset.id;
+      if (id) prevDone.set(id, p.style.getPropertyValue('--done'));
+    });
     const mosaic = el('div', { class: 'mosaic' });
     for (const it of shown) mosaic.append(itemCard(it));
     shell.host.replaceChildren(mosaic);
+    mosaic.querySelectorAll('.mos-card[data-id] .check-prog').forEach((p) => {
+      const old = prevDone.get(p.closest('.mos-card').dataset.id);
+      const next = p.style.getPropertyValue('--done');
+      if (old === undefined || old === next) return;
+      p.style.setProperty('--done', old);
+      void p.offsetWidth;                                             // commit the starting width
+      requestAnimationFrame(() => p.style.setProperty('--done', next));
+    });
   }
   restoreFocus(focus);
   syncFormatBar();
@@ -449,7 +471,10 @@ function closeAllMenus() { document.querySelectorAll('.notes-menu-wrap').forEach
 
 /* ————————————————————————— cards ————————————————————————— */
 
-const cardDone = (it) => it.kind === 'reminder' && it.done;
+// a reminder is done when ticked; a checklist is done when every row is (matches sw.js isFinished)
+const cardDone = (it) => it.kind === 'reminder' ? !!it.done
+  : it.kind === 'todo' ? ((it.list || []).length > 0 && it.list.every((r) => r.done))
+  : false;
 
 function itemCard(it) {
   const card = el('article', {
@@ -545,7 +570,7 @@ function todoBody(it) {
 
   return el('div', { class: 'note-lines' }, title, rows,
     el('button', { class: 'check-add', onclick: () => addRow(it, total - 1) }, icon('plus', 12), el('span', { text: 'Add item' })),
-    total ? el('div', { class: 'check-prog', text: `${done} of ${total} done` }) : null,
+    total ? el('div', { class: 'check-prog', style: `--done:${done / total}`, text: `${done} of ${total} done` }) : null,
   );
 }
 
@@ -626,6 +651,16 @@ function noteBody(it) {
   const grow = () => { body.style.height = 'auto'; body.style.height = Math.min(body.scrollHeight, 460) + 'px'; };
   body.addEventListener('input', () => { grow(); queueSave(it.id, 'body', body.value); });
   title.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); body.focus(); } });
+  // Enter inside a list line continues the list (next number, fresh task box); Enter on an
+  // empty item ends it. Shift+Enter is left alone for a plain newline.
+  body.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+    const c = listContinuation(body);
+    if (!c) return;
+    e.preventDefault();
+    if (c.clear) replaceText(body, c.start, c.end, '');
+    else replaceText(body, body.selectionStart, body.selectionEnd, c.insert);
+  });
 
   // Rendered markdown when the card is at rest; raw source the moment you edit it. The
   // swap is local to this card and driven by focus — never by a render — so it cannot
@@ -695,7 +730,7 @@ function reminderChip(it) {
   const past = fireTime(it.reminder) <= Date.now();
   const when = at.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const lead = LEAD_CHIP[it.reminder.lead] || '';
-  return el('button', { class: `todo-rem-chip${past ? ' past' : ''}`, title: past ? 'Reminder passed — click to change' : 'Edit reminder', onclick: (_, b) => openReminderEditor(b, it) },
+  return el('button', { class: `todo-rem-chip${past ? ' past' : ''}`, title: past ? 'Reminder passed — click to change' : 'Edit reminder', onclick: (e) => openReminderEditor(e.currentTarget, it) },
     icon('bell', 11), el('span', { text: when + (lead ? ` · ${lead}` : '') }));
 }
 
@@ -706,10 +741,12 @@ function tagChip(it, t) {
 
 /* ————————————————————————— formatting bar ————————————————————————— */
 //
-// ONE shared bar, parked in <body> and moved to whichever field has focus — rather than
-// six more buttons on every card. The card footer already carries a grip, a date and four
+// ONE shared bar, docked at the bottom of whichever card is being edited — rather than six
+// more buttons on every card. The card footer already carries a grip, a date and four
 // actions inside a 250px column; adding B/I/U/S/A+/A− per card would overflow it. Only one
-// field can be focused at a time, so one bar is all that can ever be needed.
+// field can be focused at a time, so one bar is all that can ever be needed. It is appended
+// INTO the focused card (a normal flow child, the card's bottom edge) on focus and removed
+// on blur, so it is visible only while that note or list is being written.
 
 // formatField is the ONLY state, and it is re-derived from document.activeElement after every
 // render (see syncFormatBar) — caching the item alongside it went stale the moment a render
@@ -717,11 +754,12 @@ function tagChip(it, t) {
 let formatBar = null, formatField = null;
 
 function buildFormatBar() {
-  const mk = (name, action, title, key) => {
+  const mk = (name, action, title, key, block = false) => {
     const b = el('button', { class: 'fmt-btn', title: key ? `${title} (${key})` : title, 'aria-label': title });
+    if (block) { b.dataset.block = '1'; b.dataset.title = title; }   // list markers need a multi-line body
     b.append(icon(name, 14));
     b.addEventListener('mousedown', (e) => e.preventDefault());   // never steal focus from the field
-    b.addEventListener('click', () => action());
+    b.addEventListener('click', () => { if (!b.disabled) action(); });
     return b;
   };
   const bar = el('div', { class: 'fmt-bar', role: 'toolbar', 'aria-label': 'Text formatting' },
@@ -730,11 +768,14 @@ function buildFormatBar() {
     mk('underline', () => runFormat('underline'), 'Underline', '⌘U'),
     mk('strike', () => runFormat('strike'), 'Strikethrough'),
     el('span', { class: 'fmt-sep' }),
+    mk('bullets', () => runList('bullet'), 'Bullet list', null, true),
+    mk('numbers', () => runList('number'), 'Numbered list', null, true),
+    mk('checklist', () => runList('task'), 'Checklist', null, true),
+    el('span', { class: 'fmt-sep' }),
     mk('textUp', () => runScale(1), 'Bigger text'),
     mk('textDown', () => runScale(-1), 'Smaller text'),
   );
   bar.addEventListener('mousedown', (e) => e.preventDefault());
-  document.body.append(bar);
   return bar;
 }
 
@@ -742,6 +783,24 @@ function runFormat(action) {
   if (!formatField) return;
   toggleFormat(formatField, action);
   formatField.dispatchEvent(new Event('input', { bubbles: true }));  // trip the autosave
+}
+
+function runList(kind) {
+  if (!formatField || formatField.tagName !== 'TEXTAREA') return;
+  toggleList(formatField, kind);
+  formatField.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// The list buttons only make sense in a note body: a "- " on a checklist row or a title is a
+// literal dash, because single-line fields render inline markdown only. Disable them there
+// rather than hide them, so the bar keeps the same shape everywhere.
+function updateBarState() {
+  if (!formatBar) return;
+  const block = formatField?.tagName === 'TEXTAREA';
+  formatBar.querySelectorAll('.fmt-btn[data-block]').forEach((b) => {
+    b.disabled = !block;
+    b.title = block ? b.dataset.title : `${b.dataset.title} — in a note body`;
+  });
 }
 
 // Reads the current scale off the card rather than from cached state, so it is always in step
@@ -768,39 +827,29 @@ function syncFormatBar() {
   if (a && shell?.host.contains(a) && /^(input|textarea)$/i.test(a.tagName)) {
     formatField = a;
     placeFormatBar();
+    updateBarState();
   } else hideFormatBar();
 }
 
-// Anchored to the CARD, not the focused field. Anchoring to the field put the bar inside the
-// card — covering the rows, the "Add item" button and the footer — and made it hop from line
-// to line as the caret moved. One bar under one card holds still while you move around it.
+// Docked in the CARD, not beside the focused field: the bar is the card's last child, so it
+// holds still at the bottom while the caret moves between the title, rows and body. A render
+// rebuilds the card; syncFormatBar() then re-docks the bar into the new one.
 function placeFormatBar() {
   if (!formatBar || !formatField) return;
-  const anchor = formatField.closest('.mos-card') || formatField;
-  const zoom = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-  const r = anchor.getBoundingClientRect();
-  const br = formatBar.getBoundingClientRect();
-  const m = 8, gap = 6;
-  let top = r.bottom + gap;
-  if (top + br.height > innerHeight - m) top = Math.max(m, r.top - gap - br.height);  // flip above
-  const left = Math.min(Math.max(m, r.left), Math.max(m, innerWidth - br.width - m));
-  formatBar.style.left = `${left / zoom}px`;
-  formatBar.style.top = `${top / zoom}px`;
+  const card = formatField.closest('.mos-card');
+  if (!card) { hideFormatBar(); return; }
+  if (formatBar.parentNode !== card) card.append(formatBar);
 }
 
 function showFormatBar(field) {
   formatField = field;
-  if (!formatBar) {
-    formatBar = buildFormatBar();
-    // the mosaic scrolls inside the view, so the bar has to travel with its field
-    addEventListener('scroll', () => { if (formatBar && !formatBar.hidden) placeFormatBar(); }, true);
-    addEventListener('resize', () => { if (formatBar && !formatBar.hidden) placeFormatBar(); });
-  }
+  if (!formatBar) formatBar = buildFormatBar();
   formatBar.hidden = false;
   placeFormatBar();
+  updateBarState();
 }
 function hideFormatBar() {
-  if (formatBar) formatBar.hidden = true;
+  if (formatBar) { formatBar.hidden = true; formatBar.remove(); }
   formatField = null;
 }
 
@@ -942,13 +991,16 @@ function openReminderEditor(anchor, it) {
   const lead = el('select', { class: 'rem-lead', 'aria-label': 'How early to notify' },
     ...LEADS.map((l) => el('option', { value: String(l.v), ...(it.reminder?.lead === l.v ? { selected: 'true' } : {}) }, el('span', { text: l.label }))));
 
+  // the worker suppresses a notification for a fully ticked list (sw.js isFinished), so say so
+  const complete = it.kind === 'todo' && (it.list || []).length > 0 && it.list.every((r) => r.done);
   const hint = el('div', { class: 'rem-hint' });
   const refresh = () => {
     const target = new Date(dt.value);
     if (isNaN(target)) { hint.textContent = 'Pick a date & time.'; return; }
     const fireMs = target.getTime() - Number(lead.value) * 60000;
     hint.textContent = fireMs <= Date.now() ? 'That’s in the past — pick a later time.'
-      : `Notifies ${new Date(fireMs).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+      : `Notifies ${new Date(fireMs).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+        + (complete ? ' — this list is complete; it only notifies while an item is open.' : '');
   };
   dt.addEventListener('input', refresh); lead.addEventListener('change', refresh); refresh();
 
@@ -966,7 +1018,7 @@ function openReminderEditor(anchor, it) {
       x.reminder = { at: target.toISOString(), lead: leadV };
     });
     armAlarm(it.id, fireMs);
-    closePop(); toast('Reminder set');
+    closePop(); toast(complete ? 'Reminder set — notifies once an item is re-opened' : 'Reminder set');
   } }, el('span', { text: it.reminder ? 'Update' : 'Set reminder' }));
 
   const clearBtn = it.reminder ? el('button', { class: 'btnx ghosty rem-clear', onclick: async () => {
@@ -1036,9 +1088,10 @@ const GUIDE = [
     ['Autosave', 'Everything saves as you type. There is no Save button and nothing to lose.'],
   ] },
   { h: 'Formatting', icon: 'bold', rows: [
-    ['The bar', 'Click into any text field and a formatting bar appears beneath it.'],
+    ['The bar', 'Click into any text field and a formatting bar docks at the bottom of that card, and leaves when you click away.'],
     ['B / I / U / S', 'Bold, italic, underline, strikethrough. With nothing selected it formats the word the caret is in; press again to remove it.'],
     ['⌘B / ⌘I / ⌘U', 'The same, from the keyboard (Ctrl on Windows and Linux).'],
+    ['Lists', 'Bullet, numbered and checklist buttons turn the current line — or every selected line — into a list item in a note body; press again to remove. Enter continues the list, and Enter on an empty item ends it.'],
     ['A+ / A−', 'Makes everything on that one card bigger or smaller — five steps. Independent of the global interface size in Settings.'],
     ['Undo', 'Formatting goes through the browser’s own text undo, so ⌘Z inside a field steps back through it normally.'],
   ] },

@@ -380,6 +380,143 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+## Calm structure + Linen theme (2026-09-07)
+
+The owner: "a little boring — keep it minimal but add some professional and ADHD-friendly vibes,
+and one more theme that's a little colourful." Four independent design proposals were judged by
+three judges (product-design polish · ADHD/cognitive-load evidence · codebase feasibility);
+"Calm structure & wayfinding" won and the best of the others was grafted in.
+
+**Direction.** Keep the ink-on-paper skeleton; spend colour on two jobs only. (1) The user's own
+Space/collection colours become fixed-position wayfinding marks — a rail on the active Space row,
+a swatch beside the board title, a 3px inset top edge on each collection column. (2) One accent
+family carries every "you are here / do this" state — the active-nav rail, focus ring, selection,
+current tab chip, checked boxes, drop targets, checklist progress. Nothing important is hover-only
+any more. The colour contract is a comment at the top of `:root`.
+
+**Custom properties set by JS:** `--ws-color` on each `.ws-row` (spaces.js), `--space-color` on
+`<html>` for the active Space (spaces.js `render`), `--col-color` on each `.colcard`, and `--done`
+(0–1) on `.check-prog` (notes.js). A checklist whose rows are all ticked now counts as a done card
+(`cardDone`), matching `sw.js isFinished`.
+
+**Tokens.** Light `--text-mut` #656c79 / `--text-faint` #80868f (AA on every light surface, ≥3:1
+for icons at rest); dark `--text-ghost` #707788 (chevrons 4.36:1); `--accent-soft` two steps from
+`--bg-inset` in both; `--accent-ring` alphas raised so the focus halo is visible on the dot grid;
+dark tray joins the canvas colour with a `--line-strong` bottom rule; dark `--shadow-tile` is a 1px
+inset top highlight; `--tint-a` is one intensity dial for the six note-card tints (.13 light, .16
+dark and Linen).
+
+**Linen** (`:root[data-theme='linen']`): linen paper #faf7f2, walnut ink #2a2420, pine accent
+#0d6b64 (5.95:1 on paper; 6.36:1 for white on it), plum #7c4a69 only as the logo/foot gradient
+tail. Every one of the 38 tokens is defined; contrast recomputed: body/labels ≥4.5:1, domains
+4.79:1, icons at rest ≥4.2:1. Pine was chosen over terracotta because terracotta is 1.03:1 in
+luminance and 14° in hue from `--red` — primary and delete would have been one colour. Section
+labels render sentence-case in Hanken under Linen only; light/dark keep the tracked-caps mono
+signature. `color-scheme: light` so native pickers match. Theme buttons are discovered from
+`[data-theme-choice]`, so the theme was one HTML button + one CSS block.
+
+**Components (in order):** section labels `--text-soft` + uppercase via CSS (HTML text is now
+sentence case); hairline chunking between scrolling sidebar groups, 34px rows, tabular counts in
+`--text-faint`; active rail (`.navx.is-active::before`, `var(--ws-color)` on Space rows) and the
+`--space-color` title swatch; `.colcard` inset top edge in `--col-color`; column header count stays
+visible and its actions rest at .55; `.acts`/`.icb` visible at rest app-wide (`.icb` colour
+`--text-faint`); `:focus-visible` no longer forces `border-radius: 4px` — cards and chips keep
+their radius and get a halo ring; current tray chip has a soft fill + bold title and `Save all` is
+an outline so `Stash window` is the only solid button on the board; `.searchbox.has-query` keeps
+the accent border after blur; checklist progress track/fill with a green fill when done, done
+cards settle (full opacity, tint off, struck title) instead of ghosting; checkbox borders in
+`--text-faint`; tinted empty-state icon; danger shadow follows `--red`; landing ring animation on
+`.colcard.highlight`; ticker slowed to 40s; dot grid at 26px; a real reduced-motion block.
+
+**Review pass (26 confirmed findings from a 5-lens × 3-skeptic adversarial review).** Actions now
+dim by COLOUR (`--text-faint` at rest, `--text-soft` on hover) instead of group opacity — .55 opacity
+had sunk every rest-state icon below 3:1, and the `hover: none` fallback lost its specificity fights.
+Card/chip focus ring is a solid 2px accent + 4px halo that survives `.chip-tab.is-active` and hover;
+`.tray-chips`/`.colbody` gained the padding to not clip it; window rows draw the ring inside the
+scroll box. The reduced-motion block moved to the END of the stylesheet (a media query adds no
+specificity, so mid-file it lost to every later transition). Chevrons, tag-remove and the duplicates
+source icon/kind left `--text-ghost`; domains, counts, ghost buttons and placeholders left
+`--text-faint` for `--text-mut` (AA). Light `--red` #b03a49 / `--green` #2b7f52 and Linen `--red`
+#a63a31 (danger text ≥4.5:1 on its 10% wash). Theme and layout chips carry `aria-pressed`. Linen's
+notes toolbar hovers neutral (pine means state). `.drop-target` no longer forces a 12px radius; the
+column title no longer advertises editing. The checklist bar carries its previous `--done` across a
+rebuild so it eases; a reminder set on a fully ticked list says it only notifies once an item is
+re-opened.
+
+**Formatting bar (owner request):** docked at the bottom of the card being edited — notes.js appends
+the one shared bar into the focused card and removes it on blur — instead of floating over the page. It
+also carries **bullet / numbered / checklist** buttons (`toggleList` in format.js): they toggle the
+marker on the current or selected lines, renumber numbered blocks, keep a ticked box ticked when
+converting, and go through the same undoable `replaceRange`. Enter in a list line continues it
+(`listContinuation`); Enter on an empty item removes the marker. The three are disabled on
+single-line fields, where block syntax would render literally.
+
+**Mosaic board layout (owner request):** a third layout beside columns and tiles — `.board.mosaic`
+is the same `column-width: 300px` masonry the Notes view uses; each `.colcard` is `break-inside:
+avoid` with its body capped at 64vh (internal scroll) so one long collection can't dwarf the rest;
+the New-collection ghost and the empty state `column-span: all`. `app.js` keeps the three modes in
+one `modeBtns` map (persisted under `stacknest:boardmode`, unknown values fall back to columns) and
+stamps `aria-pressed`. No JS in spaces.js changed — the DOM is identical, so drag/drop, collapse and
+rename work unchanged.
+
+**Rejected:** terracotta accent (collides with danger), Space-tinted canvas/tray washes, a
+three-level elevation system and rest shadows on every card, a global type-scale bump, the search
+box growing on focus, solid accent borders on selected chips, always-visible actions on sidebar
+collection rows, green "done" text (3.36:1 on paper), editing the identity palette.
+
+## Audit + design refresh (2026-09-07)
+
+A full read of every module, then a pass that fixed what the read found and tightened the
+design without touching the feature set.
+
+**Bugs fixed**
+- Clicking the **reminder chip** on a card threw (`el()` passes only the event to `onclick`, but
+  the handler expected `(e, btn)` the way `actionBtn` does) — the reminder editor never opened
+  from the chip. Now anchors on `e.currentTarget`.
+- **New folder** in the Library could commit twice (Enter removes the input, which can fire blur);
+  guarded like the other inline editors.
+- **New collection / new space** tried to `.focus()` a display-only `<span>`, so neither opened its
+  rename field. A `renameOnRender` marker now starts the rename on the render that paints the new
+  row, and stays armed until that rename commits — creation triggers two renders (add, then
+  activate) and the second would otherwise replace the input the first had opened.
+- `js/grammar.js` was dead code (never imported) that would have posted search text to
+  api.languagetool.org — undeclared in `host_permissions` and contradicting the README's "only
+  Drive and the ticker touch the network". Deleted, with its orphaned `grammarEnabled` setting.
+- The narrow-screen `mini-nav` was `aria-hidden` yet held the only focusable navigation; it is gone
+  (see drawer below). Duplicate `ui.js` import in settings.js merged; unused `jumpToUrl` dropped.
+
+**Performance**
+- Hidden views no longer rebuild their DOM on every storage/bookmark event. `viewHidden()` (ui.js)
+  lets Library, Tags, Duplicates and Notes compute their nav badge and return; `app.js` already
+  re-renders a view when it opens. Duplicates + Tags bookmark listeners are debounced (a bulk clean
+  fires one event per removal).
+
+**Design**
+- **Contrast**: dark-mode card surfaces/lines lifted so cards read as cards on ink
+  (`--bg-card` .024 → .05, `--card-line-2` .075 → .11); `--text-mut` now clears 4.5:1 in both
+  themes (light #868c98 → #6f7683, dark #767c88 → #8b919d); `--text-faint` lifted likewise.
+- **Theme**: three-state segment — **auto** (follows `prefers-color-scheme` live via a
+  `matchMedia` change listener) · light · dark. Stored under the same `stacknest:theme` key;
+  an unknown/missing value means auto.
+- **Search** gains a clear (×) button once there is a query (the ⌘K hint hides then), and Enter
+  only prefers an open-tab chip while on the board.
+- **Empty states** unified into one `emptyState()` component (icon tile · title · one-sentence
+  hint · actions) used by the board, Library, Tags, Duplicates and Notes, each with the action
+  that fills it (New collection / New folder / New note + New to-do list).
+- **Board**: the "New collection" ghost is a short tile (`align-self: flex-start`) instead of a
+  full-height dashed cage beside the columns.
+- **Narrow screens (≤880px)**: the sidebar becomes an off-canvas **drawer** (menu button in the
+  topbar, scrim, Esc closes, closes on view switch) so Spaces / Windows / Collections stay
+  reachable — the old chip row only switched views.
+- The tray and layout toggle are now shown/hidden by `body[data-view]` in CSS rather than inline
+  styles. Views are deep-linkable by hash (`#notes` …); the reminder notification opens
+  `newtab.html#notes`. The view entrance animation is 0.28s (it replays on every switch).
+
+Verified in preview, light + dark, 1440px and 700px: reminder chip opens its editor; new space
+opens in rename and lands on the board's empty state; search clear; drawer open/close/scrim;
+hash deep-link; hidden views stay empty until opened while badges stay live; no console errors.
+*Preview note:* the pane freezes CSS transitions/animations while unfocused — inject
+`* { transition: none !important; animation: none !important }` before measuring or screenshotting.
 
 ## Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10)
 

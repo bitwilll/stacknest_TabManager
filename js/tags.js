@@ -3,9 +3,9 @@
 // URL shares tags whether it lives in a collection or the Library. The Tags view shows
 // a mind-graph (tags as hubs, items linked to them) plus a per-tag sorting grid.
 
-import { el, icon, tile, domainOf, toast, hueOf, matches, normalizeUrl } from './ui.js';
+import { el, icon, tile, domainOf, toast, hueOf, matches, normalizeUrl, debounce, viewHidden, emptyState } from './ui.js';
 import { getKey, update } from './store.js';
-import { loadSpaces, loadWorkspaces } from './spacesStore.js';
+import { SPACES_KEY, loadSpaces } from './spacesStore.js';
 
 export const TAGS_KEY = 'stacknest:tags';
 
@@ -143,7 +143,7 @@ export function tagChips(map, url, max = 3) {
 
 /* ————————————————————————— Tags view (graph + grid) ————————————————————————— */
 
-let root, getQuery, countEl, jumpToUrl;
+let root, getQuery, countEl;
 let activeTag = null; // null = overview across all tags
 let tagMode = 'graph'; // overview reading: 'graph' (tags as hubs) or 'list' (the cards)
 
@@ -155,9 +155,10 @@ let graphSig = ''; // hub layout the retained camera belongs to
 const Z_MIN = 0.45, Z_MAX = 5, Z_STEP = 1.25;
 
 export function initTags(options) {
-  ({ root, getQuery, countEl, jumpToUrl } = options);
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[TAGS_KEY] || c['stacknest:spaces'])) render(); });
-  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(render);
+  ({ root, getQuery, countEl } = options);
+  const rerender = debounce(render, 150);
+  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[TAGS_KEY] || c[SPACES_KEY])) rerender(); });
+  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(rerender);
   render();
   return { render };
 }
@@ -192,12 +193,16 @@ export async function render() {
   const tagList = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count]) => ({ name, count }));
   if (countEl) countEl.textContent = tagList.length ? String(tagList.length) : '';
   if (activeTag && !counts.has(activeTag)) activeTag = null;
+  if (viewHidden(root)) return; // badge stays live; the DOM is rebuilt when the view opens
 
   const frag = document.createDocumentFragment();
 
   if (!tagList.length) {
-    frag.append(el('div', { class: 'lib-empty' },
-      'No tags yet. Open the ', el('strong', {}, 'tag'), ' action on any saved link or bookmark to start tagging.'));
+    frag.append(emptyState({
+      icon: 'tag',
+      title: 'No tags yet',
+      hint: ['Hover any saved link or bookmark and use its ', el('strong', {}, 'tag'), ' action. Tagged links gather here, with a graph of how they relate.'],
+    }));
     root.replaceChildren(frag);
     return;
   }
@@ -248,7 +253,7 @@ function chip(label, count, active, onClick, color) {
 
 function itemGrid(items, q) {
   const shown = q ? items.filter((it) => matches(q, it.title, it.url) || it.tags.some((t) => matches(q, t))) : items;
-  if (!shown.length) return el('div', { class: 'lib-empty' }, 'Nothing here matches your search.');
+  if (!shown.length) return emptyState({ icon: 'search', title: 'No tagged links match', hint: 'Try another word, or clear the search.' });
   const grid = el('div', { class: 'bm-grid' });
   for (const it of shown) {
     const card = el('div', { class: 'tcard bmcard', role: 'link', tabindex: '0', title: it.url });
@@ -361,7 +366,7 @@ function buildGraph(tagList, items) {
   // The retained camera only means anything while the hub layout is unchanged. If a
   // re-render added/removed/moved hubs, restoring the old pan could strand the user
   // on empty canvas looking at content that isn't there any more — re-frame instead.
-  const layoutSig = `${W}x${H}|${tags.map((t) => t.name).join(' ')}`;
+  const layoutSig = `${W}x${H}|${tags.map((t) => t.name).join('\u0000')}`;
   if (layoutSig !== graphSig) { graphSig = layoutSig; graphView = { tx: 0, ty: 0, s: 1 }; }
   applyView();
 

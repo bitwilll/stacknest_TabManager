@@ -23,39 +23,40 @@ async function main() {
   applySettings(await loadSettings());
   await ensureWorkspaces();
 
-  // — theme: one button that flips, showing the icon for the theme it will switch TO —
-  const themeBtn = document.getElementById('theme-toggle');
-  let theme;
-  const applyTheme = (next) => {
-    theme = next;
-    document.documentElement.dataset.theme = next;
-    themeBtn.setAttribute('aria-pressed', String(next === 'dark'));
-    const to = next === 'dark' ? 'light' : 'dark';
-    themeBtn.title = `Switch to ${to} theme`;
-    themeBtn.setAttribute('aria-label', `Switch to ${to} theme`);
+  // — theme: auto (follows the OS, live) · light · dark · any extra theme the HTML declares —
+  // Buttons carry data-theme-choice; a theme is a :root[data-theme='<id>'] token block in the CSS.
+  const themeBtns = Object.fromEntries([...document.querySelectorAll('[data-theme-choice]')].map((b) => [b.dataset.themeChoice, b]));
+  const systemDark = matchMedia('(prefers-color-scheme: dark)');
+  const applyTheme = (choice) => {
+    const theme = choice === 'auto' ? (systemDark.matches ? 'dark' : 'light') : choice;
+    document.documentElement.dataset.theme = theme;
+    for (const [k, b] of Object.entries(themeBtns)) { b.classList.toggle('is-active', k === choice); b.setAttribute('aria-pressed', String(k === choice)); }
   };
-  applyTheme(localStorage.getItem(THEME_KEY)
-    || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-  themeBtn.addEventListener('click', () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem(THEME_KEY, next);
-    applyTheme(next);
-  });
+  const themeChoice = () => { const v = localStorage.getItem(THEME_KEY); return Object.hasOwn(themeBtns, v) ? v : 'auto'; };
+  applyTheme(themeChoice());
+  systemDark.addEventListener('change', () => { if (themeChoice() === 'auto') applyTheme('auto'); });
+  for (const [k, b] of Object.entries(themeBtns)) {
+    b.addEventListener('click', () => { localStorage.setItem(THEME_KEY, k); applyTheme(k); });
+  }
 
-  // — board layout (columns / tiles) —
+  // — board layout: columns (kanban) · tiles (full-width rows) · mosaic (masonry of cards) —
   const BOARD_MODE_KEY = 'stacknest:boardmode';
   const boardEl = document.getElementById('board-root');
-  const colBtn = document.getElementById('view-columns');
-  const tileBtn = document.getElementById('view-tiles');
+  const modeBtns = {
+    columns: document.getElementById('view-columns'),
+    tiles: document.getElementById('view-tiles'),
+    mosaic: document.getElementById('view-mosaic'),
+  };
   const applyBoardMode = (mode) => {
-    const tiles = mode === 'tiles';
-    boardEl.classList.toggle('tiles', tiles);
-    colBtn.classList.toggle('is-active', !tiles);
-    tileBtn.classList.toggle('is-active', tiles);
+    if (!Object.hasOwn(modeBtns, mode)) mode = 'columns';   // an unknown stored value falls back
+    boardEl.classList.toggle('tiles', mode === 'tiles');
+    boardEl.classList.toggle('mosaic', mode === 'mosaic');
+    for (const [k, b] of Object.entries(modeBtns)) { b.classList.toggle('is-active', k === mode); b.setAttribute('aria-pressed', String(k === mode)); }
   };
   applyBoardMode(localStorage.getItem(BOARD_MODE_KEY) || 'columns');
-  colBtn.addEventListener('click', () => { localStorage.setItem(BOARD_MODE_KEY, 'columns'); applyBoardMode('columns'); });
-  tileBtn.addEventListener('click', () => { localStorage.setItem(BOARD_MODE_KEY, 'tiles'); applyBoardMode('tiles'); });
+  for (const [k, b] of Object.entries(modeBtns)) {
+    b.addEventListener('click', () => { localStorage.setItem(BOARD_MODE_KEY, k); applyBoardMode(k); });
+  }
 
   // — views (Collections board / Library) —
   const views = {
@@ -84,10 +85,25 @@ async function main() {
     document.querySelectorAll('.view-link').forEach((btn) => {
       btn.classList.toggle('is-active', btn.dataset.view === name);
     });
+    // #view deep-links (e.g. the reminder notification opens newtab.html#notes)
+    try { history.replaceState(null, '', name === 'board' ? location.pathname : `#${name}`); } catch { /* not navigable */ }
+    closeDrawer();
   };
   document.querySelectorAll('.view-link').forEach((btn) => {
     btn.addEventListener('click', () => showView(btn.dataset.view));
   });
+
+  // — narrow screens: the sidebar becomes a drawer behind a menu button —
+  const app = document.querySelector('.app');
+  const drawerBtn = document.getElementById('drawer-btn');
+  const setDrawer = (open) => {
+    app.classList.toggle('drawer-open', open);
+    drawerBtn.setAttribute('aria-expanded', String(open));
+  };
+  function closeDrawer() { setDrawer(false); }
+  drawerBtn.addEventListener('click', () => setDrawer(!app.classList.contains('drawer-open')));
+  document.getElementById('drawer-scrim').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && app.classList.contains('drawer-open')) closeDrawer(); });
 
   // — columns —
   const search = document.getElementById('search');
@@ -148,6 +164,11 @@ async function main() {
     else if (name === 'myspace' || name === 'vault') spaceCol.render();
   }
 
+  // open on the view named in the hash, if any (notification click → #notes)
+  const wanted = location.hash.slice(1);
+  if (views[wanted] && wanted !== 'board') showView(wanted);
+  window.addEventListener('hashchange', () => { const v = location.hash.slice(1) || 'board'; if (views[v] && v !== currentView) showView(v); });
+
   // topbar + tray actions
   document.getElementById('stash-window-btn').addEventListener('click', stashCurrentWindow);
   document.getElementById('save-all-btn').addEventListener('click', saveCurrentWindow);
@@ -190,17 +211,23 @@ async function main() {
   });
 
   // — unified search —
-  const renderAll = () => { tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); notesCol.render(); spaceCol.render(); };
+  const searchBox = search.closest('.searchbox');
+  const clearBtn = document.getElementById('search-clear');
+  const renderAll = () => {
+    searchBox.classList.toggle('has-query', !!search.value);
+    tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); notesCol.render(); spaceCol.render();
+  };
   let searchTimer;
   search.addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(renderAll, 90);
   });
+  const clearSearch = () => { search.value = ''; renderAll(); };
+  clearBtn.addEventListener('click', () => { clearSearch(); search.focus(); });
 
   search.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      search.value = '';
-      renderAll();
+      clearSearch();
       search.blur();
     }
     if (e.key === 'Enter') {

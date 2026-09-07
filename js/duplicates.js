@@ -1,8 +1,8 @@
 // Duplicates view — finds the same URL saved more than once across your collections
 // and Chrome bookmarks, groups the copies, and lets you prune the redundant ones.
 
-import { el, icon, actionBtn, tile, domainOf, toast, matches, normalizeUrl, confirmDialog } from './ui.js';
-import { loadSpaces, loadWorkspaces, mutateSpace, insertTabAt } from './spacesStore.js';
+import { el, icon, actionBtn, tile, domainOf, toast, matches, normalizeUrl, confirmDialog, debounce, viewHidden, emptyState } from './ui.js';
+import { SPACES_KEY, loadSpaces, loadWorkspaces, mutateSpace, insertTabAt } from './spacesStore.js';
 import { getKey, update } from './store.js';
 import { pushHistory, flashDeleted } from './history.js';
 
@@ -20,8 +20,10 @@ let root, getQuery, countEl;
 export function initDuplicates(options) {
   ({ root, getQuery, countEl } = options);
   // collections live in chrome.storage.local; bookmarks in the bookmarks tree — watch both
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c['stacknest:spaces'] || c[FORGET_KEY])) render(); });
-  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(render);
+  // a bulk clean fires one bookmark event per removal — coalesce them into a single scan
+  const rerender = debounce(render, 150);
+  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[SPACES_KEY] || c[FORGET_KEY])) rerender(); });
+  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(rerender);
   render();
   return { render };
 }
@@ -72,8 +74,19 @@ export async function render() {
 
   const totalRedundant = groups.reduce((n, g) => n + (g.length - 1), 0);
   if (countEl) countEl.textContent = totalRedundant ? String(totalRedundant) : '';
+  if (viewHidden(root)) return; // badge stays live; the DOM is rebuilt when the view opens
 
   const frag = document.createDocumentFragment();
+  if (!groups.length) {
+    frag.append(emptyState({
+      icon: 'check',
+      title: 'No duplicates',
+      hint: 'Every link across your collections and Chrome bookmarks is saved exactly once. This view re-scans on its own whenever something changes.',
+    }));
+    frag.append(forgottenSection(forgotten, allGroups));
+    root.replaceChildren(frag);
+    return;
+  }
   frag.append(el('div', { class: 'dup-head' },
     el('div', { class: 'dup-h-text' },
       el('h2', { class: 'dup-title', text: groups.length ? `${groups.length} duplicated link${groups.length === 1 ? '' : 's'}` : 'No duplicates' }),
@@ -88,8 +101,8 @@ export async function render() {
     }, el('span', { text: 'Keep one of each' })) : null,
   ));
 
-  if (!shown.length && groups.length) {
-    frag.append(el('div', { class: 'lib-empty' }, 'No duplicates match ', el('strong', {}, q), '.'));
+  if (!shown.length) {
+    frag.append(emptyState({ icon: 'search', title: 'No duplicates match', hint: ['Nothing duplicated matches ', el('strong', {}, q), '.'] }));
   }
   for (const g of shown) frag.append(groupCard(g));
 

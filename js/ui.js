@@ -65,6 +65,8 @@ const ICONS = {
   strike:    '<path d="M4.5 12h15"/><path d="M8.8 8.2A3.2 3.2 0 0 1 12 5.2h1.2a3.2 3.2 0 0 1 2.9 1.9"/><path d="M8 15.8a3.2 3.2 0 0 0 3.2 3h1.4a3.2 3.2 0 0 0 2.8-1.7"/>',
   textUp:    '<path d="m2.5 18.5 5-12 5 12"/><path d="M4.3 14.6h6.4"/><path d="M17.5 10.5v7"/><path d="M14 14h7"/>',
   textDown:  '<path d="m2.5 18.5 5-12 5 12"/><path d="M4.3 14.6h6.4"/><path d="M14 14h7"/>',
+  bullets:   '<circle cx="5" cy="6" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="5" cy="18" r="1.1"/><path d="M10 6h11M10 12h11M10 18h11"/>',
+  numbers:   '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
   checklist: '<path d="m3 5.5 1.5 1.5L7.4 4"/><path d="m3 12.5 1.5 1.5L7.4 11"/><path d="m3 19.5 1.5 1.5L7.4 18"/><path d="M11 6h10M11 13h10M11 20h10"/>',
   person:   '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
   swap:     '<path d="M4 8h13m0 0-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7m0 0 3.5 3.5M7 16l3.5-3.5"/>',
@@ -156,6 +158,18 @@ export function tile(url, size = 34) {
   return wrap;
 }
 
+// One empty-state block for every view: an icon tile, a title, a plain-language hint and
+// optional actions — so "nothing here yet" looks the same on the board, in the Library,
+// under Tags/Duplicates and in Notes, and always says what to do next.
+export function emptyState({ icon: name, title, hint = null, actions = [] } = {}) {
+  return el('div', { class: 'empty' },
+    el('span', { class: 'empty-ic', 'aria-hidden': 'true' }, icon(name || 'folder', 20)),
+    el('div', { class: 'empty-title', text: title }),
+    hint ? el('p', { class: 'empty-hint' }, ...[].concat(hint)) : null,
+    actions.length ? el('div', { class: 'empty-acts' }, ...actions) : null,
+  );
+}
+
 let toastTimer;
 export function toast(message) {
   const node = document.getElementById('toast');
@@ -188,6 +202,13 @@ export function shortDate(ts) {
   } catch {
     return '';
   }
+}
+
+// True when the view section hosting `node` is hidden. Views re-render on open (app.js
+// refreshView), so a hidden view can skip its DOM work and keep only its nav badge live.
+export function viewHidden(node) {
+  const view = node?.closest?.('.view');
+  return !!(view && view.hidden);
 }
 
 export function debounce(fn, ms = 120) {

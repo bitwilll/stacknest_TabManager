@@ -1,6 +1,6 @@
 // Library view — Chrome bookmarks as a folder-first card grid with breadcrumbs.
 
-import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget, confirmDialog } from './ui.js';
+import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget, confirmDialog, viewHidden, emptyState } from './ui.js';
 import { TAGS_KEY, loadTags, tagChips, openTagEditor } from './tags.js';
 import { moveFromLibrary } from './myspace.js';
 import { hasPin } from './lock.js';
@@ -92,6 +92,7 @@ function openFolder(id) {
 }
 
 export async function render() {
+  if (viewHidden(root)) return; // rebuilt when the view opens
   const q = getQuery();
   const tagsMap = await loadTags();
   const frag = document.createDocumentFragment();
@@ -102,7 +103,7 @@ export async function render() {
       frag.append(el('div', { class: 'crumbs' }, el('span', { class: 'crumb current', text: `${results.length} match${results.length === 1 ? '' : 'es'}` })));
       frag.append(el('div', { class: 'bm-grid' }, ...results.map((n) => bookmarkCard(n, tagsMap))));
     } else {
-      frag.append(el('div', { class: 'lib-empty' }, 'Nothing in the Library matches ', el('strong', {}, q), '.'));
+      frag.append(emptyState({ icon: 'search', title: 'No bookmarks match', hint: ['Nothing in the Library matches ', el('strong', {}, q), '.'] }));
     }
     root.replaceChildren(frag);
     return;
@@ -125,9 +126,14 @@ export async function render() {
       ...links.map((n) => bookmarkCard(n, tagsMap)),
     ));
   } else {
-    frag.append(el('div', { class: 'lib-empty' }, folderId === ROOT_ID
-      ? 'No bookmark folders in this profile yet.'
-      : 'This folder is empty. Drag a tab here from the tray to keep it.'));
+    frag.append(folderId === ROOT_ID
+      ? emptyState({ icon: 'folder', title: 'No bookmark folders yet', hint: 'Chrome keeps its permanent roots here — the Bookmarks Bar and Other Bookmarks appear as folders once they hold something.' })
+      : emptyState({
+        icon: 'folder',
+        title: 'This folder is empty',
+        hint: 'Drag a tab here from the tray or a window to bookmark it, or make a sub-folder.',
+        actions: [el('button', { class: 'btnx soft', onclick: startNewFolder }, icon('plus', 14), el('span', { text: 'New folder' }))],
+      }));
   }
 
   root.replaceChildren(frag);
@@ -171,7 +177,10 @@ function startNewFolder() {
   const input = el('input', { class: 'inline-edit', placeholder: 'Folder name…', 'aria-label': 'New folder name', style: 'max-width: 280px' });
   slot.append(input);
   input.focus();
+  let done = false; // Enter removes the input, which can fire blur → guard the second commit
   const commit = async () => {
+    if (done) return;
+    done = true;
     const title = input.value.trim();
     input.remove();
     if (title) {
@@ -180,8 +189,9 @@ function startNewFolder() {
     }
   };
   input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
     if (e.key === 'Enter') commit();
-    if (e.key === 'Escape') input.remove();
+    if (e.key === 'Escape') { done = true; input.remove(); }
   });
   input.addEventListener('blur', commit);
 }

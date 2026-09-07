@@ -44,7 +44,11 @@ normal-profile window.
   also reveals **open** (switch to that window) next to save and stash. Searching
   auto-expands windows that contain matches. Hovering a collection row reveals **rename**
   and **delete**.
-- **Topbar** — search (`⌘K` or `/`), the light/dark theme toggle, and **Stash window**.
+- **Topbar** — search (`⌘K` or `/`, with a clear button once you've typed; the box stays
+  tinted while a filter is active), the theme segment (**auto** follows your OS and switches
+  live, or pin **light** / **dark** / **linen**), and **Stash window**. On narrow windows the
+  sidebar tucks away behind a **menu** button and slides in as a drawer, so every section
+  (Spaces, Windows, Collections) stays reachable.
 - **Open tabs bar** — the current window's live tabs. Click to jump, hover to close,
   **drag one anywhere** — onto a collection, the board, or the Library — to save it.
   Settings → Appearance chooses where it lives:
@@ -128,9 +132,10 @@ hand back a fresh five. Getting back in then needs one of two proofs of ownershi
 - Drag bookmarks onto folders or breadcrumbs to move them. Drag a tray chip into the
   Library (or onto the sidebar Library item) to bookmark it in the open folder.
 
-**Two board layouts** — the topbar has a **columns / tiles** toggle. *Columns* is the kanban
-board; *Tiles* lays every collection out as a full-width gallery of uniform cards. Your choice
-persists.
+**Three board layouts** — the topbar has a **columns / tiles / mosaic** toggle. *Columns* is the
+kanban board; *Tiles* lays every collection out as a full-width gallery of uniform cards; *Mosaic*
+flows collections into a masonry of cards that size to their content (a very long collection
+scrolls inside its card), the same layout the Notes view uses. Your choice persists.
 
 **Tags & mind-graph** — the **tag** action on any saved link or bookmark opens a small editor:
 add as many tags as you like (they're shared by URL, so the same page is tagged once whether it's
@@ -179,8 +184,10 @@ never strands a blank row. Every card can be:
 - **Undone** — deleting a card is reversible: a snackbar offers **Undo**, and **⌘Z / Ctrl+Z** puts
   it back where it was with its items, tags, colour and reminder intact (**⌘⇧Z / Ctrl+Y** to redo).
 
-**Formatting.** Click into any text field and a formatting bar appears beneath it: **B / I / U / S**
-and **A+ / A−**. With nothing selected, B/I/U/S formats the word the caret is in; press again to
+**Formatting.** Click into any text field and a formatting bar docks at the bottom of that card —
+only while you're writing in it: **B / I / U / S**, **bullet / numbered / checklist** lines, and
+**A+ / A−**. The list buttons work in a note body (they mark the current line, or every selected
+line; press again to remove); Enter continues a list and Enter on an empty item ends it. With nothing selected, B/I/U/S formats the word the caret is in; press again to
 remove it. **⌘B / ⌘I / ⌘U** do the same from the keyboard. Formatting is written as Markdown into the
 text itself — so it survives export, import and Drive sync — and each field **renders** that
 formatting when you click away, showing the source again the moment you edit it. **A+ / A−** scales
@@ -239,7 +246,21 @@ that item — deleting a space brings back its collections too — without rever
 focuses it, `Enter` opens the first match, `Esc` clears.
 
 Clicking a saved card navigates in place (it's your new tab); `Cmd/Ctrl`-click opens a
-background tab. Theme follows your system until you pick one with the sun/moon toggle.
+background tab. Theme follows your system until you pin one with the sun / moon / leaf buttons in
+the topbar theme segment; the auto button hands it back to the OS. **Linen** is the third, warmer theme: linen paper, walnut
+ink and one pine accent, with sentence-case section labels.
+
+**Wayfinding.** Colour marks where you are and what you own: the active view carries a short
+rail; the active **Space** row's rail is that Space's own colour and the board title shows the
+same swatch; every collection column wears its colour as a 3px top edge. Counts and actions are
+visible at rest and brighten on hover — nothing important is hover-only — and a checklist card
+shows a progress bar that fills as you tick, turning green when the list is done.
+
+Views can be deep-linked with a hash — `newtab.html#notes`, `#library`, `#tags`, `#duplicates`,
+`#settings` — which is how clicking a reminder notification lands you on the Notes view.
+
+Every view shares one empty-state pattern: an icon, a plain sentence about what goes there, and
+the one or two actions that fill it (new collection, new folder, new note or list).
 
 ## Permissions
 
@@ -253,6 +274,8 @@ background tab. Theme follows your system until you pick one with the sun/moon t
 | `host_permissions` | `googleapis.com` (Drive backup), `api.coingecko.com` + `open.er-api.com` (market ticker) |
 
 Cloud sync and the ticker are the only features that reach the network, and both are opt-in.
+(An unused grammar-check module that would have sent search text to a third-party service was
+removed so that statement stays true.)
 
 ## Cloud sync setup
 
@@ -372,6 +395,15 @@ Two rules keep it that way:
 - **A border that *is* the control uses `--edge`** (3:1), not the decorative `--line` /
   `--line-strong` hairlines. Outlined buttons, selects, unchecked boxes and dashed drop targets
   have no other visual definition, so their outline has to carry it.
+
+**Calm structure, one accent (2026-09-07).** On top of the rules above, colour is spent on two
+jobs only. The user's own Space and collection colours are fixed-position wayfinding marks — a
+rail on the active Space row, a swatch beside the board title, a 3px top edge on each collection
+column. One accent carries every "you are here / do this" state — the active rail, the focus
+ring, selection, checked boxes, drop targets and checklist progress. In light and dark that
+accent *is* ink, so those themes stay strictly monochrome; **Linen**, the third theme, is warm
+paper and walnut ink with a pine accent, AA-checked with every token defined. The colour
+contract is written at the top of `css/newtab.css`.
 
 Hanken Grotesk + JetBrains Mono, bundled in `fonts/` — no webfont requests. The `new design/`
 folder is earlier reference material — delete it before packaging for the Web Store.
