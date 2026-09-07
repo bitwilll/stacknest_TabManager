@@ -396,7 +396,7 @@ function headerBar(sub) {
     el('div', { class: 'notes-h-text' }, sub),
     el('div', { class: 'notes-tools' },
       menuButton('Export', 'download', [
-        { label: 'Full backup (incl. notes)', run: () => exportBackup(false) },
+        { label: 'Full backup (everything)', run: () => exportBackup(false) },
         { label: 'Notes only', run: exportNotesOnly },
       ]),
       menuButton('Import', 'upload', [

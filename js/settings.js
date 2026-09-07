@@ -377,7 +377,7 @@ async function cloudCard() {
   const connected = !!(cloud.connected || cloud.email);
   const card = el('section', { class: 'set-card' },
     el('h2', { class: 'set-h' }, icon('cloud', 16), 'Cloud sync'),
-    el('p', { class: 'set-sub', text: 'Back up your spaces, collections and settings to your own Google Drive and restore them on any machine. The backup lives in a private app folder only StackNest can read — it never appears in your Drive.' }),
+    el('p', { class: 'set-sub', text: 'Back up everything — spaces, collections, notes, tags, My Space and the Vault (PIN included), and settings — to your own Google Drive and restore it on any machine. One file, overwritten in place on every backup, in a private app folder only StackNest can read; it never appears in your Drive.' }),
   );
 
   const gdrive = el('div', { class: 'cloud-provider' });
@@ -408,7 +408,7 @@ async function cloudCard() {
       el('div', { class: 'set-actions' },
         el('button', { class: 'btnx primary', onclick: withBusy(async () => { const r = await backupNow(includeBookmarks); toast(`Backed up ${r.collections} collection${r.collections === 1 ? '' : 's'}${r.bookmarks ? ' + bookmarks' : ''} to Drive`); }) }, el('span', { text: 'Back up now' })),
         el('button', { class: 'btnx soft', onclick: withBusy(async () => {
-          const ok = await confirmDialog({ title: 'Restore from Drive?', message: 'This replaces your current spaces, collections and settings with the latest cloud backup.', confirmLabel: 'Restore', danger: true });
+          const ok = await confirmDialog({ title: 'Restore from Drive?', message: 'This replaces your current spaces, collections, notes, tags, My Space, the Vault and settings with the latest cloud backup.', confirmLabel: 'Restore', danger: true });
           if (!ok) return;
           const r = await restoreLatest(); toast(`Restored ${r.collections} collection${r.collections === 1 ? '' : 's'} from Drive`);
         }) }, el('span', { text: 'Restore latest' })),
@@ -551,7 +551,7 @@ async function render() {
   includeBm.addEventListener('change', () => { includeBookmarks = includeBm.checked; });
   const backup = el('section', { class: 'set-card' },
     el('h2', { class: 'set-h', text: 'Backup & restore' }),
-    el('p', { class: 'set-sub', text: 'Export everything — spaces, collections and settings — to a JSON file you can re-import later or on another machine.' }),
+    el('p', { class: 'set-sub', text: 'Export everything — spaces, collections, notes, tags, My Space and the Vault (PIN included), and settings — to a JSON file you can re-import later or on another machine.' }),
     el('label', { class: 'set-toggle' }, includeBm, el('span', {}, 'Also include my Chrome bookmarks')),
     el('div', { class: 'set-actions' },
       el('button', { class: 'btnx primary', onclick: () => exportBackup(includeBookmarks) },
@@ -559,7 +559,7 @@ async function render() {
       el('button', { class: 'btnx soft', onclick: () => importFlow() },
         el('span', { text: 'Import backup…' })),
     ),
-    el('p', { class: 'set-note', text: 'Import replaces your current spaces, collections and settings. Bookmarks, if present, are added under a new "StackNest Import" folder (nothing is overwritten).' }),
+    el('p', { class: 'set-note', text: 'Import replaces your current spaces, collections, notes, tags, My Space, the Vault and settings. Bookmarks, if present, are added under a new "StackNest Import" folder (nothing is overwritten).' }),
   );
 
   frag.append(type, await tickerCard(), await vaultCard(), backup, await cloudCard());

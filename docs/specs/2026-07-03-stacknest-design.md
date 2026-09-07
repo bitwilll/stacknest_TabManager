@@ -459,6 +459,27 @@ one `modeBtns` map (persisted under `stacknest:boardmode`, unknown values fall b
 stamps `aria-pressed`. No JS in spaces.js changed — the DOM is identical, so drag/drop, collapse and
 rename work unchanged.
 
+**Reconciled onto main (2026-09-07).** This folder turned out to be a snapshot from commit 6e509a6,
+while the GitHub `main` had moved on (My Space + Vault, the vertical tabs rail, the graphite dark
+theme and type scale, the Drive sign-out). Today's work was re-parented onto 6e509a6 and rebased onto
+main so nothing on main was lost: JS/HTML conflicts resolved by hand (four-choice theme segment kept;
+`data-view` on `<html>`, the tabs-bar modes, the non-primary Stash button and the no-caption nav
+taken from main; the `mini-nav` dropped for the drawer), and the stylesheet rebuilt by two
+independent merge agents plus a judge on top of main's token system (--t scale, `--edge`, graphite
+dark) with Linen added as a complete third token block. Verified in the preview: all three themes,
+My Space, the Vault (set PIN → move a bookmark out of Chrome → unlock), the vertical rail, the docked
+formatting bar, mosaic, drawer, Library/Tags/Duplicates.
+
+**Backup completeness + single Drive file (owner request, 2026-09-07).** `buildBackup` is
+version 2: besides spaces/collections/settings/notes it now carries `tags`, `dupForgotten`,
+`myspace` (the My Space + Vault store) and `lock` (the Vault's salt + PBKDF2 hash and the
+security-answer hash — never the PIN). `applyBackup` restores each only when present, so older
+files leave current values alone, and calls `relock()` after restoring a PIN record so a restored
+Vault starts locked; the import confirm lists what the file carries. `drive.js` replaced
+`findFileId` (first match only) with `listBackupFiles` (newest first, `trashed=false`): upload
+PATCHes the newest in place, deletes every other copy, and re-prunes after a create so two racing
+first backups leave one file; restore reads the newest.
+
 **Rejected:** terracotta accent (collides with danger), Space-tinted canvas/tray washes, a
 three-level elevation system and rest shadows on every card, a global type-scale bump, the search
 box growing on focus, solid accent borders on selected chips, always-visible actions on sidebar

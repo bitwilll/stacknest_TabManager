@@ -144,28 +144,44 @@ async function fetchEmail(token) {
   catch { return null; }                           // don't fabricate a fake address; label falls back to "Google Drive"
 }
 
-async function findFileId(token) {
-  const q = encodeURIComponent(`name='${FILE_NAME}'`);
-  const r = await api(`drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)`, { token });
-  return (await r.json()).files?.[0]?.id || null;
+// Every copy of the backup file in the app folder, newest first. There should only ever be
+// ONE — uploads overwrite it in place — but a create that raced another create, or an older
+// build, can leave extras behind. Callers keep the newest and prune the rest, rather than
+// trusting whichever copy the API happened to list first.
+async function listBackupFiles(token) {
+  const q = encodeURIComponent(`name='${FILE_NAME}' and trashed=false`);
+  const r = await api(`drive/v3/files?spaces=appDataFolder&q=${q}&orderBy=modifiedTime%20desc&pageSize=100&fields=files(id,modifiedTime)`, { token });
+  return (await r.json()).files || [];
+}
+async function deleteFile(token, id) {
+  try { await api(`drive/v3/files/${id}`, { token, method: 'DELETE' }); }
+  catch { /* best effort — a leftover copy is pruned on the next backup */ }
 }
 
+// Overwrite the one backup file (PATCH in place, so no new file and no extra space); create
+// it only when none exists; and whatever happens, leave exactly one copy behind.
 async function uploadLive(token, json) {
-  const id = await findFileId(token);
-  if (id) {
-    await api(`upload/drive/v3/files/${id}?uploadType=media`, { token, method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: json });
+  const [keep, ...extras] = await listBackupFiles(token);
+  if (keep) {
+    await api(`upload/drive/v3/files/${keep.id}?uploadType=media`, { token, method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: json });
   } else {
     const boundary = 'stacknest' + FILE_NAME.length;
     const meta = JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] });
     const multipart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${json}\r\n--${boundary}--`;
     await api('upload/drive/v3/files?uploadType=multipart', { token, method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body: multipart });
   }
+  for (const f of extras) await deleteFile(token, f.id);
+  if (!keep) {
+    // two first-ever backups from two machines can each create a file; keep the newest only
+    const after = await listBackupFiles(token);
+    for (const f of after.slice(1)) await deleteFile(token, f.id);
+  }
 }
 
 async function downloadLive(token) {
-  const id = await findFileId(token);
-  if (!id) return null;
-  const r = await api(`drive/v3/files/${id}?alt=media`, { token });
+  const [newest] = await listBackupFiles(token);
+  if (!newest) return null;
+  const r = await api(`drive/v3/files/${newest.id}?alt=media`, { token });
   try { return await r.json(); }
   catch { throw new Error('The cloud backup file looks corrupted.'); }
 }

@@ -224,13 +224,18 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
   one anyway, the row tells you exactly what you'll get instead. Only *Hanken Grotesk* and
   *JetBrains Mono* ship with the extension and are guaranteed everywhere; the rest are system
   fonts, so availability depends on your OS.
-- **Backup & restore** — **Export** everything (spaces, collections, settings) to a JSON file,
-  optionally **including your Chrome bookmarks**. **Import** restores from that file (replaces
+- **Backup & restore** — **Export** everything — spaces, collections, notes, tags, forgotten
+  duplicates, **My Space and the Vault** (contents plus the PIN record; the PIN itself is never
+  stored, only its salted hash), and settings — to a JSON file, optionally **including your
+  Chrome bookmarks**. **Import** restores from that file (replaces
   your spaces/collections/settings after a confirm; bookmarks, if present, are added under a new
   "StackNest Import" folder — nothing is overwritten).
 - **Cloud sync** — back up and restore the same data to your own **Google Drive**, so you can move
   between machines. The backup lives in a private *app folder* only StackNest can read — it never
-  appears in your Drive. See [Cloud sync setup](#cloud-sync-setup) below (needs a one-time Google
+  appears in your Drive. It is **one file, overwritten in place** on every backup: the upload
+  patches the existing file rather than creating another, and if stray copies ever exist (two
+  machines' first-ever backups can race) it keeps the newest and deletes the rest, so no extra
+  Drive space is ever taken. Restore reads the newest copy. A restored Vault starts locked. See [Cloud sync setup](#cloud-sync-setup) below (needs a one-time Google
   OAuth client). *StackNest Cloud (Pro)*, a managed subscription tier on stacknest.com, is marked
   **coming soon** — it needs a hosted backend that isn't built yet.
 - **Market ticker** — an optional live **crypto + forex** marquee beside the search bar (**off by
