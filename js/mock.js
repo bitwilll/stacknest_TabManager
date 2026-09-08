@@ -50,7 +50,7 @@ const storageData = {
     { id: 'ws-work', name: 'Work', color: '#22c55e' },
   ],
   'stacknest:activeWorkspace': 'ws-personal',
-  'stacknest:settings': { fontUi: 'hanken', fontMono: 'jetbrains', scale: 'default' },
+  'stacknest:settings': { fontUi: 'hanken', fontMono: 'jetbrains' },   // no scale: the default (Comfortable) applies
   'stacknest:tags': {
     'https://refactoringui.com': { url: 'https://refactoringui.com', title: 'Refactoring UI', tags: ['design', 'reference'] },
     'https://typescale.com': { url: 'https://typescale.com', title: 'Type Scale', tags: ['design', 'typography'] },

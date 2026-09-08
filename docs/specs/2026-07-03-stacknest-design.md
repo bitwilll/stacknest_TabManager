@@ -470,6 +470,21 @@ dark) with Linen added as a complete third token block. Verified in the preview:
 My Space, the Vault (set PIN → move a bookmark out of Chrome → unlock), the vertical rail, the docked
 formatting bar, mosaic, drawer, Library/Tags/Duplicates.
 
+**Text sizes per role + Comfortable default (owner request, 2026-09-07).** The seven scale tokens
+are now computed from four role multipliers set on `:root` by `applySettings` (`--fs-heading` →
+t5/t6/t7, `--fs-title` → t4, `--fs-body` → t3, `--fs-small` → t1/t2). Settings › Appearance gets one
+stepper per role (seven steps, 85%–135%, with the sample set in the role's own token) and a Reset
+row that appears when anything is off 100%; values are sanitised to the ladder on read. Line
+heights are unitless so they follow. `DEFAULT_SETTINGS.scale` is now `comfortable` for profiles that never chose a size (a stored
+choice still wins — earlier saves baked `default` into storage), the zoom-1 option is labelled
+**Standard** (id unchanged), and the mock no longer seeds a scale so the preview shows the default.
+Review fixes: the settings view no longer rebuilds on its own writes (a stepper is a repeat-press
+control — the rebuild destroyed the pressed button and dropped focus to `<body>`); external
+rebuilds re-focus the same control by aria-label; one `normalize()` sanitises on read AND write so
+a bad `typeSizes` from a backup cannot take effect on a later unrelated save; the ticker only
+re-fetches when a ticker field changed; checkboxes scale with `--fs-body` like their text; samples
+never truncate; the explanation + Reset live in an always-visible row (Reset disabled at 100%).
+
 **Backup completeness + single Drive file (owner request, 2026-09-07).** `buildBackup` is
 version 2: besides spaces/collections/settings/notes it now carries `tags`, `dupForgotten`,
 `myspace` (the My Space + Vault store) and `lock` (the Vault's salt + PBKDF2 hash and the

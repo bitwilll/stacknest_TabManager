@@ -214,7 +214,10 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
 
 **Settings** (in the sidebar):
 - **Appearance** — pick the **interface font** and **monospace font**, an **interface size**
-  (Compact · Default · Comfortable · Large), and where the **open tabs bar** lives
+  (Compact · Standard · **Comfortable**, the default for new installs · Large), **text sizes per role** —
+  Headings, Titles, Body text and Small text each get a −/+ stepper from 85% to 135% with a
+  live sample, so you can grow just the small print or calm down just the headings; one
+  **Reset** puts them back — and where the **open tabs bar** lives
   (Horizontal · Vertical · Hidden). Applied instantly to the whole app and saved. Each
   entry in the menu is **rendered in its own typeface**, so the list is the preview.
 

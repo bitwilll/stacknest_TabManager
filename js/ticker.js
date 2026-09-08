@@ -14,7 +14,13 @@ let root, timer = null;
 
 export function initTicker(options) {
   ({ root } = options);
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && c[SETTINGS_KEY]) configure(); });
+  // only a ticker field changing is worth a re-fetch — a text-size or font save is not
+  const TICKER_FIELDS = ['tickerEnabled', 'tickerBase', 'tickerCrypto', 'tickerFx'];
+  chrome.storage?.onChanged?.addListener((c, area) => {
+    const ch = c[SETTINGS_KEY];
+    if (area !== 'local' || !ch) return;
+    if (TICKER_FIELDS.some((k) => JSON.stringify(ch.oldValue?.[k]) !== JSON.stringify(ch.newValue?.[k]))) configure();
+  });
   configure();
   return { render: configure, refresh };
 }

@@ -33,6 +33,7 @@ const ICONS = {
   search:   '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
   close:    '<path d="M6 6l12 12M18 6 6 18"/>',
   plus:     '<path d="M12 5v14M5 12h14"/>',
+  minus:    '<path d="M5 12h14"/>',
   save:     '<path d="M12 3v10m0 0 3.5-3.5M12 13l-3.5-3.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
   archive:  '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/>',
   external: '<path d="M15 4h5v5"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',

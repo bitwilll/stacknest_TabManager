@@ -29,7 +29,7 @@ export const FONT_MONO = [
 
 export const SCALES = [
   { id: 'compact', label: 'Compact', zoom: 0.9 },
-  { id: 'default', label: 'Default', zoom: 1 },
+  { id: 'default', label: 'Standard', zoom: 1 },   // id kept for stored values; the default is Comfortable
   { id: 'comfortable', label: 'Comfortable', zoom: 1.08 },
   { id: 'large', label: 'Large', zoom: 1.2 },
 ];
@@ -56,8 +56,23 @@ export const TICKER_CRYPTOS = [
 ];
 export const TICKER_FX = ['EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'CNY', 'CHF'];
 
+// ——— text sizes by role ———
+// Every piece of text in the stylesheet is set in one of seven scale tokens (--t1…--t7).
+// Rather than expose seven dials, they are grouped into four roles a person can name —
+// each role is a multiplier the tokens are computed from (see the :root block in the CSS).
+// The interface-size zoom above scales everything at once; these tune one kind of text.
+export const TYPE_ROLES = [
+  { id: 'heading', label: 'Headings', sub: 'View and section titles.', sample: 'Collections', token: '--t6' },
+  { id: 'title', label: 'Titles', sub: 'Card and collection titles.', sample: 'Weekend reading', token: '--t4' },
+  { id: 'body', label: 'Body text', sub: 'Navigation, buttons, inputs, notes.', sample: 'Drag a tab down from the tray', token: '--t3' },
+  { id: 'small', label: 'Small text', sub: 'Counts, domains, timestamps, section labels.', sample: 'UPDATED SEP 7 · 12 TABS', token: '--t2', mono: true },
+];
+export const TYPE_STEPS = [0.85, 0.92, 1, 1.08, 1.16, 1.25, 1.35];
+export const DEFAULT_TYPE_SIZES = Object.fromEntries(TYPE_ROLES.map((r) => [r.id, 1]));
+
 export const DEFAULT_SETTINGS = {
-  fontUi: 'hanken', fontMono: 'jetbrains', scale: 'default',
+  fontUi: 'hanken', fontMono: 'jetbrains', scale: 'comfortable',   // applies when no size has been chosen
+  typeSizes: DEFAULT_TYPE_SIZES,
   tabsBar: 'top',
   tickerEnabled: false, tickerBase: 'USD',
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
@@ -102,15 +117,21 @@ export function fontAvailable(stack) {
 const validId = (list, id, fallback) => (list.some((x) => x.id === id) ? id : fallback);
 const validArr = (allowed, arr, fallback) => (Array.isArray(arr) ? arr.filter((x) => allowed.includes(x)) : fallback);
 
-export async function loadSettings() {
-  const s = await getKey(SETTINGS_KEY, null);
-  const m = { ...DEFAULT_SETTINGS, ...(s && typeof s === 'object' ? s : {}) };
-  // sanitize unknown ids (corrupt / older / hand-edited backup) to the DEFAULTS, not list[0]
+// Sanitise a raw settings object (storage, a restored backup, a patch) to the defaults — unknown
+// ids to the DEFAULT id (not list[0]), text sizes to the ladder. Used on every read AND every
+// write, so a bad value that arrived through a backup can never take effect on a later save.
+function normalize(raw) {
+  const m = { ...DEFAULT_SETTINGS, ...(raw && typeof raw === 'object' ? raw : {}) };
   return {
     fontUi: validId(FONT_UI, m.fontUi, DEFAULT_SETTINGS.fontUi),
     fontMono: validId(FONT_MONO, m.fontMono, DEFAULT_SETTINGS.fontMono),
     scale: validId(SCALES, m.scale, DEFAULT_SETTINGS.scale),
     tabsBar: validId(TAB_BARS, m.tabsBar, DEFAULT_SETTINGS.tabsBar),
+    // a role missing from an older file, or a value off the ladder, is simply 1
+    typeSizes: Object.fromEntries(TYPE_ROLES.map((r) => {
+      const v = Number(m.typeSizes?.[r.id]);
+      return [r.id, TYPE_STEPS.includes(v) ? v : 1];
+    })),
     tickerEnabled: !!m.tickerEnabled,
     tickerBase: TICKER_BASES.includes(m.tickerBase) ? m.tickerBase : DEFAULT_SETTINGS.tickerBase,
     tickerCrypto: validArr(TICKER_CRYPTOS.map((c) => c.id), m.tickerCrypto, DEFAULT_SETTINGS.tickerCrypto),
@@ -118,14 +139,37 @@ export async function loadSettings() {
   };
 }
 
+export async function loadSettings() {
+  return normalize(await getKey(SETTINGS_KEY, null));
+}
+
+// Writes this view makes itself must not rebuild it: every control already updates in place
+// and applySettings has pushed the change into the DOM. Rebuilding on the storage echo used to
+// destroy the very button that was just pressed — a stepper is a repeat-press control — and
+// dropped keyboard focus to <body>. Each write leaves its serialised value here; the listener
+// consumes the matching echo and skips. Bounded, so a lost echo cannot leak.
+const ownWrites = [];
+
 export async function saveSettings(patch) {
   let next;
   await update(SETTINGS_KEY, DEFAULT_SETTINGS, (cur) => {
-    next = { ...DEFAULT_SETTINGS, ...(cur || {}), ...patch };
+    next = normalize({ ...DEFAULT_SETTINGS, ...(cur || {}), ...patch });
+    ownWrites.push(JSON.stringify(next));
+    if (ownWrites.length > 20) ownWrites.shift();
     return next;
   });
   applySettings(next);
+  // controls sync from this rather than from a rebuild, so a save made elsewhere (a
+  // programmatic call, a future keyboard shortcut) still shows in the open Settings view
+  document.dispatchEvent(new CustomEvent('stacknest:settings', { detail: next }));
   return next;
+}
+
+// Listen for settings changes on behalf of a control; the listener retires itself once the
+// control has left the DOM (an external rebuild replaces every row), so nothing accumulates.
+function onSettingsChange(node, fn) {
+  const handler = (e) => { if (!node.isConnected) { document.removeEventListener('stacknest:settings', handler); return; } fn(e.detail); };
+  document.addEventListener('stacknest:settings', handler);
 }
 
 // Push settings into the live DOM: font stacks onto the CSS vars, size via zoom.
@@ -138,6 +182,7 @@ export function applySettings(s) {
   const zoom = pick(SCALES, s.scale).zoom;
   root.style.zoom = String(zoom);
   root.style.setProperty('--app-zoom', String(zoom));
+  for (const r of TYPE_ROLES) root.style.setProperty(`--fs-${r.id}`, String(s.typeSizes?.[r.id] ?? 1));
   // layout switches ride on the root element so the stylesheet owns what is shown —
   // no inline display juggling, and nothing to re-apply on every view change
   root.dataset.tabsbar = pick(TAB_BARS, s.tabsBar).id;
@@ -151,7 +196,16 @@ let includeBookmarks = false; // export choice; survives settings-view re-render
 
 export function initSettings(options) {
   ({ root } = options);
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[SETTINGS_KEY] || c[CLOUD_KEY] || c[LOCK_KEY])) render(); });
+  chrome.storage?.onChanged?.addListener((c, area) => {
+    if (area !== 'local') return;
+    let external = !!(c[CLOUD_KEY] || c[LOCK_KEY]);
+    if (c[SETTINGS_KEY]) {
+      const i = ownWrites.indexOf(JSON.stringify(c[SETTINGS_KEY].newValue));
+      if (i !== -1) ownWrites.splice(i, 1);   // our own echo — the view is already right
+      else external = true;                     // another tab, an import, a Drive restore
+    }
+    if (external) render();
+  });
   render();
   return { render };
 }
@@ -542,6 +596,7 @@ async function render() {
     fontRow('Monospace font', 'Counts, domains, labels and keyboard hints.', FONT_MONO, s.fontMono,
       (v) => saveSettings({ fontMono: v }).then(() => toast('Monospace font updated')), 'sample-mono'),
     segRow('Interface size', 'Scales the whole interface, text and all.', SCALES, s.scale, 'scale'),
+    ...typeSizeRows(s.typeSizes),
     segRow('Open tabs bar', 'Where this window’s live tabs are listed.', TAB_BARS, s.tabsBar, 'tabsBar'),
   );
 
@@ -563,12 +618,82 @@ async function render() {
   );
 
   frag.append(type, await tickerCard(), await vaultCard(), backup, await cloudCard());
+  // an external rebuild must not strand keyboard focus: put it back on the same control
+  const focused = root.contains(document.activeElement) ? document.activeElement.getAttribute('aria-label') : null;
   root.replaceChildren(frag);
+  if (focused) root.querySelector(`[aria-label="${CSS.escape(focused)}"]`)?.focus();
 }
 
 // A labelled row whose control is a segmented button group. `sub` is the row's own
 // description; when an option carries its own `sub`, the selected one's is appended so
 // the consequence of the choice is readable without picking it first.
+// One stepper per text role: − / percentage / +, with a live sample set in that role's
+// own token so the change is visible before you leave the row. A single Reset appears
+// once anything is off 100%. Saves merge into the whole typeSizes object, so two quick
+// clicks on different rows cannot clobber each other (saveSettings reads inside the queue).
+function typeSizeRows(sizes) {
+  const rows = [];
+  const steppers = {};
+  // the explanation lives in a row that is always there, with Reset beside it (disabled at
+  // 100%) — nothing below shifts when the first step is taken
+  const resetBtn = el('button', { class: 'btnx ghosty', onclick: () => setAll(DEFAULT_TYPE_SIZES) }, el('span', { text: 'Reset' }));
+  rows.push(el('div', { class: 'set-row' },
+    el('div', { class: 'set-row-text' },
+      el('div', { class: 'set-label', text: 'Text sizes' }),
+      el('div', { class: 'set-sub', text: 'Tune one kind of text at a time. 100% is the designed size for that role, relative to the interface size above.' }),
+    ),
+    el('div', { class: 'set-control' }, resetBtn),
+  ));
+  const syncReset = () => {
+    const allDefault = TYPE_ROLES.every((r) => (sizes[r.id] ?? 1) === 1);
+    resetBtn.disabled = allDefault;
+    resetBtn.setAttribute('aria-disabled', String(allDefault));
+  };
+
+  const setAll = async (next) => {
+    sizes = { ...sizes, ...next };
+    for (const r of TYPE_ROLES) steppers[r.id]?.(sizes[r.id]);
+    syncReset();
+    await saveSettings({ typeSizes: { ...sizes } });
+  };
+
+  for (const r of TYPE_ROLES) {
+    const value = el('span', { class: 'set-step-val' });
+    const sample = el('span', { class: `set-sample set-sample-role${r.mono ? ' sample-mono' : ' sample-ui'}`, text: r.sample, style: `font-size: var(${r.token})` });
+    const minus = el('button', { class: 'set-step', title: `Smaller ${r.label.toLowerCase()}`, 'aria-label': `Smaller ${r.label.toLowerCase()}` }, icon('minus', 13));
+    const plus = el('button', { class: 'set-step', title: `Larger ${r.label.toLowerCase()}`, 'aria-label': `Larger ${r.label.toLowerCase()}` }, icon('plus', 13));
+    const show = (v) => {
+      value.textContent = `${Math.round(v * 100)}%`;
+      minus.disabled = TYPE_STEPS.indexOf(v) <= 0;
+      plus.disabled = TYPE_STEPS.indexOf(v) >= TYPE_STEPS.length - 1;
+    };
+    steppers[r.id] = show;
+    const step = (dir) => {
+      const i = TYPE_STEPS.indexOf(sizes[r.id] ?? 1);
+      const next = TYPE_STEPS[Math.max(0, Math.min(TYPE_STEPS.length - 1, i + dir))];
+      if (next !== sizes[r.id]) setAll({ [r.id]: next });
+    };
+    minus.addEventListener('click', () => step(-1));
+    plus.addEventListener('click', () => step(1));
+    show(sizes[r.id] ?? 1);
+    rows.push(el('div', { class: 'set-row' },
+      el('div', { class: 'set-row-text' },
+        el('div', { class: 'set-label', text: r.label }),
+        el('div', { class: 'set-sub', text: r.sub }),
+      ),
+      el('div', { class: 'set-control' }, sample,
+        el('div', { class: 'set-stepper', role: 'group', 'aria-label': `${r.label} size` }, minus, value, plus)),
+    ));
+  }
+  syncReset();
+  onSettingsChange(rows[0], (next) => {
+    sizes = { ...sizes, ...(next.typeSizes || {}) };
+    for (const r of TYPE_ROLES) steppers[r.id]?.(sizes[r.id] ?? 1);
+    syncReset();
+  });
+  return rows;
+}
+
 function segRow(label, sub, list, current, key) {
   const note = el('div', { class: 'set-seghint' });
   const seg = el('div', { class: 'set-seg', role: 'group', 'aria-label': label });
@@ -583,7 +708,7 @@ function segRow(label, sub, list, current, key) {
     seg.append(btn);
   }
   showHint(current);
-  return el('div', { class: 'set-row' },
+  const row = el('div', { class: 'set-row' },
     el('div', { class: 'set-row-text' },
       el('div', { class: 'set-label', text: label }),
       el('div', { class: 'set-sub', text: sub }),
@@ -591,4 +716,10 @@ function segRow(label, sub, list, current, key) {
     ),
     el('div', { class: 'set-control' }, seg),
   );
+  onSettingsChange(row, (next) => {
+    const id = next[key];
+    for (const btn of seg.children) btn.classList.toggle('is-active', btn.textContent === list.find((x) => x.id === id)?.label);
+    showHint(id);
+  });
+  return row;
 }

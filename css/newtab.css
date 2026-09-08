@@ -124,13 +124,20 @@
      replace them. 1.125 is deliberately tight: an editorial 1.25 would make
      a dense tool shout, while anything flatter stops reading as hierarchy.
      Rounded to half-pixels so stems stay crisp at 100% zoom. */
-  --t1: 10.5px;   /* micro    — mono, uppercase, tracked: section labels */
-  --t2: 11.5px;   /* meta     — counts, timestamps, domains */
-  --t3: 13px;     /* base     — body, nav, buttons, inputs */
-  --t4: 14.5px;   /* title    — card + collection titles */
-  --t5: 16.5px;   /* section  — settings/section headings */
-  --t6: 18.5px;   /* view     — view titles */
-  --t7: 21px;     /* display  — reserved for large numerals */
+  /* text-size dials, one per role — Settings › Appearance writes them (1 = the scale as
+     designed). Every token below is computed from its role, so a person can grow just the
+     headings, just the small text, and so on; the interface-size zoom still scales all of it. */
+  --fs-heading: 1;
+  --fs-title:   1;
+  --fs-body:    1;
+  --fs-small:   1;
+  --t1: calc(10.5px * var(--fs-small));    /* micro    — mono, uppercase, tracked: section labels */
+  --t2: calc(11.5px * var(--fs-small));    /* meta     — counts, timestamps, domains */
+  --t3: calc(13px   * var(--fs-body));     /* base     — body, nav, buttons, inputs */
+  --t4: calc(14.5px * var(--fs-title));    /* title    — card + collection titles */
+  --t5: calc(16.5px * var(--fs-heading));  /* section  — settings/section headings */
+  --t6: calc(18.5px * var(--fs-heading));  /* view     — view titles */
+  --t7: calc(21px   * var(--fs-heading));  /* display  — reserved for large numerals */
 
   --lh-tight: 1.25;   /* headings */
   --lh:       1.45;   /* UI text */
@@ -1492,6 +1499,15 @@ kbd {
 .set-seghint { margin-top: var(--s1); font: 500 var(--t2)/1.45 var(--grot); color: var(--text-faint); max-width: 52ch; }
 .set-seghint:empty { display: none; }
 
+/* text-size steppers: − / value / + in one well, sample text to the left in its own token */
+.set-stepper { display: flex; align-items: center; background: var(--bg-inset); border: 1px solid var(--edge); border-radius: var(--r4); padding: 3px; gap: 2px; }
+.set-step { width: 28px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r2); color: var(--text-soft); cursor: pointer; transition: background 0.13s, color 0.13s; }
+.set-step:hover { background: var(--bg); color: var(--text-strong); }
+.set-step[disabled] { opacity: .35; cursor: default; }
+.set-step[disabled]:hover { background: none; color: var(--text-soft); }
+.set-step svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.set-step-val { min-width: 44px; text-align: center; font: 600 var(--t2) var(--mono); font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.set-sample-role { width: auto; max-width: none; color: var(--text-body); }
 .set-seg { display: flex; background: var(--bg-inset); border: 1px solid var(--edge); border-radius: var(--r4); padding: 3px; gap: 2px; }
 .set-seg-btn { font: 600 var(--t3) var(--grot); color: var(--text-soft); padding: 6px 11px; border-radius: var(--r2); cursor: pointer; transition: background 0.13s, color 0.13s; white-space: nowrap; }
 .set-seg-btn:hover { color: var(--text-strong); }
@@ -1825,8 +1841,8 @@ kbd {
 .todo-line { display: flex; align-items: flex-start; gap: 10px; }
 /* the box scales with the card's text, or it visually detaches from the line at A+/A− */
 .todo-check {
-  width: calc(18px * var(--card-scale, 1)); height: calc(18px * var(--card-scale, 1));
-  flex: none; margin-top: calc(1px * var(--card-scale, 1));
+  width: calc(18px * var(--card-scale, 1) * var(--fs-body)); height: calc(18px * var(--card-scale, 1) * var(--fs-body));
+  flex: none; margin-top: calc(1px * var(--card-scale, 1) * var(--fs-body));
   border: 1.6px solid var(--edge); border-radius: var(--r2);
   display: flex; align-items: center; justify-content: center;
   color: var(--accent-contrast); cursor: pointer; transition: background .12s, border-color .12s;
@@ -1839,8 +1855,8 @@ kbd {
 .check-rows { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; }
 .check-row { display: flex; align-items: flex-start; gap: 8px; }
 .check-row .todo-check {
-  width: calc(15px * var(--card-scale, 1)); height: calc(15px * var(--card-scale, 1));
-  margin-top: calc(2px * var(--card-scale, 1)); border-radius: var(--r1); border-width: 1.5px;
+  width: calc(15px * var(--card-scale, 1) * var(--fs-body)); height: calc(15px * var(--card-scale, 1) * var(--fs-body));
+  margin-top: calc(2px * var(--card-scale, 1) * var(--fs-body)); border-radius: var(--r1); border-width: 1.5px;
 }
 .check-text { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; outline: none; font: 500 var(--t3)/1.45 var(--grot); color: var(--text-body); }
 .check-row.is-done .check-text { color: var(--text-mut); text-decoration: line-through; }
@@ -2037,7 +2053,7 @@ kbd {
   .side, .drawer-scrim, .tcard, .btnx, .chipx, .icb, .navx, .ghost, .chip-tab, .searchbox,
   .toast, .undo-bar, .modal, .modal-scrim, .win-chev, .col-chev, .col-dot, .colr-sw, .mos-card,
   .mos-grip, .fmt-btn, .todo-check, .todo-addrow, .tag-chip, .tick-check, .tg-cbtn, .tg-item,
-  .tg-hub circle, .tg-hint, .crumb, .set-seg-btn, .modal-btn, .undo-action, .notes-menu-item { transition: none; }
+  .tg-hub circle, .tg-hint, .crumb, .set-seg-btn, .set-step, .modal-btn, .undo-action, .notes-menu-item { transition: none; }
   .tcard:hover, .tcard:active, .btnx:active, .chipx:active, .col-dot:hover, .colr-sw:hover { transform: none; }
   .tick-track { animation: none; padding-left: 2px; }
   .check-prog::after { transition: none; }
