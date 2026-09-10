@@ -1,11 +1,12 @@
 // Live tabs: the open-tabs tray (current window) + the WINDOWS sidebar section.
 
-import { el, icon, toast, tile, debounce, matches, actionBtn } from './ui.js';
+import { el, icon, toast, tile, debounce, matches, actionBtn, confirmDialog } from './ui.js';
 import { addSpace } from './spacesStore.js';
 
 const TAB_MIME = 'text/x-stacknest-tab';
 
 let trayRoot, trayCount, windowsRoot, getQuery;
+let renderRequest = 0;
 
 // Explicit open/closed state the user set by clicking a window row. Absent means "use the
 // default for the current tab-bar mode" — vertical mode opens the focused window, because
@@ -55,8 +56,12 @@ async function windowMap() {
 }
 
 export async function render() {
+  const request = ++renderRequest;
   const q = getQuery();
   const { byWindow, focusedId } = await windowMap();
+  // Tab and window events often arrive in bursts. Ignore an older async result so it
+  // cannot repaint over a newer tab state or search result.
+  if (request !== renderRequest) return;
 
   // ——— horizontal strip: the focused window's tabs as chips ———
   const current = byWindow.get(focusedId) || [];
@@ -200,6 +205,15 @@ async function saveWindow(tabs, label, stash) {
   if (!saved.length) { toast('No tabs to save here'); return; }
 
   const date = new Date().toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  if (stash) {
+    const ok = await confirmDialog({
+      title: `Stash ${saved.length} tab${saved.length === 1 ? '' : 's'}?`,
+      message: 'A new collection will be created first, then these tabs will close. You can reopen them from the collection at any time.',
+      confirmLabel: 'Stash & close',
+      danger: true,
+    });
+    if (!ok) return;
+  }
   await addSpace(`${label} · ${date}`, saved);
 
   if (stash) {

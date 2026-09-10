@@ -35,9 +35,26 @@ async function main() {
   const themeChoice = () => { const v = localStorage.getItem(THEME_KEY); return Object.hasOwn(themeBtns, v) ? v : 'auto'; };
   applyTheme(themeChoice());
   systemDark.addEventListener('change', () => { if (themeChoice() === 'auto') applyTheme('auto'); });
+  // On narrow screens the full four-choice segment would crowd out search. Cycle through
+  // the same persisted choices with one explicit, labelled control instead.
+  const mobileThemeCycle = document.getElementById('mobile-theme-cycle');
+  const updateMobileThemeControl = () => {
+    const current = themeChoice();
+    const label = current === 'auto' ? 'Follow system theme' : `${current[0].toUpperCase()}${current.slice(1)} theme`;
+    mobileThemeCycle.title = `${label}. Change theme`;
+    mobileThemeCycle.setAttribute('aria-label', `${label}. Change theme`);
+  };
+  updateMobileThemeControl();
   for (const [k, b] of Object.entries(themeBtns)) {
-    b.addEventListener('click', () => { localStorage.setItem(THEME_KEY, k); applyTheme(k); });
+    b.addEventListener('click', () => { localStorage.setItem(THEME_KEY, k); applyTheme(k); updateMobileThemeControl(); });
   }
+  mobileThemeCycle.addEventListener('click', () => {
+    const choices = Object.keys(themeBtns);
+    const next = choices[(choices.indexOf(themeChoice()) + 1) % choices.length];
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+    updateMobileThemeControl();
+  });
 
   // — board layout: columns (kanban) · tiles (full-width rows) · mosaic (masonry of cards) —
   const BOARD_MODE_KEY = 'stacknest:boardmode';
@@ -60,22 +77,24 @@ async function main() {
 
   // — views (Collections board / Library) —
   const views = {
-    board: { el: document.getElementById('view-board'), title: 'Collections' },
-    myspace: { el: document.getElementById('view-myspace'), title: 'My Space' },
-    vault: { el: document.getElementById('view-vault'), title: 'Vault' },
-    library: { el: document.getElementById('view-library'), title: 'Library' },
-    tags: { el: document.getElementById('view-tags'), title: 'Tags' },
-    duplicates: { el: document.getElementById('view-duplicates'), title: 'Duplicates' },
-    notes: { el: document.getElementById('view-notes'), title: 'Notes & Todos' },
-    settings: { el: document.getElementById('view-settings'), title: 'Settings' },
+    board: { el: document.getElementById('view-board'), title: 'Collections', kicker: 'Workspace' },
+    myspace: { el: document.getElementById('view-myspace'), title: 'My Space', kicker: 'Private links' },
+    vault: { el: document.getElementById('view-vault'), title: 'Vault', kicker: 'Private links' },
+    library: { el: document.getElementById('view-library'), title: 'Library', kicker: 'Chrome bookmarks' },
+    tags: { el: document.getElementById('view-tags'), title: 'Tags', kicker: 'Organize' },
+    duplicates: { el: document.getElementById('view-duplicates'), title: 'Duplicates', kicker: 'Clean up' },
+    notes: { el: document.getElementById('view-notes'), title: 'Notes & Todos', kicker: 'Scratchpad' },
+    settings: { el: document.getElementById('view-settings'), title: 'Settings', kicker: 'Preferences' },
   };
   const viewTitle = document.getElementById('view-title');
+  const viewKicker = document.getElementById('view-kicker');
   let currentView = 'board';
   const showView = (name) => {
     if (!views[name]) return;
     currentView = name;
     for (const [key, v] of Object.entries(views)) v.el.hidden = key !== name;
     viewTitle.textContent = views[name].title;
+    viewKicker.textContent = views[name].kicker;
     // Which view is open is a root-level fact, so the stylesheet can decide what belongs
     // on screen (the tab strip and the board-layout toggle are board-only). Doing this in
     // CSS rather than inline styles lets the "Open tabs bar" setting override it without
@@ -83,7 +102,10 @@ async function main() {
     document.documentElement.dataset.view = name;
     refreshView(name); // show current data when a view is opened
     document.querySelectorAll('.view-link').forEach((btn) => {
-      btn.classList.toggle('is-active', btn.dataset.view === name);
+      const active = btn.dataset.view === name;
+      btn.classList.toggle('is-active', active);
+      if (active) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
     });
     // #view deep-links (e.g. the reminder notification opens newtab.html#notes)
     try { history.replaceState(null, '', name === 'board' ? location.pathname : `#${name}`); } catch { /* not navigable */ }
@@ -171,6 +193,7 @@ async function main() {
 
   // topbar + tray actions
   document.getElementById('stash-window-btn').addEventListener('click', stashCurrentWindow);
+  document.getElementById('mobile-stash-window-btn').addEventListener('click', stashCurrentWindow);
   document.getElementById('save-all-btn').addEventListener('click', saveCurrentWindow);
   document.getElementById('new-collection-btn').addEventListener('click', () => {
     showView('board');

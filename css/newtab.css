@@ -62,55 +62,55 @@
        --col-color  (.colcard)        --done        (.check-prog, 0–1)             */
 
   /* ——— ink on paper (light) ——— */
-  --bg:          #ffffff;   /* canvas — paper */
-  --bg-side:     #f4f4f4;   /* sidebar — one neutral step down */
-  --bg-tray:     #f4f4f4;
-  --bg-inset:    #ebebeb;   /* chips, insets, wells */
+  --bg:          #f8f9fd;   /* cool, quiet canvas */
+  --bg-side:     #f2f4fa;   /* sidebar has its own soft plane */
+  --bg-tray:     #f8f9fd;
+  --bg-inset:    #eef0f7;   /* chips, insets, wells */
   --bg-card:     #ffffff;
-  --bg-col:      rgba(255, 255, 255, 0.62);  /* translucent: the dot ground reads through */
+  --bg-col:      rgba(255, 255, 255, 0.78);  /* translucent: the grid still gives orientation */
   --bg-kbd:      #ffffff;
 
   /* Grey ramp. Every value that carries TEXT is >= 4.5:1 on both --bg and
      --bg-side; --text-ghost is the one exception and is icons/placeholder only. */
-  --text-strong: #0a0a0a;   /* headings */
-  --text:        #171717;   /* default ink */
-  --text-body:   #2b2b2b;   /* card + list body */
-  --text-soft:   #454545;   /* secondary */
-  --text-mut:    #5e5e5e;   /* micro-labels, meta      6.5 paper / 5.4 inset */
-  --text-faint:  #666666;   /* quietest real text      5.7 paper / 4.8 inset */
-  --text-ghost:  #878787;   /* NON-TEXT only: idle icons — 3.6 paper / 3.0 inset */
+  --text-strong: #171a2b;   /* headings */
+  --text:        #282c3d;   /* default ink */
+  --text-body:   #34394d;   /* card + list body */
+  --text-soft:   #50566b;   /* secondary */
+  --text-mut:    #666d82;   /* micro-labels, meta */
+  --text-faint:  #70778c;   /* quietest real text */
+  --text-ghost:  #9299ac;   /* NON-TEXT only */
 
-  --line:        rgba(0, 0, 0, 0.10);
-  --line-strong: rgba(0, 0, 0, 0.18);
-  --card-line:   rgba(0, 0, 0, 0.09);
-  --card-line-2: rgba(0, 0, 0, 0.13);
+  --line:        rgba(42, 49, 81, 0.10);
+  --line-strong: rgba(42, 49, 81, 0.18);
+  --card-line:   rgba(42, 49, 81, 0.10);
+  --card-line-2: rgba(42, 49, 81, 0.15);
 
-  --accent:          #0a0a0a;   /* ink is the accent — the primary button is black */
-  --accent-2:        #0a0a0a;   /* kept for compatibility; flat, so same as --accent */
-  --accent-text:     #0a0a0a;
+  --accent:          #5c5ee8;   /* calm indigo — clear state without shouting */
+  --accent-2:        #5c5ee8;
+  --accent-text:     #4548c8;
   --accent-contrast: #ffffff;   /* text on ink fills */
-  --accent-soft:     #e2e2e2;   /* active / selected background */
-  --accent-soft-txt: #0a0a0a;
-  --accent-border:   rgba(0, 0, 0, 0.30);
-  --accent-ring:     rgba(0, 0, 0, 0.13);
-  --accent-glow:     rgba(0, 0, 0, 0.16);
+  --accent-soft:     #e8e9ff;   /* active / selected background */
+  --accent-soft-txt: #4548c8;
+  --accent-border:   rgba(92, 94, 232, 0.45);
+  --accent-ring:     rgba(92, 94, 232, 0.18);
+  --accent-glow:     rgba(92, 94, 232, 0.20);
 
   /* NOTHING RED — the single permitted colour signal. 5.2:1 on paper.
      Allowed ONLY on: the live-tabs pulse, destructive confirm + armed delete,
      an overdue reminder, the duplicate-count badge, and ticker-down. Nowhere
      else. If red appears twice on one screen, one of them is wrong. */
-  --red:         #c9141c;
-  --green:       #2a7048;   /* semantic only: ticker up, cloud connected */
+  --red:         #c84054;
+  --green:       #20845d;   /* semantic only: ticker up, cloud connected */
 
-  --hov:         #efefef;
-  --hovsh:       none;      /* flat — hover lifts by border, not shadow */
-  --hovbr:       rgba(0, 0, 0, 0.28);
-  --sb:          rgba(0, 0, 0, 0.16);
-  --sbh:         rgba(0, 0, 0, 0.32);
-  --dotgrid:     rgba(0, 0, 0, 0.07);   /* dot-matrix ground */
+  --hov:         #e9ecf7;
+  --hovsh:       0 8px 22px -18px rgba(42, 49, 81, 0.38);
+  --hovbr:       rgba(42, 49, 81, 0.28);
+  --sb:          rgba(42, 49, 81, 0.16);
+  --sbh:         rgba(42, 49, 81, 0.32);
+  --dotgrid:     rgba(85, 91, 161, 0.09);   /* dot-matrix ground */
   --shadow-app:  none;
-  --shadow-tile: none;
-  --shadow-btn:  none;
+  --shadow-tile: 0 1px 2px rgba(42, 49, 81, 0.05);
+  --shadow-btn:  0 5px 12px -8px rgba(92, 94, 232, 0.72);
   /* the floating layer is the one place elevation is real, and it is neutral */
   --shadow-pop:  0 18px 44px -14px rgba(0, 0, 0, 0.28);
   --tint-a:      0.13;   /* one intensity dial for the six note-card tints */
@@ -163,7 +163,7 @@
   /* 3.0:1 on paper — the boundary of a control whose border IS the control
      (outlined buttons, selects, unchecked boxes, dashed drop targets). Distinct
      from --line-strong, which stays a decorative hairline. */
-  --edge: rgba(0, 0, 0, 0.45);
+  --edge: rgba(42, 49, 81, 0.42);
   --app-zoom: 1;
 }
 
@@ -171,54 +171,54 @@
   /* ——— chalk on graphite (dark) ———
      Ratios below are measured against --bg-inset, the LIGHTEST surface each token can
      land on; every one of them is higher on the canvas. Text floor 4.5:1, non-text 3:1. */
-  --bg:          #171717;   /* canvas — graphite, not black */
-  --bg-side:     #1e1e1e;   /* sidebar + strip: one step up, as in light one step down */
-  --bg-tray:     #1e1e1e;
-  --bg-card:     #212121;
-  --bg-inset:    #2a2a2a;   /* chips, insets, wells — the highest surface */
-  --bg-col:      rgba(255, 255, 255, 0.030);  /* translucent: the dot ground reads through */
-  --bg-kbd:      #242424;
+  --bg:          #11131d;
+  --bg-side:     #171a27;
+  --bg-tray:     #11131d;
+  --bg-card:     #1c2030;
+  --bg-inset:    #252a3d;
+  --bg-col:      rgba(255, 255, 255, 0.045);
+  --bg-kbd:      #202437;
 
-  --text-strong: #e9e9e9;   /* 11.8 inset / 14.8 canvas — deliberately not #fff */
-  --text:        #dcdcdc;   /* 10.5 */
-  --text-body:   #cbcbcb;   /*  8.9 */
-  --text-soft:   #a9a9a9;   /*  6.1 */
-  --text-mut:    #989898;   /*  5.0 */
-  --text-faint:  #949494;   /*  4.7 — the quietest real text, still over the line */
-  --text-ghost:  #777777;   /* NON-TEXT only: idle icons — 3.2 inset / 4.0 canvas */
+  --text-strong: #f0f1ff;
+  --text:        #dedff0;
+  --text-body:   #c9ccdf;
+  --text-soft:   #aeb2c8;
+  --text-mut:    #989db5;
+  --text-faint:  #9298b0;
+  --text-ghost:  #747a94;
 
   /* hairlines carry more alpha than they did on black: white over a lifted surface
      separates less, so matching the old apparent weight costs a point of opacity */
-  --line:        rgba(255, 255, 255, 0.12);
-  --line-strong: rgba(255, 255, 255, 0.20);
-  --card-line:   rgba(255, 255, 255, 0.10);
-  --card-line-2: rgba(255, 255, 255, 0.15);
+  --line:        rgba(219, 222, 255, 0.11);
+  --line-strong: rgba(219, 222, 255, 0.19);
+  --card-line:   rgba(219, 222, 255, 0.10);
+  --card-line-2: rgba(219, 222, 255, 0.15);
 
-  --accent:          #e9e9e9;   /* chalk is the accent — same value as --text-strong */
-  --accent-2:        #e9e9e9;
-  --accent-text:     #e9e9e9;
-  --accent-contrast: #171717;   /* a chalk fill's label is the canvas showing through */
-  --accent-soft:     rgba(255, 255, 255, 0.12);
-  --accent-soft-txt: #e9e9e9;
-  --accent-border:   rgba(255, 255, 255, 0.30);
-  --accent-ring:     rgba(255, 255, 255, 0.16);
-  --accent-glow:     rgba(255, 255, 255, 0.10);
+  --accent:          #afb3ff;
+  --accent-2:        #afb3ff;
+  --accent-text:     #c6c9ff;
+  --accent-contrast: #17192a;
+  --accent-soft:     rgba(175, 179, 255, 0.15);
+  --accent-soft-txt: #c6c9ff;
+  --accent-border:   rgba(175, 179, 255, 0.42);
+  --accent-ring:     rgba(175, 179, 255, 0.18);
+  --accent-glow:     rgba(175, 179, 255, 0.18);
 
   /* the same signal, softened with the rest of the ramp — 5.2 inset / 6.5 canvas */
-  --red:         #ff6b6b;
-  --green:       #4ec98c;
+  --red:         #ff8390;
+  --green:       #59cf9a;
 
-  --hov:         rgba(255, 255, 255, 0.06);
-  --hovsh:       none;
-  --hovbr:       rgba(255, 255, 255, 0.26);
-  --sb:          rgba(255, 255, 255, 0.14);
-  --sbh:         rgba(255, 255, 255, 0.26);
-  --dotgrid:     rgba(255, 255, 255, 0.055);
+  --hov:         rgba(187, 192, 255, 0.10);
+  --hovsh:       0 8px 22px -18px rgba(0, 0, 0, 0.65);
+  --hovbr:       rgba(211, 215, 255, 0.26);
+  --sb:          rgba(211, 215, 255, 0.14);
+  --sbh:         rgba(211, 215, 255, 0.26);
+  --dotgrid:     rgba(175, 179, 255, 0.085);
   --shadow-app:  none;
-  --shadow-tile: none;
-  --shadow-btn:  none;
+  --shadow-tile: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-btn:  0 5px 12px -8px rgba(175, 179, 255, 0.45);
   --shadow-pop:  0 18px 44px -14px rgba(0, 0, 0, 0.7);
-  --edge:        rgba(255, 255, 255, 0.36);   /* 3.2:1 on inset, 3.4:1 on canvas */
+  --edge:        rgba(211, 215, 255, 0.36);
   --tint-a:      0.16;
 }
 
@@ -2046,6 +2046,213 @@ kbd {
 .apple-paste:focus { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-ring); }
 .apple-splitrow { display: flex; align-items: center; gap: 8px; margin: 12px 0 18px; font: 500 var(--t3) var(--grot); color: var(--text-soft); cursor: pointer; }
 .apple-split-cb { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+
+/* ————— 2026 workspace refresh —————
+   The interface is a control room, not a settings page. The sidebar establishes
+   location, the header establishes the current job, and the board gives saved work
+   the visual weight. The rules below deliberately reuse the existing semantic tokens
+   so light, dark and linen remain first-class themes instead of being separate skins. */
+
+.side {
+  width: 276px;
+  background: color-mix(in srgb, var(--bg-side) 94%, var(--bg));
+}
+
+.side-logo { padding: 22px 20px 14px; gap: 11px; }
+.logo-tile {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px -13px var(--accent);
+}
+.logo-word { font-size: var(--t5); letter-spacing: -0.035em; }
+
+.side-nav-label,
+.side-label {
+  font: 700 var(--t1) var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.side-nav-label { padding: 0 22px 5px; }
+.side-sec { padding-left: 14px; padding-right: 14px; }
+.side-sec-nav { padding-top: 0; padding-bottom: 12px; }
+.side-label { padding: 11px 8px 6px; }
+.side-scroll > .side-sec + .side-sec { margin-top: 8px; }
+
+.navx {
+  min-height: 38px;
+  gap: 11px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+.navx.is-active {
+  background: linear-gradient(90deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 68%, transparent));
+}
+.navx.is-active::before { height: 20px; width: 3px; border-radius: 0 3px 3px 0; }
+.nav-dot { width: 9px; height: 9px; }
+.nav-sq { width: 10px; height: 10px; }
+.side-settings { padding: 10px 14px 8px; }
+
+.top {
+  height: 62px;
+  gap: 16px;
+  padding: 0 28px;
+  background: color-mix(in srgb, var(--bg) 86%, var(--bg-card));
+}
+.view-heading { display: flex; flex-direction: column; justify-content: center; gap: 1px; flex: none; }
+.view-kicker {
+  font: 700 var(--t1) var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.view-title { font-size: var(--t5); line-height: 1.1; }
+:root[data-view='board'][style*='--space-color'] .view-title::before { vertical-align: 0; }
+
+.searchbox {
+  max-width: 520px;
+  height: 38px;
+  margin-left: 6px;
+  padding: 0 13px;
+  border-color: var(--card-line-2);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-inset) 72%, var(--bg-card));
+}
+.searchbox:hover { border-color: var(--line-strong); }
+.searchbox:focus-within {
+  background: var(--bg-card);
+  box-shadow: 0 0 0 3px var(--accent-ring), 0 5px 14px -13px var(--accent);
+}
+.top-actions { gap: 8px; }
+.theme-seg {
+  min-height: 34px;
+  align-items: center;
+  gap: 1px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-inset) 74%, var(--bg-card));
+  border-color: var(--card-line-2);
+}
+.seg-label {
+  margin: 0 3px 0 5px;
+  font: 700 var(--t1) var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.theme-seg .chipx { width: 29px; height: 27px; }
+.theme-seg .chipx.is-active {
+  border-color: transparent;
+  box-shadow: 0 2px 8px -6px var(--accent);
+}
+.mobile-quick-actions { display: none; }
+.mobile-theme-cycle { display: none; }
+.btnx.soft {
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 10px;
+}
+.btnx.soft:hover { background: color-mix(in srgb, var(--accent-soft) 82%, var(--bg-card)); }
+
+.tray {
+  height: 64px;
+  gap: 16px;
+  padding: 0 28px;
+  background: color-mix(in srgb, var(--bg) 90%, var(--bg-card));
+}
+.tray-live { min-width: 82px; gap: 9px; }
+.tray-live-copy { display: flex; flex-direction: column; gap: 1px; }
+.tray-label {
+  font: 700 var(--t1) var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.tray-count { font: 700 var(--t2) var(--grot); letter-spacing: 0; text-transform: none; color: var(--text-soft); }
+.tray-chips { gap: 7px; }
+.chip-tab { border-radius: 10px; }
+
+.view-board {
+  padding: 22px 24px 26px;
+  background-size: 24px 24px;
+}
+.board { gap: 18px; }
+.colcard {
+  width: 316px;
+  border-color: var(--card-line);
+  border-radius: 18px;
+  box-shadow: inset 0 3px 0 var(--col-color, var(--card-line-2)), 0 12px 26px -26px rgba(24, 30, 67, 0.68);
+}
+.colhead { padding: 17px 16px 11px; }
+.colhead-row { gap: 10px; }
+.col-dot { width: 11px; height: 11px; border-radius: 4px; }
+.col-name { font-size: var(--t4); }
+.col-count { padding: 3px 7px; border-radius: 7px; }
+.colhead-sub { margin-top: 6px; }
+.colbody { gap: 8px; padding: 7px 12px 12px; }
+.tabcard {
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border-color: var(--card-line);
+  box-shadow: var(--shadow-tile);
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+.tabcard:hover,
+.tabcard:focus-within {
+  border-color: var(--line-strong);
+  box-shadow: 0 12px 22px -22px rgba(24, 30, 67, 0.75);
+  transform: translateY(-1px);
+}
+.tabcard .title { font-weight: 650; }
+.tabcard .domain { margin-top: 3px; }
+.addtab { min-height: 38px; border-radius: 10px; }
+.newcol { width: 204px; border-radius: 18px; }
+
+.library, .tagsview, .notesview, .duplicates, .settings { padding-top: 28px; }
+
+@media (max-width: 1180px) and (min-width: 881px) {
+  .side { width: 248px; }
+  .top { gap: 8px; padding: 0 16px; }
+  .view-heading { max-width: 94px; }
+  .searchbox { margin-left: 0; }
+  .top-actions { gap: 5px; }
+  .seg-label { display: none; }
+  .theme-seg { padding: 2px; }
+  .btnx.soft { padding: 0 10px; }
+  .tray { padding: 0 16px; }
+}
+
+@media (max-width: 880px) {
+  .side-logo { padding: 20px 20px 12px; }
+  .top { height: auto; min-height: 62px; padding: 10px 16px; }
+  .view-heading { flex: 1; min-width: 0; }
+  .tray { padding: 10px 16px; }
+  .tray-live { min-width: auto; }
+  .view-board { padding: 16px; }
+  .colcard { width: 100%; border-radius: 16px; }
+}
+
+@media (max-width: 880px) {
+  .top {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'menu title quick'
+      'search search search';
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 10px;
+  }
+  .drawer-btn { grid-area: menu; }
+  .view-heading { grid-area: title; }
+  .mobile-quick-actions { grid-area: quick; display: flex; align-items: center; gap: 4px; }
+  .top-actions { display: none; }
+  .searchbox { grid-area: search; order: initial; width: 100%; }
+  .view-kicker, .seg-label { display: none; }
+  .viewmode-seg, .theme-choice-seg { display: none !important; }
+  .mobile-theme-cycle, .mobile-stash { display: inline-flex; width: 36px; height: 36px; border-radius: 10px; }
+  .tray-label { display: none; }
+}
 
 /* ————— reduced motion — kept LAST on purpose: a media query adds no specificity, so this block
    only wins against the transition/animation rules above by coming after them ————— */
