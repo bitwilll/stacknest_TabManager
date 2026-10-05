@@ -15,13 +15,13 @@
    folder and drops it from here. Nothing is destroyed by moving.
    ———————————————————————————————————————————————————————————— */
 
-import { el, icon, actionBtn, toast, tile, domainOf, matches, confirmDialog, emptyState } from './ui.js';
+import { el, icon, actionBtn, toast, tile, domainOf, matches, confirmDialog, emptyState,
+         sectionHead, secGroup, noMatch, goTo, plural } from './ui.js';
 import { getKey, update, queued } from './store.js';
 import { promptUnlock, isSessionUnlocked, hasPin, isLockedOut, relock } from './lock.js';
 import { pushHistory, flashDeleted } from './history.js';
 
 export const SPACE_KEY = 'stacknest:myspace';
-const BM_MIME = 'text/x-stacknest-bm';
 const TAB_MIME = 'text/x-stacknest-tab';
 
 let spaceRoot, vaultRoot, getQuery, countEls = {};
@@ -135,7 +135,7 @@ export function initMySpace(options) {
   countEls = { space: options.spaceCountEl, vault: options.vaultCountEl };
   chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && c[SPACE_KEY]) render(); });
   render();
-  return { render, renderVault: () => render() };
+  return { render };
 }
 
 export async function render() {
@@ -148,85 +148,90 @@ export async function render() {
   // the Vault's own badge stays blank while locked — a count is information too
   if (countEls.vault) countEls.vault.textContent = isSessionUnlocked() && vaulted.length ? String(vaulted.length) : '';
 
-  if (spaceRoot) spaceRoot.replaceChildren(listPanel(open, q, false));
-  if (vaultRoot) vaultRoot.replaceChildren(await vaultPanel(vaulted, q));
+  if (spaceRoot) spaceRoot.replaceChildren(...mySpacePanel(open, q));
+  if (vaultRoot) vaultRoot.replaceChildren(...(await vaultPanel(vaulted, q)));
 }
 
-function header(title, sub, tools) {
-  return el('div', { class: 'notes-head' },
-    el('div', { class: 'notes-h-text' }, el('p', { class: 'notes-sub', text: sub })),
-    tools ? el('div', { class: 'notes-tools' }, ...tools) : null,
-  );
-}
+const folderCount = (items) => new Set(items.map((i) => i.group).filter(Boolean)).size;
+const searchOf = (items, q) => (q ? items.filter((i) => matches(q, i.title, i.url)) : items);
 
-function listPanel(items, q, vault) {
-  const frag = document.createDocumentFragment();
-  const shown = q ? items.filter((i) => matches(q, i.title, i.url)) : items;
-
-  frag.append(header(
-    vault ? 'Vault' : 'My Space',
-    `${items.length} bookmark${items.length === 1 ? '' : 's'} kept in StackNest only${q ? ` · ${shown.length} matching` : ''}`,
-    vault ? [el('button', { class: 'btnx soft notes-tool', onclick: () => { relock(); render(); toast('Vault locked'); } }, icon('lock', 14), el('span', { text: 'Lock now' }))] : null,
-  ));
-
-  if (!items.length) {
-    frag.append(vault
-      ? emptyState({ icon: 'lock', title: 'The Vault is empty', hint: ['Move something here from ', el('strong', {}, 'My Space'), ' to keep it behind your PIN.'] })
-      : emptyState({ icon: 'box', title: 'Nothing kept here yet', hint: ['In ', el('strong', {}, 'Library'), ', use the ', el('strong', {}, 'move'), ' action on a bookmark or folder to take it out of Chrome and keep it here.'] }));
-    return frag;
-  }
-  if (!shown.length) {
-    frag.append(emptyState({ icon: 'search', title: 'No matches', hint: ['Nothing here matches ', el('strong', {}, q), '.'] }));
-    return frag;
-  }
-
-  // group by the folder the items came from; ungrouped ones come first
+// one captioned group per source folder; ungrouped first, then A→Z (order unchanged)
+function groupedBody(shown, vault) {
   const groups = new Map();
-  for (const it of shown) {
-    const k = it.group || '';
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(it);
-  }
+  for (const it of shown) { const k = it.group || ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
   const keys = [...groups.keys()].sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
-  for (const k of keys) {
-    if (k) frag.append(el('h3', { class: 'tag-section-h' }, icon('folder', 15), k));
-    frag.append(el('div', { class: 'bm-grid' }, ...groups.get(k).map((it) => spaceCard(it, vault))));
-  }
-  return frag;
+  const named = keys.some(Boolean);
+  return keys.map((k) => secGroup(
+    { caption: k || (named ? 'unfiled' : 'links'), data: !!k, glyph: k ? 'folder' : null, count: groups.get(k).length },
+    el('div', { class: 'bm-grid' }, ...groups.get(k).map((it) => spaceCard(it, vault)))));
 }
 
+function mySpacePanel(items, q) {
+  const shown = searchOf(items, q);
+  const g = folderCount(items);
+  const head = sectionHead({
+    stats: [{ n: items.length, unit: plural(items.length, 'link') }, { n: g, unit: plural(g, 'folder') }],
+    match: q ? { q, shown: shown.length, total: items.length } : null,
+    note: 'Moved out of Chrome — gone from its bookmarks bar, bookmarks page and address-bar suggestions. Put any back whenever you like.',
+    tools: items.length ? [el('button', { class: 'btnx soft', type: 'button', title: 'Open the Library to move bookmarks here', onclick: () => goTo('library') },
+      icon('box', 14), el('span', { text: 'Add from Library' }))] : [],
+  });
+  const body = !items.length
+    ? [emptyState({
+      icon: 'box', title: 'Nothing kept here yet',
+      steps: ['In Library, press the box on a bookmark or folder.', 'It leaves Chrome’s bar, bookmarks page and suggestions.', 'Put it back from here any time.'],
+      hint: ['Right-click the box to send it straight to the ', el('strong', {}, 'Vault'), '.'],
+      actions: [el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('library') }, icon('box', 14), el('span', { text: 'Open Library' }))],
+    })]
+    : !shown.length ? [noMatch(q)] : groupedBody(shown, false);
+  return [head, el('div', { class: 'sec-body' }, ...body)];
+}
+
+const VAULT_FOOT = 'stored in plain text on this device · the pin hides these links from this page, it doesn’t encrypt them · bookmark exports don’t include them';
+const pinRecoveryBtn = () => el('button', { class: 'btnx ghosty', type: 'button', title: 'Open Settings › Vault', onclick: () => goTo('settings', 'set-vault') },
+  icon('person', 14), el('span', { text: 'PIN & recovery' }));
+const gate = (o) => el('div', { class: 'sec-body' }, emptyState({ variant: 'gate', icon: 'lock', ...o }));
+
+// One anatomy in all five states: the head always renders, only the body swaps; the gate owns its primary.
 async function vaultPanel(items, q) {
+  const foot = el('p', { class: 'sec-foot', text: VAULT_FOOT });
   if (!(await hasPin())) {
-    return emptyState({
-      icon: 'lock', title: 'Set a PIN to open the Vault',
-      hint: 'The Vault needs a PIN before it can hold anything.',
-      actions: [el('button', {
-        class: 'btnx primary',
-        onclick: () => document.querySelector('[data-view="settings"]')?.click(),
-      }, el('span', { text: 'Set a PIN in Settings' }))],
-    });
+    return [sectionHead({ scope: { key: 'vault', value: 'No PIN yet' }, note: 'The Vault keeps links behind a PIN. Set one to start using it.' }),
+      gate({ caption: 'no pin', title: 'Set a PIN to open the Vault', hint: 'The Vault needs a PIN before it can hold anything.',
+        actions: [el('button', { class: 'btnx primary', type: 'button', onclick: () => goTo('settings', 'set-vault') }, el('span', { text: 'Set a PIN in Settings' }))] }),
+      foot];
   }
   if (await isLockedOut()) {
-    return emptyState({
-      icon: 'lock', title: 'Too many wrong PINs — the Vault is locked',
-      hint: 'Recover it in Settings with your security question, or by signing in to the Google account that set the PIN.',
-      actions: [el('button', {
-        class: 'btnx primary',
-        onclick: () => document.querySelector('[data-view="settings"]')?.click(),
-      }, el('span', { text: 'Go to Settings' }))],
-    });
+    return [sectionHead({ scope: { key: 'vault', value: 'Locked out', tone: 'danger' }, note: 'Too many wrong PINs. Guessing again won’t help — recover it in Settings.' }),
+      gate({ caption: 'locked out', title: 'Too many wrong PINs — the Vault is locked',
+        hint: 'Recover it in Settings with your security question, or by signing in to the Google account that set the PIN.',
+        actions: [el('button', { class: 'btnx primary', type: 'button', onclick: () => goTo('settings', 'set-vault') }, el('span', { text: 'Go to Settings' }))] }),
+      foot];
   }
   if (!isSessionUnlocked()) {
-    return emptyState({
-      icon: 'lock', title: `${items.length} bookmark${items.length === 1 ? '' : 's'} locked`,
-      hint: 'Enter your PIN to open the Vault for this session.',
-      actions: [el('button', {
-        class: 'btnx primary',
-        onclick: async () => { if (await promptUnlock()) render(); },
-      }, icon('unlock', 15), el('span', { text: 'Unlock' }))],
-    });
+    return [sectionHead({ scope: { key: 'vault', value: 'Locked' },
+      stats: [{ n: items.length, unit: `${plural(items.length, 'link')} locked` }],   // owner decision: the count shows here (the gate title showed it before); stats: [] would match the blank nav badge
+      note: 'Every new tab opens the Vault locked.', tools: [pinRecoveryBtn()] }),
+      gate({ caption: 'locked', title: 'Locked for this tab', hint: 'Enter your PIN to open the Vault for this session.',
+        actions: [el('button', { class: 'btnx primary', type: 'button', onclick: async () => { if (await promptUnlock()) render(); } }, icon('unlock', 15), el('span', { text: 'Unlock' }))] }),
+      foot];
   }
-  return listPanel(items, q, true);
+  // unlocked: the same head anatomy as My Space, plus its state and the lock
+  const shown = searchOf(items, q);
+  const g = folderCount(items);
+  const head = sectionHead({
+    scope: { key: 'vault', value: 'Unlocked · this tab', tone: 'state' },
+    stats: [{ n: items.length, unit: plural(items.length, 'link') }, { n: g, unit: plural(g, 'folder') }],
+    match: q ? { q, shown: shown.length, total: items.length } : null,
+    note: 'Every new tab opens the Vault locked again.',
+    tools: [pinRecoveryBtn(), el('button', { class: 'btnx soft', type: 'button', title: 'Lock the Vault now', onclick: () => { relock(); render(); toast('Vault locked'); } }, icon('lock', 14), el('span', { text: 'Lock now' }))],
+  });
+  const body = !items.length
+    ? [emptyState({ icon: 'lock', title: 'The Vault is empty',
+      hint: ['Use ', el('strong', {}, 'Move to the Vault'), ' on a My Space link, or right-click the box on any Library bookmark.'],
+      actions: [el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('myspace') }, icon('box', 14), el('span', { text: 'Open My Space' }))] })]
+    : !shown.length ? [noMatch(q)] : groupedBody(shown, true);
+  return [head, el('div', { class: 'sec-body' }, ...body), foot];
 }
 
 function spaceCard(item, vault) {
@@ -239,12 +244,12 @@ function spaceCard(item, vault) {
     ),
     el('span', { class: 'acts' },
       vault
-        ? actionBtn('unlock', 'Move to My Space', async () => { await setVault([item.id], false); toast('Moved to My Space'); })
-        : actionBtn('lock', 'Move to the Vault', async () => {
+        ? actionBtn('box', 'Move to My Space', async () => { await setVault([item.id], false); toast('Moved to My Space'); })
+        : actionBtn('lock', 'Move to the Vault (needs a PIN)', async () => {
           if (!(await hasPin())) { toast('Set a PIN in Settings first'); return; }
           await setVault([item.id], true); toast('Moved to the Vault');
         }),
-      actionBtn('external', 'Put back in Chrome bookmarks', async () => {
+      actionBtn('undo', 'Put back in Chrome bookmarks', async () => {
         const where = await restoreToChrome(item);
         toast(`Put back in “${where}”`);
       }),

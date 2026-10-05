@@ -1,4 +1,4 @@
-// Shared DOM helpers, icons, letter-tiles, toast, favicon resolution, drag helpers.
+// Shared DOM helpers, icons, letter-tiles, empty states, the section anatomy (heads, groups), toast, favicon resolution, drag helpers.
 
 export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -79,6 +79,7 @@ export function icon(name, size = 15) {
   svg.setAttribute('width', size);
   svg.setAttribute('height', size);
   svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'ic');   // the stroke default lives in css (:where(svg.ic)), so no context can paint a black blob
   svg.innerHTML = ICONS[name] || '';
   return svg;
 }
@@ -162,13 +163,135 @@ export function tile(url, size = 34) {
 // One empty-state block for every view: an icon tile, a title, a plain-language hint and
 // optional actions — so "nothing here yet" looks the same on the board, in the Library,
 // under Tags/Duplicates and in Notes, and always says what to do next.
-export function emptyState({ icon: name, title, hint = null, actions = [] } = {}) {
-  return el('div', { class: 'empty' },
-    el('span', { class: 'empty-ic', 'aria-hidden': 'true' }, icon(name || 'folder', 20)),
+// variant: null | 'gate' (framed bento: hatched mark left, text + one primary right —
+// locked/permission states). caption: mono line above the title. steps: numbered mono
+// how-to lines. Order is fixed: caption, title, steps, hint, actions.
+export function emptyState({ icon: name, title, hint = null, steps = null, actions = [], variant = null, caption = null } = {}) {
+  const text = [
+    caption ? el('div', { class: 'empty-cap', text: caption }) : null,
     el('div', { class: 'empty-title', text: title }),
+    steps ? el('ol', { class: 'empty-steps' }, ...steps.map((s) => el('li', {}, s))) : null,
     hint ? el('p', { class: 'empty-hint' }, ...[].concat(hint)) : null,
     actions.length ? el('div', { class: 'empty-acts' }, ...actions) : null,
-  );
+  ];
+  return el('div', { class: `empty${variant ? ` is-${variant}` : ''}` },
+    el('span', { class: 'empty-ic', 'aria-hidden': 'true' }, icon(name || 'folder', variant === 'gate' ? 26 : 20)),
+    variant === 'gate' ? el('div', { class: 'empty-body' }, text) : text);
+}
+
+/* ————— THE SECTION ————— one anatomy for every view (see css "THE SECTION") ————— */
+
+export const plural = (n, one, many = `${one}s`) => (n === 1 ? one : many);
+const clearSearchBox = () => document.getElementById('search-clear')?.click();   // = app.js clearSearch + refocus
+
+function matchChip({ q, shown = null, total = null, unit = '' }) {
+  const tail = total == null ? '' : ` · ${shown} of ${total}${unit ? ` ${unit}` : ''}`;
+  return el('span', { class: 'sec-match' },
+    el('span', { text: `matching “${q}”${tail}` }),
+    el('button', { class: 'icb', type: 'button', title: 'Clear search', 'aria-label': 'Clear search', onclick: clearSearchBox }, icon('close', 12)));
+}
+
+// The STATE part of a head. scope {key, value, swatch?, tone?:'state'|'danger'} · stats [{n, unit, tone?}]
+// (stats[0] is the same number as the view's sidebar badge) · match {q, shown?, total?, unit?}.
+// Pass `host` to refill an existing node (the board's static head, Notes' persistent shell).
+export function secState({ scope = null, stats = [], match = null } = {}, host = el('p', { class: 'sec-state' })) {
+  // replaceChildren, unlike el(), turns null into the text "null" — so absent parts are filtered out
+  host.replaceChildren(...[
+    scope ? el('span', { class: 'sec-scope' },
+      el('span', { class: 'sec-scope-k', text: scope.key }),
+      el('span', { class: `sec-scope-v${scope.tone ? ` is-${scope.tone}` : ''}`, title: scope.value },
+        scope.swatch ? el('span', { class: 'sec-swatch', style: `background:${scope.swatch}`, 'aria-hidden': 'true' }) : null,
+        el('span', { class: 'sec-scope-t', text: scope.value }))) : null,
+    ...stats.map((s) => el('span', { class: 'sec-stat' },
+      el('span', { class: `sec-num${s.tone ? ` is-${s.tone}` : ''}`, text: String(s.n) }),
+      el('span', { class: 'sec-unit', text: s.unit }))),
+    match?.q ? matchChip(match) : null,
+  ].filter(Boolean));
+  return host;
+}
+
+// The head. tools: quiet controls (segments, .icb circles, .soft/.ghosty pills — each .btnx with an icon).
+// primary: the ONE .btnx.primary (create / commit), always last; primaryNote: its scope in mono under it.
+// trail: a row above the head (Library path). bar: a row below it (Notes quick-add).
+export function sectionHead({ trail = null, scope = null, stats = [], match = null, note = null,
+  tools = [], primary = null, primaryNote = null, bar = null, className = '' } = {}) {
+  const state = secState({ scope, stats, match });
+  const noteEl = el('p', { class: 'sec-note' }, ...[].concat(note ?? []));
+  noteEl.hidden = !note;
+  const toolEls = tools.filter(Boolean);
+  const toolsEl = (toolEls.length || primary) ? el('div', { class: 'sec-tools' }, ...toolEls,
+    primary ? el('div', { class: 'sec-next' }, primary,
+      primaryNote ? el('span', { class: 'sec-next-note', text: primaryNote }) : null) : null) : null;
+  // a head pill folds to an icon-only circle when the panel is narrow (css: .sec-tools .btnx:not(.primary));
+  // its label stays the accessible name, and a title gives sighted mouse users the same words
+  for (const b of toolsEl ? toolsEl.querySelectorAll('.btnx:not(.primary)') : []) if (!b.title) b.title = b.textContent.trim();
+  const top = el('div', { class: `sec-top ${className}`.trim() }, trail, el('header', { class: 'sec-head' }, state, noteEl, toolsEl), bar);
+  top._state = state;
+  top._note = noteEl;
+  headSizes.observe(top);
+  return top;
+}
+// The sticky head's live height, published on its view as --sec-top-h: the view's scroll-padding
+// uses it so a focused card is never left hidden under the head (css: THE SECTION).
+// offsetHeight is unzoomed CSS px, which is what the custom property needs.
+const headSizes = new ResizeObserver((entries) => {
+  for (const { target } of entries) {
+    if (!target.isConnected) { headSizes.unobserve(target); continue; }
+    target.closest('.view')?.style.setProperty('--sec-top-h', `${target.offsetHeight}px`);
+  }
+});
+export function setSecNote(top, note) {
+  top._note.replaceChildren(...[].concat(note ?? []));
+  top._note.hidden = !note;
+}
+
+// A captioned sub-section: "caption  n ———————— aside  acts". User names pass data:true (keep case).
+let capSeq = 0;
+export function secGroup({ caption, count = null, data = false, glyph = null, swatch = null, aside = null,
+  acts = null, level = 2, className = '' }, ...content) {
+  const id = `sec-cap-${++capSeq}`;
+  return el('section', { class: `sec-group ${className}`.trim(), 'aria-labelledby': id },
+    el('div', { class: 'sec-cap' },
+      el(`h${level}`, { class: 'sec-cap-h', id },
+        el('span', { class: `sec-cap-t${data ? ' is-data' : ''}` },
+          glyph ? icon(glyph, 14) : null,
+          swatch ? el('span', { class: 'tag-dot', style: `background:${swatch}`, 'aria-hidden': 'true' }) : null,
+          el('span', { class: 'sec-cap-tt', text: caption, title: caption })),   // a long folder name truncates; the title keeps it readable
+        count == null ? null : el('span', { class: 'sec-cap-n', text: String(count) })),
+      aside ? el('span', { class: 'sec-cap-aside' }, ...[].concat(aside)) : null,
+      acts ? el('span', { class: 'sec-cap-acts' }, ...[].concat(acts)) : null),
+    ...content);
+}
+
+// The one no-match state for every searchable view.
+export function noMatch(q, hint = 'Search looks at titles and addresses.') {
+  return emptyState({ icon: 'search', title: `Nothing here matches “${q}”`, hint,
+    actions: [el('button', { class: 'btnx soft', type: 'button', onclick: clearSearchBox }, icon('close', 14), el('span', { text: 'Clear search' }))] });
+}
+
+// Open a view (same click the sidebar row gets) and, optionally, land on a sub-section such as a Settings plate.
+export function goTo(view, anchorId = null) {
+  document.querySelector(`.view-link[data-view="${view}"]`)?.click();
+  requestAnimationFrame(() => {
+    const t = anchorId && document.getElementById(anchorId);
+    if (t) {
+      t.scrollIntoView({ block: 'start' });
+      t.querySelector('h2, h3')?.focus({ preventScroll: true });
+      return;
+    }
+    // the button that called goTo sits in the view just hidden, so focus would fall to <body>:
+    // land it on the new view's title instead
+    const title = document.getElementById('view-title');
+    if (title) { if (!title.hasAttribute('tabindex')) title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: true }); }
+  });
+}
+
+// Where an open tab can be dragged from right now, for empty-state copy.
+export function tabSourceHint() {
+  const mode = document.documentElement.dataset.tabsbar;
+  if (mode === 'top' || (mode === 'side' && matchMedia('(max-width: 880px)').matches)) return 'the live strip above';
+  if (mode === 'side') return 'the tab rail on the left';
+  return 'a window in the sidebar';
 }
 
 let toastTimer;
@@ -281,15 +404,16 @@ export function pickFile(accept = '') {
 // `extra` is an optional node dropped between the message and the buttons — for a choice
 // that belongs to the decision itself (e.g. "also revoke access" on sign-out) rather than
 // to a settings row you would have had to visit beforehand.
-export function confirmDialog({ title, message, extra = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false } = {}) {
+// `alert: true` is a notice, not a decision: one neutral button (confirmLabel) and role=alertdialog.
+export function confirmDialog({ title, message, extra = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, alert = false } = {}) {
   return new Promise((resolve) => {
-    const confirmBtn = el('button', { class: `modal-btn confirm${danger ? ' danger' : ''}`, text: confirmLabel });
+    const confirmBtn = el('button', { class: `modal-btn ${alert ? 'cancel' : `confirm${danger ? ' danger' : ''}`}`, text: confirmLabel });
     const cancelBtn = el('button', { class: 'modal-btn cancel', text: cancelLabel });
-    const modal = el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || 'Confirm' },
+    const modal = el('div', { class: 'modal', role: alert ? 'alertdialog' : 'dialog', 'aria-modal': 'true', 'aria-label': title || 'Confirm' },
       el('h2', { class: 'modal-title', text: title || 'Are you sure?' }),
       message ? el('p', { class: 'modal-msg', text: message }) : null,
       extra,
-      el('div', { class: 'modal-actions' }, cancelBtn, confirmBtn),
+      el('div', { class: 'modal-actions' }, alert ? null : cancelBtn, confirmBtn),
     );
     const scrim = el('div', { class: 'modal-scrim' }, modal);
     let done = false;

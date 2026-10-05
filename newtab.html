@@ -1,11 +1,13 @@
 <!doctype html>
 <!-- data-view / data-tabsbar seed the stylesheet's layout switches so the first paint is
      already correct; app.js and applySettings() keep them in sync from then on. -->
-<html lang="en" data-view="board" data-tabsbar="top">
+<html lang="en" data-view="board" data-tabsbar="top" data-side="full">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>New Tab</title>
+  <!-- sets the remembered sidebar mode and theme on <html> before first paint (no snap on load) -->
+  <script src="js/boot.js"></script>
   <link rel="stylesheet" href="css/newtab.css">
 </head>
 <body>
@@ -18,43 +20,51 @@
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10a1 1 0 0 1 1 1v14l-6-3.4L6 19V5a1 1 0 0 1 1-1Z"/></svg>
         </span>
         <span class="logo-word">stacknest</span>
+        <!-- desktop only: folds the sidebar to an icon rail (app.js, remembered); the drawer has its own close below -->
+        <button class="icb side-collapse" id="side-collapse" type="button" aria-controls="sidebar" aria-expanded="true" title="Collapse sidebar" aria-label="Collapse sidebar">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="m15.5 10-2 2 2 2"/></svg>
+        </button>
+        <button class="icb drawer-close" id="drawer-close" type="button" title="Close menu" aria-label="Close menu">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
       </div>
 
-      <div class="side-nav-label">Workspace</div>
-      <nav class="side-sec side-sec-nav" aria-label="Views">
-        <button class="navx view-link is-active" id="nav-collections" data-view="board" aria-current="page">
+      <h2 class="side-nav-label" id="cap-views">Views</h2>
+      <!-- #nav-library keeps NO count, by design: the whole Chrome tree is not an actionable number. -->
+      <nav class="side-sec side-sec-nav" aria-labelledby="cap-views">
+        <button class="navx view-link is-active" id="nav-collections" data-view="board" aria-current="page" title="Collections">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="7" height="15" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="9" rx="1.5"/></svg></span>Collections
           <span class="nav-count" id="nav-collections-count"></span>
         </button>
-        <button class="navx view-link" id="nav-myspace" data-view="myspace">
+        <button class="navx view-link" id="nav-myspace" data-view="myspace" title="My Space">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 12 3.5l8 4v9L12 20.5 4 16.5Z"/><path d="M4 7.5 12 11.5l8-4"/><path d="M12 11.5v9"/></svg></span>My Space
           <span class="nav-count" id="nav-myspace-count"></span>
         </button>
-        <button class="navx view-link" id="nav-vault" data-view="vault">
+        <button class="navx view-link" id="nav-vault" data-view="vault" title="Vault">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></span>Vault
           <span class="nav-count" id="nav-vault-count"></span>
         </button>
-        <button class="navx view-link" id="nav-library" data-view="library">
+        <button class="navx view-link" id="nav-library" data-view="library" title="Library">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="4.5" rx="1.2"/><path d="M5.5 8.5v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9"/><path d="M10 12.5h4"/></svg></span>Library
         </button>
-        <button class="navx view-link" id="nav-tags" data-view="tags">
+        <button class="navx view-link" id="nav-tags" data-view="tags" title="Tags">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13 11 6h5a2 2 0 0 1 2 2v5l-7 7a1.6 1.6 0 0 1-2.3 0L4 15.3a1.6 1.6 0 0 1 0-2.3Z"/><circle cx="14" cy="10" r="1.15"/></svg></span>Tags
           <span class="nav-count" id="nav-tags-count"></span>
         </button>
-        <button class="navx view-link" id="nav-duplicates" data-view="duplicates">
+        <button class="navx view-link" id="nav-duplicates" data-view="duplicates" title="Duplicates">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M4.5 15.5V6a1.5 1.5 0 0 1 1.5-1.5h9.5"/></svg></span>Duplicates
           <span class="nav-count" id="nav-duplicates-count"></span>
         </button>
-        <button class="navx view-link" id="nav-notes" data-view="notes">
+        <button class="navx view-link" id="nav-notes" data-view="notes" title="Notes">
           <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="m8.3 13 1.7 1.7L14 11"/></svg></span>Notes
           <span class="nav-count" id="nav-notes-count"></span>
         </button>
       </nav>
 
       <div class="side-scroll">
-      <div class="side-sec" aria-label="Spaces">
+      <div class="side-sec" role="group" aria-labelledby="cap-spaces">
         <div class="side-label-row">
-          <div class="side-label">Spaces</div>
+          <h2 class="side-label" id="cap-spaces">Spaces</h2>
           <button class="icb" id="new-space-btn" title="New space" aria-label="New space">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
@@ -62,16 +72,11 @@
         <div id="spaces-nav"></div>
       </div>
 
-      <div class="side-sec" aria-label="Open windows">
-        <div class="side-label">Windows</div>
-        <div id="windows-root"></div>
-      </div>
-
-      <div class="side-sec side-sec-grow" aria-label="Collections list">
+      <div class="side-sec" role="group" aria-labelledby="cap-collections">
         <div class="side-label-row">
-          <div class="side-label">Collections</div>
+          <h2 class="side-label" id="cap-collections">Collections<span class="side-label-scope" id="collections-scope"></span></h2>
           <div class="label-acts">
-            <button class="icb" id="export-all-btn" title="Export all collections (bookmarks .html)" aria-label="Export all collections">
+            <button class="icb" id="export-all-btn" title="Export this space’s collections (bookmarks .html)" aria-label="Export this space’s collections">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>
             </button>
             <button class="icb" id="new-collection-btn" title="New collection" aria-label="New collection">
@@ -81,10 +86,15 @@
         </div>
         <div id="collections-nav"></div>
       </div>
+
+      <div class="side-sec side-sec-grow" role="group" aria-labelledby="cap-windows">
+        <h2 class="side-label" id="cap-windows">Windows</h2>
+        <div id="windows-root"></div>
+      </div>
       </div>
 
       <div class="side-sec side-settings">
-        <button class="navx view-link" id="nav-settings" data-view="settings">
+        <button class="navx view-link" id="nav-settings" data-view="settings" title="Settings">
           <span class="nav-ic" aria-hidden="true">
             <!-- 6-tooth gear generated from exact polar geometry: tips on r=8.6, valleys on
                  r=6.1, centred on (12,12). Six broad teeth stay crisp at 16px where finer
@@ -104,7 +114,7 @@
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
         <div class="view-heading">
-          <span class="view-kicker" id="view-kicker">Workspace</span>
+          <span class="view-kicker" id="view-kicker">Saved tabs</span>
           <h1 class="view-title" id="view-title">Collections</h1>
         </div>
         <div class="mobile-quick-actions">
@@ -112,7 +122,7 @@
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17" fill="currentColor" stroke="none"/></svg>
           </button>
           <button class="icb mobile-stash" id="mobile-stash-window-btn" type="button" title="Stash this window and close its tabs" aria-label="Stash this window and close its tabs">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10m0 0 3.5-3.5M12 13l-3.5-3.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
           </button>
         </div>
 
@@ -129,20 +139,7 @@
         <div class="ticker" id="ticker" hidden aria-label="Market prices"></div>
 
         <div class="top-actions">
-          <div class="theme-seg viewmode-seg" id="viewmode-seg" role="group" aria-label="Board layout">
-            <span class="seg-label" aria-hidden="true">Layout</span>
-            <button class="chipx" id="view-columns" aria-pressed="false" title="Column layout" aria-label="Column layout">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="6" height="14" rx="1.2"/><rect x="14" y="5" width="6" height="14" rx="1.2"/></svg>
-            </button>
-            <button class="chipx" id="view-tiles" aria-pressed="false" title="Tile layout" aria-label="Tile layout">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.4"/><rect x="13" y="4" width="7" height="7" rx="1.4"/><rect x="4" y="13" width="7" height="7" rx="1.4"/><rect x="13" y="13" width="7" height="7" rx="1.4"/></svg>
-            </button>
-            <button class="chipx" id="view-mosaic" aria-pressed="false" title="Mosaic layout — collections as a masonry of cards" aria-label="Mosaic layout">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="9" rx="1.4"/><rect x="13" y="4" width="7" height="5" rx="1.4"/><rect x="13" y="11" width="7" height="9" rx="1.4"/><rect x="4" y="15" width="7" height="5" rx="1.4"/></svg>
-            </button>
-          </div>
           <div class="theme-seg theme-choice-seg" role="group" aria-label="Theme">
-            <span class="seg-label" aria-hidden="true">Theme</span>
             <button class="chipx" id="theme-auto" data-theme-choice="auto" aria-pressed="false" title="Follow system theme" aria-label="Follow system theme">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17" fill="currentColor" stroke="none"/></svg>
             </button>
@@ -156,12 +153,18 @@
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C8.8 7.6 6.5 10.6 6.5 13.5a5.5 5.5 0 0 0 11 0c0-2.9-2.3-5.9-5.5-10Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2 2.4"/></svg>
             </button>
           </div>
-          <!-- Deliberately NOT .primary: this one closes your tabs. The app's loudest
-               affordance should not be its destructive one. -->
-          <button class="btnx soft" id="stash-window-btn" title="Save this window's tabs to a collection and close them — frees memory">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10m0 0 3.5-3.5M12 13l-3.5-3.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-            Stash &amp; close
-          </button>
+          <div class="window-acts" role="group" aria-label="This window">
+            <button class="btnx ghosty" id="save-all-btn" type="button" title="Save this window’s tabs to a new collection — keeps them open" aria-label="Save window — keeps its tabs open">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10m0 0 3.5-3.5M12 13l-3.5-3.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+              Save window
+            </button>
+            <!-- Deliberately NOT .primary: this one closes your tabs. The app's loudest
+                 affordance should not be its destructive one. -->
+            <button class="btnx soft" id="stash-window-btn" type="button" title="Save this window's tabs to a collection and close them — frees memory">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
+              Stash &amp; close
+            </button>
+          </div>
         </div>
       </header>
 
@@ -178,39 +181,68 @@
           </div>
         </div>
         <div class="tray-chips" id="tray-root"></div>
-        <button class="btnx ghosty" id="save-all-btn" title="Save this window's tabs to a collection (keeps them open)">Save all →</button>
       </div>
 
       <section class="view view-board" id="view-board">
-        <div class="board" id="board-root"></div>
+        <!-- The board's head is static markup (spaces.js refills #board-state on every render):
+             it never scrolls with the columns, so the layout segment, export and the one
+             primary stay put while the board scrolls sideways underneath. -->
+        <div class="sec-top board-top">
+          <header class="sec-head">
+            <p class="sec-state" id="board-state"></p>
+            <div class="sec-tools">
+              <div class="theme-seg viewmode-seg" id="viewmode-seg" role="group" aria-label="Board layout">
+                <button class="chipx" id="view-columns" aria-pressed="false" title="Column layout" aria-label="Column layout">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="6" height="14" rx="1.2"/><rect x="14" y="5" width="6" height="14" rx="1.2"/></svg>
+                </button>
+                <button class="chipx" id="view-tiles" aria-pressed="false" title="Tile layout" aria-label="Tile layout">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.4"/><rect x="13" y="4" width="7" height="7" rx="1.4"/><rect x="4" y="13" width="7" height="7" rx="1.4"/><rect x="13" y="13" width="7" height="7" rx="1.4"/></svg>
+                </button>
+                <button class="chipx" id="view-mosaic" aria-pressed="false" title="Mosaic layout — collections as a masonry of cards" aria-label="Mosaic layout">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="9" rx="1.4"/><rect x="13" y="4" width="7" height="5" rx="1.4"/><rect x="13" y="11" width="7" height="9" rx="1.4"/><rect x="4" y="15" width="7" height="5" rx="1.4"/></svg>
+                </button>
+              </div>
+              <button class="icb" id="board-export-btn" type="button" title="Export this space’s collections (bookmarks .html)" aria-label="Export this space’s collections">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>
+              </button>
+              <div class="sec-next">
+                <button class="btnx primary" id="board-new-btn" type="button">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  New collection
+                </button>
+              </div>
+            </div>
+          </header>
+        </div>
+        <div class="board-scroll"><div class="board" id="board-root"></div></div>
       </section>
 
       <section class="view view-myspace" id="view-myspace" hidden>
-        <div class="library" id="myspace-root"></div>
+        <div class="view-body" id="myspace-root"></div>
       </section>
 
       <section class="view view-vault" id="view-vault" hidden>
-        <div class="library" id="vault-root"></div>
+        <div class="view-body" id="vault-root"></div>
       </section>
 
       <section class="view view-library" id="view-library" hidden>
-        <div class="library" id="bookmarks-root"></div>
+        <div class="view-body" id="bookmarks-root"></div>
       </section>
 
       <section class="view view-tags" id="view-tags" hidden>
-        <div class="tagsview" id="tags-root"></div>
+        <div class="view-body" id="tags-root"></div>
       </section>
 
       <section class="view view-duplicates" id="view-duplicates" hidden>
-        <div class="duplicates" id="duplicates-root"></div>
+        <div class="view-body" id="duplicates-root"></div>
       </section>
 
       <section class="view view-notes" id="view-notes" hidden>
-        <div class="notesview" id="notes-root"></div>
+        <div class="view-body" id="notes-root"></div>
       </section>
 
       <section class="view view-settings" id="view-settings" hidden>
-        <div class="settings" id="settings-root"></div>
+        <div class="view-body" id="settings-root"></div>
       </section>
     </div>
   </div>

@@ -25,7 +25,7 @@
    ———————————————————————————————————————————————————————————— */
 
 import { getKey, setKey } from './store.js';
-import { el, icon, confirmDialog } from './ui.js';
+import { el, confirmDialog } from './ui.js';
 
 export const LOCK_KEY = 'stacknest:lock';
 
@@ -234,7 +234,7 @@ async function lockedOutDialog() {
   await confirmDialog({
     title: 'Vault locked',
     message: `Too many wrong PINs. The Vault is locked until you recover it${q ? ' with your security question' : ''} or by signing in to the Google account that set the PIN — both are in Settings → Vault.`,
-    confirmLabel: 'Close', cancelLabel: 'Close', danger: true,
+    confirmLabel: 'Close', alert: true,   // nothing to choose: one neutral button
   });
 }
 
@@ -260,10 +260,4 @@ export async function promptSecurityAnswer() {
     err.textContent = 'That doesn’t match.';
     err.classList.add('is-warn');
   }
-}
-
-export function lockTile() {
-  const wrap = el('span', { class: 'tile tile-locked', style: 'width:40px;height:40px' });
-  wrap.append(icon('lock', 18));
-  return wrap;
 }

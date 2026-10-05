@@ -88,7 +88,7 @@ export async function render() {
   const blocks = ids.map((wid, i) => windowBlock(wid, byWindow.get(wid), i + 1, wid === focusedId, q));
   windowsRoot.replaceChildren(...blocks);
   if (!ids.length) {
-    windowsRoot.append(el('div', { class: 'navx', style: 'cursor: default; color: var(--text-mut)', text: 'No other windows' }));
+    windowsRoot.append(el('div', { class: 'side-empty', text: 'No windows open' }));
   }
 }
 
@@ -148,10 +148,12 @@ function windowBlock(windowId, tabs, n, isCurrent, q) {
   row.addEventListener('click', toggle);
   row.addEventListener('keydown', (e) => { if (e.key === 'Enter') toggle(); });
 
+  // the marker is a dot on the same left rail as Space and Collection rows (lava for the
+  // current window); the label is flex:1, so the chevron trails it, just before the count
   row.append(
-    el('span', { class: 'win-chev', 'aria-hidden': 'true' }, icon('chevron', 12)),
-    el('span', { class: 'nav-sq', style: `background: ${isCurrent ? 'var(--green)' : 'var(--text-ghost)'}` }),
+    el('span', { class: `nav-dot win-dot${isCurrent ? ' is-current' : ''}` }),
     el('span', { class: 'nav-label', text: label }),
+    el('span', { class: 'win-chev', 'aria-hidden': 'true' }, icon('chevron', 12)),
     el('span', { class: 'nav-n', text: String(tabs.length) }),
     el('span', { class: 'nav-acts' },
       isCurrent ? null : actionBtn('window', 'Open — switch to this window', async () => {

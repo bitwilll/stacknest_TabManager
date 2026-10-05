@@ -56,6 +56,28 @@ async function main() {
     updateMobileThemeControl();
   });
 
+  // — sidebar: full, or folded to an icon rail (desktop widths only; remembered per browser) —
+  // The rail keeps every view one click away with its count as a badge; the Collections and
+  // Windows lists wait behind the expand button (the board and the tab strip carry the same).
+  const SIDE_KEY = 'stacknest:sidebar';
+  const sideBtn = document.getElementById('side-collapse');
+  const applySide = (mode) => {
+    const rail = mode === 'rail';
+    document.documentElement.dataset.side = rail ? 'rail' : 'full';
+    const label = rail ? 'Expand sidebar' : 'Collapse sidebar';
+    sideBtn.title = label;
+    sideBtn.setAttribute('aria-label', label);
+    sideBtn.setAttribute('aria-expanded', String(!rail));
+  };
+  let sideMode = 'full';
+  try { sideMode = localStorage.getItem(SIDE_KEY) === 'rail' ? 'rail' : 'full'; } catch { /* storage blocked: start full */ }
+  applySide(sideMode);
+  sideBtn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.side === 'rail' ? 'full' : 'rail';
+    try { localStorage.setItem(SIDE_KEY, next); } catch { /* not remembered, still applied */ }
+    applySide(next);
+  });
+
   // — board layout: columns (kanban) · tiles (full-width rows) · mosaic (masonry of cards) —
   const BOARD_MODE_KEY = 'stacknest:boardmode';
   const boardEl = document.getElementById('board-root');
@@ -77,9 +99,9 @@ async function main() {
 
   // — views (Collections board / Library) —
   const views = {
-    board: { el: document.getElementById('view-board'), title: 'Collections', kicker: 'Workspace' },
-    myspace: { el: document.getElementById('view-myspace'), title: 'My Space', kicker: 'Private links' },
-    vault: { el: document.getElementById('view-vault'), title: 'Vault', kicker: 'Private links' },
+    board: { el: document.getElementById('view-board'), title: 'Collections', kicker: 'Saved tabs' },
+    myspace: { el: document.getElementById('view-myspace'), title: 'My Space', kicker: 'Out of Chrome' },
+    vault: { el: document.getElementById('view-vault'), title: 'Vault', kicker: 'Behind a PIN' },
     library: { el: document.getElementById('view-library'), title: 'Library', kicker: 'Chrome bookmarks' },
     tags: { el: document.getElementById('view-tags'), title: 'Tags', kicker: 'Organize' },
     duplicates: { el: document.getElementById('view-duplicates'), title: 'Duplicates', kicker: 'Clean up' },
@@ -96,7 +118,7 @@ async function main() {
     viewTitle.textContent = views[name].title;
     viewKicker.textContent = views[name].kicker;
     // Which view is open is a root-level fact, so the stylesheet can decide what belongs
-    // on screen (the tab strip and the board-layout toggle are board-only). Doing this in
+    // on screen (the horizontal tab strip is board-only). Doing this in
     // CSS rather than inline styles lets the "Open tabs bar" setting override it without
     // the two mechanisms fighting over `style.display`.
     document.documentElement.dataset.view = name;
@@ -116,16 +138,30 @@ async function main() {
   });
 
   // — narrow screens: the sidebar becomes a drawer behind a menu button —
+  // While it is open everything behind it is inert, focus lands on the active view row, and
+  // closing hands focus back to the menu button.
   const app = document.querySelector('.app');
+  const narrow = matchMedia('(max-width: 880px)');
   const drawerBtn = document.getElementById('drawer-btn');
   const setDrawer = (open) => {
+    const was = app.classList.contains('drawer-open');
     app.classList.toggle('drawer-open', open);
     drawerBtn.setAttribute('aria-expanded', String(open));
+    // everything beside the sidebar goes inert, not just .main: in Vertical mode the tab rail
+    // (#tabs-bar) is a sibling of .main, and its chips must not be reachable behind the scrim
+    for (const n of app.children) if (n.id !== 'sidebar') n.inert = open && narrow.matches;
+    if (open && !was) requestAnimationFrame(() => document.querySelector('#sidebar .view-link.is-active')?.focus());
+    if (!open && was && document.getElementById('sidebar').contains(document.activeElement)) drawerBtn.focus();
   };
   function closeDrawer() { setDrawer(false); }
   drawerBtn.addEventListener('click', () => setDrawer(!app.classList.contains('drawer-open')));
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
   document.getElementById('drawer-scrim').addEventListener('click', closeDrawer);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && app.classList.contains('drawer-open')) closeDrawer(); });
+  // widening past the drawer breakpoint with it open must not leave the panel inert
+  narrow.addEventListener('change', () => {
+    for (const n of app.children) if (n.id !== 'sidebar') n.inert = app.classList.contains('drawer-open') && narrow.matches;
+  });
 
   // — columns —
   const search = document.getElementById('search');
@@ -142,6 +178,8 @@ async function main() {
     navRoot: document.getElementById('collections-nav'),
     wsRoot: document.getElementById('spaces-nav'),
     navCount: document.getElementById('nav-collections-count'),
+    boardState: document.getElementById('board-state'),
+    collectionsScope: document.getElementById('collections-scope'),
     getQuery,
     ensureBoardVisible: () => showView('board'),
     clearSearch: () => { search.value = ''; renderAll(); },
@@ -191,7 +229,7 @@ async function main() {
   if (views[wanted] && wanted !== 'board') showView(wanted);
   window.addEventListener('hashchange', () => { const v = location.hash.slice(1) || 'board'; if (views[v] && v !== currentView) showView(v); });
 
-  // topbar + tray actions
+  // top-bar window actions (Save window, Stash & close, the narrow-screen stash) + sidebar caption actions
   document.getElementById('stash-window-btn').addEventListener('click', stashCurrentWindow);
   document.getElementById('mobile-stash-window-btn').addEventListener('click', stashCurrentWindow);
   document.getElementById('save-all-btn').addEventListener('click', saveCurrentWindow);
@@ -201,6 +239,9 @@ async function main() {
   });
   document.getElementById('export-all-btn').addEventListener('click', () => spacesCol.exportAll());
   document.getElementById('new-space-btn').addEventListener('click', () => spacesCol.newWorkspace());
+  // the board head: its one primary and the export circle (same handlers as the sidebar's)
+  document.getElementById('board-new-btn').addEventListener('click', () => spacesCol.createEmpty());
+  document.getElementById('board-export-btn').addEventListener('click', () => spacesCol.exportAll());
 
   // after a backup import, re-apply typography and re-render everything
   document.addEventListener('stacknest:imported', async () => {

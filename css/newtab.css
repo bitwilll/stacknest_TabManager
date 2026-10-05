@@ -39,6 +39,10 @@
    5. HATCHING MEANS "SPACE TO FILL". Diagonal hatch appears only on places that
       are waiting for something: the new-collection tile, drop targets, empty
       states. It is never decoration on content.
+   6. ONE SECTION ANATOMY. The top bar names the view. Under it every view has the same head —
+      what is here now (scope · large light counts · a "matching" chip), one sentence, its tools
+      quiet → loud with at most one lava primary last — then captioned groups, then margin notes.
+      States never remove the head; empty states live in the body; a gate owns its primary.
 
    Light is ink on paper inside a void frame; dark is snow on void inside a
    deeper void; Linen is the all-paper theme, warm, with a pine accent. Every
@@ -50,7 +54,8 @@
   /* ——— colour contract ———
      --accent may appear ONLY on: .btnx.primary · active rails + icons · :focus-visible ·
      ::selection · .chip-tab.is-active · checked boxes · .drop-target · .check-prog fill ·
-     the live pulse · the title full stop and logo mark. Everything else is neutral.
+     the live pulse · the title full stop and logo mark · the current-window dot ·
+     .sec-scope-v.is-state (a state value, e.g. "unlocked"). Everything else is neutral.
      User-data colours arrive as custom properties set by JS:
        --ws-color   (.ws-row)         --space-color (html, active Space)
        --col-color  (.colcard)        --done        (.check-prog, 0–1)             */
@@ -95,10 +100,11 @@
 
   /* DANGER — deliberately crimson, 50° from the lava, so "this deletes" never reads as
      "this is selected". Allowed ONLY on: destructive confirm + armed delete, an overdue
-     reminder, the duplicate-count badge, ticker-down. */
+     reminder, ticker-down, vault lockout (callout, scope, numeral) · an overdue count ·
+     a menu item that replaces data. */
   --red:         #b3243a;
   --red-contrast: #ffffff;  /* text on a danger fill: 6.5:1 */
-  --green:       #1a6e48;   /* semantic only: ticker up, cloud connected, finished lists */
+  --green:       #1a6e48;   /* semantic only: ticker up, cloud connected (the Drive dot is green only when connected), finished lists */
 
   --hov:         rgba(21, 20, 25, 0.055);
   --hovsh:       0 10px 24px -18px rgba(21, 20, 25, 0.45);
@@ -150,9 +156,12 @@
   --dot-gap: 24px;    /* dot-matrix pitch */
 
   /* ——— MEASURE — how wide a view's content is allowed to run ——— */
-  --measure:      1180px;   /* grid + mosaic views: library, tags, notes */
+  --measure:      1180px;   /* no longer applied: grids and the mosaic fill the panel (one section anatomy) */
   --measure-list:  880px;   /* single-column stacks of full-width rows: duplicates */
   --measure-form:  720px;   /* labelled form rows: settings */
+  --gutter:  var(--s6);                     /* ONE horizontal edge: .top, strip .tray, section heads, view bodies, board */
+  --ctl-h:   36px;                          /* one height for pills, fields, segments and the composer */
+  --readout: calc(30px * var(--fs-small));  /* the large light numeral */
 
   /* 3.3:1 on paper — the boundary of a control whose border IS the control
      (outlined buttons, fields, unchecked boxes). Distinct from --line-strong,
@@ -346,6 +355,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
    canvas between the chip and the ring keeps the ring visible in every theme */
 .chip-tab.is-active:focus-visible { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus); }
 
+/* every icon() svg carries .ic: one stroke default at zero specificity, so each per-context rule
+   still wins — and no context is left painting a filled black blob or an invisible "+" */
+:where(svg.ic) { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
 /* announced by screen readers, invisible on screen (live regions, status text) */
 .sr-only {
   position: absolute; width: 1px; height: 1px;
@@ -390,7 +403,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   transition: background-color 0.2s ease;
 }
 
-.side-logo { padding: 14px 20px 18px; display: flex; align-items: center; gap: 11px; }
+.side-logo { padding: 14px 12px 14px 20px; display: flex; align-items: center; gap: 11px; }
 
 /* the mark: a lava tile with the ink glyph — the one solid block of colour in the chrome */
 .logo-tile {
@@ -411,7 +424,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 /* the full stop: every name in the app ends on the accent (see .view-title::after) */
 .logo-word::after { content: '.'; color: var(--accent-2); }
 
-.side-sec { padding: 2px 12px 4px; }
+.side-sec { padding: 2px 12px 4px; }   /* re-laid as bento tiles in "SIDEBAR AS BENTO" below */
 .side-sec-nav { padding-top: 0; padding-bottom: 10px; }
 /* logo, primary nav, settings and footer stay pinned; only the middle scrolls */
 .side > .side-sec, .side-logo, .side-nav-label { flex-shrink: 0; }
@@ -422,17 +435,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
    The drafting note: mono, lowercase, lightly tracked — "spaces", "windows", "live", the
    kicker above a view title. It captions a block without competing with it. One rule, and
    it is the ONLY place this recipe is written down: new captions join the selector list. */
-.side-label,
-.side-nav-label,
-.tray-label,
-.seg-label,
-.view-kicker,
-.tagpop-h,
-.rem-h,
-.help-h,
-.dup-src-kind,
-.dup-forgot-h,
-.cloud-badge {
+.side-label, .side-nav-label, .tray-label, .view-kicker, .tagpop-h, .rem-h, .help-h, .dup-src-kind, .cloud-badge,
+.sec-cap, .sec-scope-k, .sec-trail-note, .empty-cap, .newcol-sub, .notes-menu-cap, .set-state, .set-num, .set-index-n {
   font: 500 var(--t1) var(--mono);
   letter-spacing: var(--tr-label);
   text-transform: lowercase;
@@ -442,7 +446,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
    so the eye finds Spaces / Windows / Collections by shape before reading a word */
 .side-label, .side-nav-label { display: flex; align-items: center; gap: 10px; }
 .side-label { padding: 10px 8px 6px; }
-.side-label::after, .side-nav-label::after { content: ''; flex: 1; height: 1px; background: var(--line-strong); }
+.side-label::after, .side-nav-label::after, .sec-cap::after { content: ''; flex: 1; height: 1px; background: var(--line-strong); }
+.side-label, .side-nav-label { margin: 0; }   /* they are h2 now */
 .side-label-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-right: 2px; }
 .side-label-row .side-label { flex: 1; min-width: 0; }
 .side-nav-label { padding: 0 20px 6px; }   /* aligned with the logo above, not the rows below */
@@ -480,8 +485,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   border-radius: 0 3px 3px 0;
   background: var(--accent);
 }
-/* on a Space row the marker takes that Space's own colour — the same swatch the board title
-   carries (see .view-title::before), so the rail you clicked and the view you landed on match */
+/* on a Space row the marker takes that Space's own colour — the same swatch the board head's
+   scope carries (see .sec-swatch), so the rail you clicked and the view you landed on match */
 .ws-row.is-active::before { background: var(--ws-color, var(--accent)); }
 .navx.is-active .nav-ic { color: var(--accent-text); }
 
@@ -506,15 +511,191 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .nav-acts .icb { width: 24px; height: 24px; }
 .inline-edit.nav-edit { font: 600 var(--t3) var(--grot); }
 
+/* ——— sidebar: scroll fade, captions, window markers, drawer close, touch ——— */
+.side-scroll { padding-bottom: 16px; -webkit-mask-image: linear-gradient(#000 calc(100% - 16px), transparent); mask-image: linear-gradient(#000 calc(100% - 16px), transparent); }   /* the padding lets the last row scroll clear of the fade */
+.side-label-scope { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: none; color: var(--text-soft); }   /* " · Personal": the space it lists */
+.win-dot { box-shadow: inset 0 0 0 1.5px var(--text-ghost); }
+.win-dot.is-current { background: var(--accent); box-shadow: none; }   /* the current window is state */
+.side-empty { padding: 6px 10px; font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.icb.drawer-close { display: none; margin-left: auto; width: 36px; height: 36px; color: var(--text-soft); }
+.ws-row.is-active .nav-acts { display: flex; }   /* the selected row's actions stay at rest */
+@media (hover: none) {
+  .navx .nav-acts { display: flex; }
+  .navx:is(:hover, :focus-within) .nav-n { display: inline; }   /* counts are information: keep them on touch */
+}
+
+/* ————— SIDEBAR AS BENTO —————
+   The sidebar reads as tiles set on the frame, like the palette sheet: one tile per group
+   (views · spaces · collections · windows · settings), each with its caption inside it. Labels are a
+   step larger and brighter than the panel's meta text, because this is the column you read most;
+   view icons sit in small tiles that invert to a snow disc when that view is open; counts are mono
+   pills; the active Space row takes a wash of the Space's own colour. */
+.side {
+  --tile: rgba(251, 251, 251, 0.035);
+  --tile-line: rgba(251, 251, 251, 0.06);
+  --chip: rgba(251, 251, 251, 0.075);
+  --ic-bg: rgba(251, 251, 251, 0.07);
+  --ic-bg-hov: rgba(251, 251, 251, 0.12);
+  --row-h: 38px;
+  --ic: 28px;
+  --side-fs: calc(13.5px * var(--fs-body));
+}
+/* Linen's frame is paper: its tiles are lighter paper on it, so the walnut captions gain contrast */
+:root[data-theme='linen'] .side {
+  --tile: rgba(255, 253, 249, 0.62);
+  --tile-line: rgba(60, 44, 30, 0.08);
+  --chip: rgba(60, 44, 30, 0.07);
+  --ic-bg: rgba(60, 44, 30, 0.06);
+  --ic-bg-hov: rgba(60, 44, 30, 0.11);
+}
+
+.side .side-sec,
+.side .side-nav-label {
+  margin: 0 10px;
+  background: var(--tile);
+  border: 1px solid var(--tile-line);
+}
+.side .side-sec { padding: 4px 6px 6px; border-radius: 14px; }
+/* the Views caption sits outside its <nav> in the markup; the two are drawn as one tile */
+.side .side-nav-label { padding: 10px 10px 4px 12px; border-bottom: 0; border-radius: 14px 14px 0 0; }
+.side .side-sec-nav { padding-top: 0; border-top: 0; border-radius: 0 0 14px 14px; }
+.side-scroll { padding-top: 8px; }
+.side .side-settings { margin: 8px 10px 0; padding: 4px 6px; border-top: 1px solid var(--tile-line); }
+.side { padding-bottom: 10px; }
+.side .side-sec-grow { flex: none; }   /* a tile sizes to its rows; the scroll box, not the tile, takes the spare height */
+
+.side .side-label, .side .side-nav-label { font-size: calc(11px * var(--fs-small)); color: var(--text-mut); }
+.side .side-label { padding: 8px 4px 4px 6px; }
+.side .side-label-row { padding-right: 0; }
+/* the caption that carries a scope ("collections · Personal") gives its hairline to the name: the
+   row's buttons already end the line */
+.side #cap-collections { gap: 0 4px; flex-wrap: wrap; }   /* the scope drops to its own line only when the name doesn't fit */
+.side #cap-collections::after { display: none; }
+
+.side .navx {
+  min-height: var(--row-h);
+  padding: 5px 8px 5px 5px;
+  gap: 10px;
+  border-radius: 10px;
+  font: 560 var(--side-fs) var(--grot);
+  color: var(--text-body);
+}
+.side .navx:hover { background: var(--hov); color: var(--text-strong); }
+.side .navx.is-active { background: var(--accent-soft); color: var(--text-strong); }
+.side .navx.is-active::before { left: -6px; }   /* the rail sits on the tile's edge, not inside the row */
+
+/* view icons in tiles: quiet at rest, brighter on hover, a snow disc when open */
+.side .nav-ic {
+  width: var(--ic); height: var(--ic);
+  border-radius: 8px;
+  background: var(--ic-bg);
+  color: var(--text-soft);
+  transition: background 0.13s, color 0.13s;
+}
+.side .navx:hover .nav-ic { background: var(--ic-bg-hov); color: var(--text-strong); }
+.side .navx.is-active .nav-ic { background: var(--text-strong); color: var(--frame); }
+:root[data-theme='linen'] .side .navx.is-active .nav-ic { color: var(--bg); }
+
+/* dot and square markers centre in the same 28px slot, so every label starts on one rail */
+.side .nav-dot { width: 10px; height: 10px; margin: 0 calc((var(--ic) - 10px) / 2); }
+.side .nav-sq  { width: 10px; height: 10px; border-radius: 3px; margin: 0 calc((var(--ic) - 10px) / 2); }
+
+/* counts: mono pills, hidden when empty */
+.side .nav-count, .side .navx .nav-n {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: var(--pill);
+  background: var(--chip);
+  font: 600 calc(11px * var(--fs-small)) / 1.5 var(--mono);
+  text-align: center;
+  color: var(--text-soft);
+}
+.side .nav-count:empty, .side .navx .nav-n:empty { display: none; }
+.side .navx.is-active .nav-count, .side .navx.is-active .nav-n { color: var(--text-strong); }
+
+/* the active Space: a wash of its own colour (the rail already carries it) */
+.side .ws-row.is-active { background: color-mix(in srgb, var(--ws-color, var(--accent)) 24%, transparent); }
+/* on Linen paper the lighter Space colours fall under 3:1, so the marker is deepened toward walnut */
+:root[data-theme='linen'] .side .ws-row.is-active::before { background: color-mix(in srgb, var(--ws-color) 70%, var(--text-strong)); }
+
+.side .inline-edit.nav-edit { font: 560 var(--side-fs) var(--grot); }   /* renaming keeps the row's size and weight */
+.side .icb { color: var(--text-soft); }
+.side .icb:hover { color: var(--text-strong); background: var(--ic-bg-hov); }
+.icb.side-collapse { margin-left: auto; width: 32px; height: 32px; }
+
+/* ——— responsive: short windows compact the rows; the drawer gets touch-sized rows ——— */
+@media (max-height: 760px) and (min-width: 881px) {
+  .side { --row-h: 32px; --ic: 24px; }
+  .side .side-logo { padding-top: 10px; padding-bottom: 10px; }
+  .side .side-sec { padding: 2px 4px 4px; }
+  .side .side-sec-nav { padding-top: 0; }             /* keeps the Views caption + nav joined as one tile */
+  .side .side-settings { padding: 4px; }
+  .side .navx.is-active::before { left: -4px; }       /* the marker stays on the tile's edge */
+}
+@media (max-width: 880px) {
+  .side { --row-h: 44px; --ic: 30px; --side-fs: calc(15px * var(--fs-body)); }
+  .icb.side-collapse { display: none; }
+}
+/* very short windows (a tiled laptop window): the whole sidebar scrolls as one column, so the
+   lists and Settings never get squeezed out of reach */
+@media (max-height: 640px) {
+  .side { overflow-y: auto; }
+  .side-scroll { flex: none; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+}
+@media (max-width: 880px) and (max-height: 640px) { .side { --row-h: 38px; --ic: 26px; } }
+
+/* ——— the rail: the sidebar folded to its icons (desktop only; app.js sets data-side) ———
+   Every view stays one click away, its count as a corner badge and its name as the tooltip and
+   accessible name (font-size 0 hides the words without removing them). Spaces become their colour
+   marks. Collections and Windows wait behind the expand button — the board and the tab strip
+   carry the same things. */
+@media (min-width: 881px) {
+  :root[data-side='rail'] .side { width: 72px; }
+  :root[data-side='rail'] .side-logo { flex-direction: column; gap: 10px; padding: 14px 0 12px; }
+  :root[data-side='rail'] .logo-word,
+  :root[data-side='rail'] .side .side-nav-label,
+  :root[data-side='rail'] .side .side-label,
+  :root[data-side='rail'] .side-sec:has(#collections-nav),
+  :root[data-side='rail'] .side-sec:has(#windows-root),
+  :root[data-side='rail'] .side .nav-acts { display: none; }
+  :root[data-side='rail'] .icb.side-collapse { margin: 0; }
+  :root[data-side='rail'] .icb.side-collapse svg { transform: scaleX(-1); }   /* points outward: expand */
+  :root[data-side='rail'] .side .side-sec,
+  :root[data-side='rail'] .side .side-settings { margin-inline: 8px; padding: 4px; }
+  :root[data-side='rail'] .side .side-sec-nav { padding-top: 4px; border-top: 1px solid var(--tile-line); border-radius: 14px; }
+  :root[data-side='rail'] .side .side-label-row { justify-content: center; }
+  :root[data-side='rail'] .side .navx { justify-content: center; padding: 5px 0; gap: 0; font-size: 0; }
+  :root[data-side='rail'] .side .navx.is-active::before { left: -4px; }
+  :root[data-side='rail'] .side .nav-count {
+    position: absolute; top: 1px; right: 1px;
+    min-width: 18px; padding: 0 4px;
+    font-size: var(--t1); line-height: 16px;
+    background: var(--bg-inset); color: var(--text-strong);
+    box-shadow: 0 0 0 2px var(--frame);
+  }
+  :root[data-side='rail'][data-theme='linen'] .side .nav-count { box-shadow: 0 0 0 2px var(--tile); }
+  :root[data-side='rail'] .side .navx .nav-n { display: none; }
+  :root[data-side='rail'] .side .navx .nav-label { flex: none; }   /* zero-size words must not push the mark off centre */
+  /* a Space is its colour AND its initial (colour alone fails people who can't tell the hues apart):
+     a ring in the Space's colour around the letter in ink */
+  :root[data-side='rail'] #spaces-nav .nav-dot {
+    width: 26px; height: 26px; margin: 0;
+    display: grid; place-items: center;
+    background: var(--ic-bg) !important;   /* beats the inline swatch fill; the colour moves to the ring */
+    box-shadow: inset 0 0 0 2.5px var(--ws-color);
+  }
+  :root[data-side='rail'] #spaces-nav .nav-dot::after { content: attr(data-initial); font: 700 var(--t1) var(--grot); color: var(--text-strong); }
+  :root[data-side='rail'] #new-space-btn { margin: 0 auto; }
+}
+
 /* ——— collapsible windows: chevron + tab dropdown ——— */
 
-#windows-root { max-height: calc(34vh / var(--app-zoom, 1)); overflow-y: auto; }
 #windows-root .navx:focus-visible, #windows-root .win-tab:focus-visible { outline-offset: -2px; } /* the scroll box would clip an outside ring */
 
 .win-chev {
   width: 14px; height: 14px;
   flex: none;
-  margin-left: -4px;
+  margin-left: 0;
   display: grid;
   place-items: center;
   color: var(--text-faint);   /* open/closed must be readable at rest */
@@ -587,25 +768,20 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 24px;
+  padding: 0 var(--gutter);
 }
 
 /* the kicker over the title: a drafting note in lava ink, led by a short rule */
-.view-heading { display: flex; flex-direction: column; justify-content: center; gap: 3px; flex: 0 1 auto; min-width: 64px; }
+.view-heading { display: flex; flex-direction: column; justify-content: center; gap: 3px; flex: 0 0 auto; min-width: 154px; }   /* the search gives way first; only the ≤580 fold lets the title ellipsize */
 .view-kicker { display: flex; align-items: center; gap: 7px; color: var(--accent-text); white-space: nowrap; }
 .view-kicker::before { content: ''; width: 14px; height: 1px; background: currentColor; }
 .view-title { margin: 0; font: 800 var(--t7)/1.05 var(--grot); letter-spacing: var(--tr-tight); color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* "Collections." — the title ends on the accent, the way the wordmark does */
 .view-title::after { content: '.'; color: var(--accent-2); }
 :root[data-theme='light'] .view-title::after { color: var(--accent); }   /* lava itself is 2.5:1 on paper; the deeper step clears 3:1 */
-/* the active Space's colour, beside the board title — the same colour as the rail you clicked */
-:root[data-view='board'][style*='--space-color'] .view-title::before {
-  content: ''; display: inline-block; width: 11px; height: 11px; border-radius: 3px;
-  background: var(--space-color); margin-right: 10px; vertical-align: 2px;
-}
 
 .searchbox {
-  flex: 1;
+  flex: 0 1 420px;   /* a fixed basis, not the leftover: the box keeps its width as titles change between views */
   max-width: 500px;
   min-width: 130px; /* shrinks on narrow tops instead of pushing actions off-screen */
   margin-left: 8px;
@@ -664,7 +840,6 @@ kbd {
   border-radius: var(--pill);
   padding: 3px;
 }
-.seg-label { margin: 0 4px 0 9px; }
 .chipx {
   transition: background 0.13s, border-color 0.13s, color 0.13s, transform 0.08s;
   cursor: pointer;
@@ -707,6 +882,24 @@ kbd {
   white-space: nowrap;
 }
 .btnx.soft:hover { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-card); }
+/* ghosty: an outline pill on the surface — navigation and housekeeping that should not shout */
+.btnx.ghosty { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 15px; color: var(--text-strong); border: 1px solid var(--edge); border-radius: var(--pill); background: transparent; font: 600 var(--t3) var(--grot); white-space: nowrap; }
+.btnx.ghosty:hover { background: var(--hov); color: var(--text-strong); }
+.btnx.sm { height: 30px; padding: 0 12px; }   /* card- and row-level actions; .btnx (36) is page-level */
+/* A disabled button still has to be readable — you cannot act on a label you cannot read.
+   Dim by colour so the text keeps its contrast; the flat fill is what reads as inert. */
+.btnx[disabled] {
+  pointer-events: none;
+  background: var(--bg-inset);
+  border-color: var(--line-strong);
+  color: var(--text-mut);
+  box-shadow: none;
+}
+.btnx.is-busy { opacity: 0.6; pointer-events: none; }
+/* after .btnx.ghosty on purpose: same specificity, so source order gives both window buttons one height */
+/* Save window · Stash & close: this window's two verbs, on every view and in every tab-bar mode */
+.window-acts { display: flex; align-items: center; gap: var(--s2); padding-left: var(--s2); border-left: 1px solid var(--line-strong); }
+.window-acts .btnx { height: var(--ctl-h); }
 
 /* narrow screens: the sidebar slides in as a drawer behind this menu button (see the
    ≤880px block); every section — spaces, windows, collections — stays reachable */
@@ -734,13 +927,9 @@ kbd {
   background: var(--bg);
   align-items: center;
   gap: 16px;
-  padding: 0 24px;
+  padding: 0 var(--gutter);
 }
 :root[data-tabsbar='top'][data-view='board'] .tray { display: flex; }
-
-/* the board-layout toggle (columns / tiles) has nothing to act on off the board */
-.viewmode-seg { display: none; }
-:root[data-view='board'] .viewmode-seg { display: flex; }
 
 .tray-empty { font: 500 var(--t3) var(--grot); color: var(--text-mut); }
 
@@ -804,9 +993,6 @@ kbd {
   background: var(--accent);
 }
 :root[data-tabsbar='side'] .tray-empty { padding: 0 var(--s2); line-height: 1.5; }
-:root[data-tabsbar='side'] #save-all-btn { justify-content: center; width: 100%; }
-/* it is its own column now, so the sidebar's Windows panel goes back to window rows only */
-:root[data-tabsbar='side'] #windows-root { max-height: calc(34vh / var(--app-zoom, 1)); }
 
 @media (max-width: 880px) {
   /* No room for a rail beside a stacked layout. The bar is a flex sibling of .main here,
@@ -817,14 +1003,13 @@ kbd {
     width: auto; height: auto; flex: none;
     flex-direction: row; align-items: center; flex-wrap: wrap;
     gap: 12px;
-    padding: 10px 14px;
+    padding: 10px var(--gutter);
   }
   :root[data-tabsbar='side'] .tray-live { padding: 0; border-bottom: 0; }
   :root[data-tabsbar='side'] .tray-chips { flex: 1; flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 8px; }
   :root[data-tabsbar='side'] .chip-tab { width: auto; height: 36px; padding: 0 6px; border-radius: var(--pill); }
   :root[data-tabsbar='side'] .chip-tab .title { max-width: 140px; flex: none; }
   :root[data-tabsbar='side'] .chip-tab.is-active::before { content: none; }
-  :root[data-tabsbar='side'] #save-all-btn { width: auto; }
 }
 
 /* THE LIVE READOUT. A lava pulse, then the count as a large light numeral — the one number
@@ -842,14 +1027,11 @@ kbd {
 }
 .tray-count { display: contents; }   /* its two spans join the grid above */
 .tray-label { grid-area: label; align-self: end; color: var(--accent-text); line-height: 1.2; }
-.tray-num {
-  grid-area: num;
-  font: 300 calc(30px * var(--fs-small))/1 var(--grot);   /* a count: it follows the Small text dial, as Settings says */
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-strong);
-}
-.tray-unit { grid-area: unit; align-self: start; font: 500 var(--t1)/1.2 var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); white-space: nowrap; }
+/* the large light numeral — the live tab count here, every section head's counts (.sec-num) —
+   and its mono unit. --readout follows the Small text dial, as Settings says. */
+.tray-num, .sec-num { grid-area: num; font: 300 var(--readout)/1 var(--grot); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.tray-unit, .sec-unit { font: 500 var(--t1)/1.2 var(--mono); letter-spacing: var(--tr-label); text-transform: lowercase; color: var(--text-mut); white-space: nowrap; }
+.tray-unit { grid-area: unit; align-self: start; }
 
 .tray-chips {
   flex: 1;
@@ -883,7 +1065,6 @@ kbd {
 }
 .chip-tab.is-active .title { color: var(--accent-contrast); }
 .chip-tab.is-active .icb { color: var(--accent-contrast); }
-.tray .btnx { flex: none; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 /* the vertical rail's rows sit in an overflow box, so their ring draws inside the row */
 :root[data-tabsbar='side'] .chip-tab:focus-visible,
 :root[data-tabsbar='side'] .chip-tab.is-active:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); border-color: transparent; }
@@ -968,13 +1149,18 @@ kbd {
 .view { flex: 1; min-height: 0; }
 .view[hidden] { display: none; }
 
-/* THE DOT GROUND — the drafting sheet under the board: the grid the layout is built on,
-   left visible instead of painted over. Pitch is --dot-gap (24px), a calm grid the eye
-   can ignore. */
-.view-board {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 20px 22px;
+/* The board is a head on plain paper that never scrolls, then .board-scroll — THE DOT GROUND,
+   the drafting sheet under the board: the grid the layout is built on, left visible instead of
+   painted over. Pitch is --dot-gap (24px), a calm grid the eye can ignore. Only the ground
+   scrolls: sideways for columns, down for tiles and mosaic. */
+.view-board { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+/* never sticky — it already sits outside the scroller; .sec-top.board-top so it outranks the
+   generic .sec-top (sticky, full-bleed) further down the sheet */
+.sec-top.board-top { position: static; flex: none; margin: 0; padding: 0 var(--gutter); }
+.board-top .sec-head { min-height: 60px; padding: var(--s2) 0; }
+.board-scroll {
+  flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden;
+  padding: var(--s5) var(--gutter);
   background-image: radial-gradient(circle at 1px 1px, var(--dotgrid) 1px, transparent 0);
   background-size: var(--dot-gap) var(--dot-gap);
 }
@@ -1007,13 +1193,18 @@ kbd {
 .col-dot {
   width: 10px; height: 10px;
   flex: none;
+  margin: 0 3px;
   border-radius: 3px;
   border: 0;
   padding: 0;
-  cursor: pointer;
+  cursor: pointer;   /* it recolours; the header around it is the drag handle */
   transition: transform 0.15s ease;
 }
 .col-dot:hover { transform: scale(1.35); }
+/* small marks, full-size targets: the hit area grows, the mark does not */
+.col-chev, .col-dot { position: relative; }
+.col-chev::before { content: ''; position: absolute; inset: -5px; border-radius: 50%; }   /* 25px target */
+.col-dot::before  { content: ''; position: absolute; inset: -7px; border-radius: 50%; }   /* 24px target, same 10px mark */
 
 .col-name {
   font: 700 var(--t4) var(--grot);
@@ -1040,6 +1231,7 @@ kbd {
   color: var(--text-strong);
   margin-left: 4px;
 }
+.col-of { margin-left: 1px; font: 500 var(--t2) var(--mono); letter-spacing: 0; color: var(--text-mut); }   /* "3/12" while a search filters the cards */
 /* two-row header: the name gets the full width; the date and the actions share the line
    beneath it. "Updated Jan 1" is the quietest thing in the header, so it is set as one —
    the same --t2 mono meta recipe as the count and the domains. */
@@ -1062,34 +1254,28 @@ kbd {
   gap: 8px;
 }
 
+/* the surface only: its layout is THE LINK-CARD ANATOMY (see "THE SECTION") */
 .tabcard {
-  display: flex;
-  align-items: center;
-  gap: 11px;
   padding: 10px;
   border: 1px solid var(--card-line);
   border-radius: var(--r5);
   background: var(--bg-card);
   box-shadow: var(--shadow-tile);
 }
-.tabcard .meta { min-width: 0; flex: 1; }
-.tabcard .title { display: block; font: 600 var(--t3)/1.3 var(--grot); color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tabcard .domain { display: block; font: 500 var(--t2) var(--mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.tabcard .title { font: 600 var(--t3)/1.3 var(--grot); color: var(--text-body); overflow: hidden; text-overflow: ellipsis; }
+.tabcard .domain { display: block; font: 500 var(--t2) var(--mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ————— tile (gallery) board layout ————— */
-.view-board:has(.board.tiles) { overflow-x: hidden; overflow-y: auto; }
+.board-scroll:has(> .board.tiles) { overflow-x: hidden; overflow-y: auto; }
 .board.tiles { display: block; height: auto; }
 .board.tiles .colcard { width: 100%; height: auto; margin-bottom: 16px; }
 .board.tiles .colbody {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));   /* room for the full two-line title */
   gap: 10px;
   overflow: visible;
   padding: 2px 14px 14px;
 }
-.board.tiles .tabcard { position: relative; flex-direction: column; align-items: flex-start; gap: 9px; padding: 12px; }
-.board.tiles .tabcard .meta { width: 100%; flex: none; }
-.board.tiles .tabcard .acts { position: absolute; top: 8px; right: 8px; background: var(--bg-card); border-radius: var(--pill); }
 .board.tiles .addtab { justify-content: center; min-height: 64px; }
 .board.tiles .newcol { width: 100%; height: 64px; padding: 0; flex-direction: row; }
 .board.tiles > .empty { padding: 40px 24px; }
@@ -1097,7 +1283,7 @@ kbd {
 /* ————— mosaic (masonry) board layout —————
    Collections as cards that size to their content and flow into columns — the same
    column-width masonry the Notes view uses, so the two views feel like one system. */
-.view-board:has(.board.mosaic) { overflow-x: hidden; overflow-y: auto; }
+.board-scroll:has(> .board.mosaic) { overflow-x: hidden; overflow-y: auto; }
 .board.mosaic { display: block; height: auto; column-width: 300px; column-gap: 16px; }
 .board.mosaic .colcard {
   display: flex; width: 100%; height: auto;
@@ -1173,7 +1359,7 @@ kbd {
   transition: background 0.13s, color 0.13s;
 }
 .newcol:hover .plus-tile { background: var(--accent); color: var(--accent-contrast); }
-.newcol span:last-child { font: 650 var(--t3) var(--grot); }
+.newcol-t { font: 650 var(--t3) var(--grot); }
 
 /* ————— empty states (shared by every view: emptyState() in ui.js) —————
    an icon tile, a title, a one-sentence hint and the action that fills the view */
@@ -1207,70 +1393,183 @@ kbd {
 .empty-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
 .empty-acts .btnx { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; }
 
+/* ————— THE SECTION —————
+   Every view: .sec-top (trail? · head · bar?) → .sec-body (captioned .sec-group) → .sec-foot?
+   The top bar names the view; the head never repeats the title or its full stop. */
+
+.view-body { display: flex; flex-direction: column; min-height: 100%; min-width: 0; padding: 0 var(--gutter) var(--s9); }
+.view-library, .view-myspace, .view-vault, .view-tags, .view-duplicates, .view-notes, .view-settings { overflow-y: auto; }
+
+/* the section top: sticky, full-bleed paper so scrolled content never shows in the gutters */
+.sec-top {
+  position: sticky; top: 0; z-index: 4;
+  margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter);
+  background: var(--bg);
+}
+@media (max-width: 880px), (max-height: 700px) { .sec-top { position: static; } }
+
+.sec-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'state tools' 'note tools';
+  align-items: center; column-gap: var(--s6); row-gap: var(--s1);
+  min-height: 72px; padding: var(--s4) 0 var(--s3);
+  border-bottom: 1px solid var(--line-strong);
+}
+.sec-head:has(+ .sec-bar) { border-bottom-color: var(--line); }
+
+.sec-state { grid-area: state; margin: 0; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s5); }
+.sec-scope { display: grid; gap: 2px; min-width: 0; padding-right: var(--s5); border-right: 1px solid var(--line-strong); }
+.sec-scope:last-child { padding-right: 0; border-right: 0; }
+.sec-scope-v { display: flex; align-items: center; gap: var(--s2); min-width: 0; max-width: 40ch; font: 750 var(--t5)/1.2 var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
+.sec-scope-t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec-scope-v.is-state  { color: var(--accent-text); }   /* a state value, e.g. "unlocked · this tab" */
+.sec-scope-v.is-danger { color: var(--red); }           /* vault lockout */
+.sec-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.sec-stat { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.sec-num.is-danger { color: var(--red); }
+.sec-match {
+  display: inline-flex; align-items: center; gap: 2px; max-width: 100%;
+  height: 28px; padding: 0 2px 0 12px; border-radius: var(--pill);
+  background: var(--bg-inset); font: 600 var(--t2) var(--mono); color: var(--text-strong); white-space: nowrap;
+}
+.sec-match > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sec-match .icb { width: 24px; height: 24px; }
+
+.sec-note { grid-area: note; margin: 0; max-width: 62ch; font: 500 var(--t3)/1.45 var(--grot); color: var(--text-mut); }
+.sec-note strong { color: var(--text-soft); font-weight: 700; }
+
+.sec-tools { grid-area: tools; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s2); }
+.sec-tools .btnx { height: var(--ctl-h); }
+.sec-tools > .icb { width: var(--ctl-h); height: var(--ctl-h); border: 1px solid var(--edge); background: var(--bg-card); color: var(--text-soft); }
+.sec-tools > .icb:hover { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-card); }
+.sec-next { display: flex; flex-direction: column; align-items: flex-end; gap: var(--s1); }
+.sec-next-note { max-width: 32ch; text-align: right; font: 500 var(--t1)/1.3 var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); }
+
+.sec-bar { display: flex; align-items: center; gap: var(--s2); min-height: 52px; padding: var(--s2) 0; border-bottom: 1px solid var(--line-strong); }
+
+/* the Library path, above the head */
+.sec-trail { display: flex; align-items: center; min-height: 28px; padding-top: var(--s3); font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.sec-trail + .sec-head { padding-top: var(--s2); }
+
+.sec-body { flex: 1; display: flex; flex-direction: column; min-width: 0; padding-top: var(--s5); }
+.sec-body > .empty { margin: auto; }   /* a whole-view empty state or gate sits centred in what is left */
+.sec-group { min-width: 0; }
+.sec-group + .sec-group { margin-top: var(--s7); }
+.sec-group > .empty { margin: var(--s4) 0 0; max-width: none; }
+
+.sec-cap { display: flex; align-items: center; gap: var(--s3); min-height: 24px; margin: 0 0 var(--s3); }
+.sec-cap::after { order: 2; min-width: var(--s4); }
+.sec-cap-h { order: 1; margin: 0; min-width: 0; display: inline-flex; align-items: center; gap: var(--s2); font: inherit; letter-spacing: inherit; color: inherit; }
+.sec-cap-t { min-width: 0; display: inline-flex; align-items: center; gap: 6px; }
+.sec-cap-tt { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec-cap-t.is-data { font: 650 var(--t3) var(--grot); letter-spacing: 0; text-transform: none; color: var(--text-strong); }   /* user names keep their case */
+.sec-cap-t svg { color: var(--text-ghost); flex: none; }
+.sec-cap-n { font: 600 var(--t2) var(--mono); font-variant-numeric: tabular-nums; text-transform: none; color: var(--text-soft); }
+.sec-cap-aside { order: 3; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* with an aside beside it, the caption keeps every letter (capped so a long tag name still fits) */
+.sec-cap:has(> .sec-cap-aside) > .sec-cap-h { flex-shrink: 0; max-width: calc(100% - var(--s4) - 2 * var(--s3)); }
+.sec-cap-acts { order: 4; display: flex; align-items: center; gap: var(--s1); }
+.sec-help { margin: calc(var(--s2) * -1) 0 var(--s3); max-width: 72ch; font: 500 var(--t2)/1.45 var(--grot); color: var(--text-mut); }
+.sec-foot { margin: var(--s7) 0 0; padding-top: var(--s3); max-width: 90ch; border-top: 1px solid var(--line);
+  font: 500 var(--t1)/1.6 var(--mono); letter-spacing: var(--tr-label); text-transform: lowercase; color: var(--text-mut); }
+
+/* a capped list with an aside sibling that uses the panel's right side */
+.sec-split { display: grid; grid-template-columns: minmax(0, var(--measure-list)); gap: var(--s7); align-items: start; }
+.sec-split > .sec-group + .sec-group { margin-top: 0; }   /* the grid gap already separates them */
+@container main (min-width: 1240px) {
+  .sec-split { grid-template-columns: minmax(0, var(--measure-list)) minmax(260px, 300px); }
+}
+
+/* folding: the head answers to its panel, like the top bar */
+@container main (max-width: 760px) {
+  .sec-head { grid-template-areas: 'state tools' 'note note'; }
+  .sec-tools .btnx:not(.primary) { width: var(--ctl-h); padding: 0; gap: 0; justify-content: center; font-size: 0; }   /* label stays the accessible name */
+  .sec-tools .btnx:not(.primary) .menu-caret { display: none; }
+}
+@container main (max-width: 520px) {
+  .sec-head { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'state' 'tools' 'note'; row-gap: var(--s3); }
+  .sec-head:not(:has(> .sec-tools)) { grid-template-areas: 'state' 'note'; }   /* no empty tools row doubling the gap */
+}
+/* a sticky head must never cover the focused element: the scroller pads by the head's live height
+   (ui.js publishes --sec-top-h on the view) — only where the head is actually sticky */
+@media (min-width: 881px) and (min-height: 701px) {
+  .view-library, .view-myspace, .view-vault, .view-tags, .view-duplicates, .view-notes { scroll-padding-top: calc(var(--sec-top-h, 96px) + var(--s2)); }
+}
+@media (max-width: 880px) { .sec-head { min-height: 0; } }
+
+/* ——— empty-state variants ——— */
+.empty-steps { margin: var(--s2) 0 var(--s1); padding: 0; list-style: none; counter-reset: step; display: grid; gap: var(--s1); max-width: 46ch; text-align: left; }
+.empty-steps li { counter-increment: step; display: grid; grid-template-columns: 2.6ch 1fr; gap: var(--s2); font: 500 var(--t3)/1.5 var(--grot); color: var(--text-mut); }
+.empty-steps li::before { content: counter(step, decimal-leading-zero); font: 500 var(--t1)/2 var(--mono); color: var(--text-soft); }
+.empty.is-gate {
+  flex-direction: row; align-items: stretch; text-align: left; gap: 0; padding: 0;
+  width: 100%; max-width: 560px; overflow: hidden;
+  background-color: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--r6);
+}
+.empty.is-gate .empty-ic { flex: none; width: 148px; height: auto; min-height: 176px; margin: 0; border: 0; border-right: 1px solid var(--accent-border); border-radius: 0; }
+.empty.is-gate .empty-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); padding: var(--s6); }
+.empty.is-gate .empty-acts { justify-content: flex-start; margin-top: var(--s2); }
+@container main (max-width: 520px) {
+  .empty.is-gate { flex-direction: column; }
+  .empty.is-gate .empty-ic { width: auto; min-height: 64px; border-right: 0; border-bottom: 1px solid var(--accent-border); }
+  .empty.is-gate .empty-body { align-items: stretch; }
+  .empty.is-gate .empty-acts .btnx { flex: 1; justify-content: center; }
+}
+
+/* ——— ONE LINK-CARD ANATOMY (.tabcard board · .bmcard Library / My Space / Vault / Tags list) ———
+   line 1 the title, full width (2-line clamp) · line 2 domain + actions, visible at rest · line 3 tags */
+.tabcard, .bmcard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'tile title title' 'tile domain acts';
+  column-gap: var(--s3); row-gap: 2px; align-items: center;
+}
+.tabcard:has(> .meta > .card-tags), .bmcard:has(> .meta > .card-tags) {
+  grid-template-areas: 'tile title title' 'tile domain acts' 'tile tags tags';
+}
+:is(.tabcard, .bmcard) > .meta { display: contents; }
+:is(.tabcard, .bmcard) > .tile { grid-area: tile; align-self: start; }
+:is(.tabcard, .bmcard) .title { grid-area: title; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow: hidden; overflow-wrap: anywhere; }
+:is(.tabcard, .bmcard) .meta > .inline-edit { grid-area: title; }   /* rename keeps its cell */
+:is(.tabcard, .bmcard) .domain { grid-area: domain; margin-top: 0; }
+:is(.tabcard, .bmcard) .card-tags { grid-area: tags; margin-top: var(--s1); }
+:is(.tabcard, .bmcard) > .acts { grid-area: acts; justify-self: end; margin-right: -4px; }
+.bmcard:not(:has(> .acts)) .domain { grid-column: 2 / -1; }   /* Tags list cards carry no actions */
+.acts > .icb.danger:not(:first-child), .mos-acts > .icb.danger { margin-left: 6px; }   /* R7: the destructive one, set apart */
+
 /* ————— library ————— */
 
-/* ——— THE VIEW CONTAINER ———
-   Every scrolling view is the same box: one padding, one of three measures. This used to
-   be five separate declarations carrying four unrelated max-widths. */
-.library, .tagsview, .notesview, .duplicates, .settings {
-  padding: 28px 28px var(--s9);
-  max-width: var(--measure);
-}
-.duplicates { max-width: var(--measure-list); }
-.settings   { max-width: var(--measure-form); }
+/* the path: an ordered list in .sec-trail; the current folder is the head's scope, so the
+   trail ends in a slash (the sr-only last item names it for screen readers) */
+.crumb-list { display: flex; align-items: center; gap: 2px; min-width: 0; margin: -4px -6px -4px -12px; padding: 4px 6px; list-style: none; white-space: nowrap; overflow-x: auto; scrollbar-width: none; }   /* padding inside the scroll box, so focus rings and hover pills aren't clipped */
+.crumb-list li { flex: none; display: flex; align-items: center; }
+.crumb-list li + li::before { content: '/' / ''; margin: 0 2px; color: var(--text-faint); }
+.crumb { padding: 3px 6px; border-radius: var(--pill); font: inherit; color: var(--text-mut); transition: background .13s, color .13s; }
+.crumb:hover { color: var(--accent-text); background: var(--hov); }
+.tile.tile-folder { width: 40px; height: 40px; }
+.lib-folders:not(:has(.bmcard, .bm-newslot > input)) { display: none; }
+.lib-folders:not(:has(.bmcard, .bm-newslot > input)) + .sec-group { margin-top: 0; }   /* no gap for a hidden group */
+/* the new-folder slot: the first cell of the folders grid, hatched — space waiting to be filled */
+.bm-newslot { display: flex; align-items: center; min-height: 66px; padding: var(--s3); border: 1px dashed var(--edge); border-radius: var(--r5);
+  background: repeating-linear-gradient(-45deg, var(--hatch) 0 1px, transparent 1px 8px); }
+.bm-newslot:empty { display: none; }
+.sec-body:has(.bm-newslot > input) > .empty { display: none; }   /* never "empty" beside the name field */
+.inline-edit.bm-newslot-input { flex: 1; height: var(--ctl-h); padding: 0 14px; border: 1px solid var(--accent); border-radius: var(--pill);
+  background: var(--bg-card); box-shadow: 0 0 0 3px var(--accent-ring); }
 
-/* ——— THE VIEW SUBTITLE ———
-   The line of state under a view's heading. It had disagreed between the views that have
-   one (--t3/--text-soft here, --t3 1.5/--text-mut there). */
-.notes-sub, .dup-sub, .set-sub, .dup-forgot-sub {
-  font: 500 var(--t3)/1.5 var(--grot);
-  color: var(--text-soft);
-}
+.bm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 272px), 1fr)); gap: var(--s3); align-items: start; }
 
-.view-library, .view-myspace, .view-vault { overflow-y: auto; }   /* My Space / Vault scroll like the Library (they reuse its grid) */
-
-.crumbs {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-bottom: 14px;
-  min-height: 32px;
-  font: 600 var(--t3) var(--grot);
-}
-.crumb { color: var(--text-mut); padding: 5px 10px; border-radius: var(--pill); transition: background 0.13s, color 0.13s; }
-.crumb:not(.current):hover { color: var(--accent-text); background: var(--hov); }
-.crumb.current { color: var(--text-strong); font-weight: 700; cursor: default; }
-.crumb-sep { color: var(--text-faint); }
-.bm-toolbar { margin-left: auto; }
-.tool-ghost {
-  display: flex; align-items: center; gap: 6px;
-  height: 34px; padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: var(--pill);
-  color: var(--text-soft);
-  font: 600 var(--t3) var(--grot);
-}
-
-.bm-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
-  gap: 12px;
-}
-
+/* the surface only: its layout is THE LINK-CARD ANATOMY above */
 .bmcard {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   padding: 12px;
   border: 1px solid var(--card-line-2);
   border-radius: var(--r5);
   background: var(--bg-card);
   box-shadow: var(--shadow-tile);
 }
-.bmcard .meta { min-width: 0; flex: 1; }
-.bmcard .title { display: block; font: 600 var(--t3)/1.3 var(--grot); color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bmcard .domain { display: block; font: 500 var(--t2) var(--mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+.bmcard .title { font: 600 var(--t3)/1.3 var(--grot); color: var(--text-body); overflow: hidden; text-overflow: ellipsis; }
+.bmcard .domain { display: block; font: 500 var(--t2) var(--mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bmcard.folder .tile { background: var(--bg-inset) !important; color: var(--text-strong) !important; }   /* a folder is a kind, not a state: ink, not lava */
 
 .inline-edit {
@@ -1391,15 +1690,16 @@ kbd {
   }
   .app.drawer-open ~ .drawer-scrim { opacity: 1; pointer-events: auto; }
   .icb.drawer-btn { display: inline-flex; }
-  .top { flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 10px; }
+  .top { flex-wrap: wrap; height: auto; padding: 12px var(--gutter); gap: 10px; }
   .searchbox { order: 3; max-width: none; flex-basis: 100%; margin-left: 0; }
-  .view-board { overflow: visible; padding: 14px 16px; }
+  .view-board { display: block; overflow: visible; }   /* the page scrolls here, not the ground */
+  .view-board > .board-scroll:has(> .board) { overflow: visible; flex: none; padding: var(--s4) var(--gutter); }
   .board { flex-direction: column; height: auto; }
   .colcard { width: 100%; height: auto; }
   .colbody { max-height: none; overflow: visible; }
   .board.mosaic .colbody { max-height: none; }   /* single column here: cards grow instead of spilling past a 64vh cap */
   .newcol { width: 100%; padding: 0; height: 64px; flex-direction: row; align-self: stretch; }
-  .tray { height: auto; padding: 10px 16px; flex-wrap: wrap; }
+  .tray { height: auto; padding: 10px var(--gutter); flex-wrap: wrap; }
 }
 
 /* ————— collection collapse + reorder affordances ————— */
@@ -1422,8 +1722,6 @@ kbd {
 .colcard.collapsed { height: auto; align-self: flex-start; }
 .colcard.collapsed .colbody { display: none; }
 
-.col-dot { cursor: grab; }
-.col-dot:active { cursor: grabbing; }
 .colcard.dragging { opacity: 0.4; }
 .navx[draggable="true"]:active { cursor: grabbing; }
 .navx.dragging { opacity: 0.4; }
@@ -1508,11 +1806,8 @@ kbd {
 /* the consequence of getting it wrong, stated before you get it wrong */
 .pin-warn { margin: var(--s2) 0 0; font: 500 var(--t2)/1.5 var(--grot); color: var(--text-soft); max-width: 46ch; }
 
-/* ————— Vault + My Space ————— */
+/* ————— confirm modal buttons (an alert dialog shows one neutral .cancel) ————— */
 
-.lock-caveat { max-width: 68ch; }
-.lock-out { color: var(--red); max-width: 68ch; }
-.tile-locked { background: var(--bg-inset); color: var(--text-soft); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .modal-btn {
   height: 38px;
@@ -1528,41 +1823,66 @@ kbd {
 .modal-btn.confirm { background: var(--accent); color: var(--accent-contrast); border: 0; box-shadow: var(--shadow-btn); }
 .modal-btn.confirm.danger { background: var(--red); color: var(--red-contrast); box-shadow: none; }
 
-/* ————— settings page ————— */
-
-.view-settings { overflow-y: auto; }
-.settings { display: flex; flex-direction: column; gap: 16px; counter-reset: set-card; }   /* box comes from the shared view-container rule */
-
-.set-card {
-  background: var(--bg-card);
-  border: 1px solid var(--card-line-2);
-  border-radius: var(--r6);
-  padding: 22px 24px;
-  box-shadow: var(--shadow-app);
+/* ————— Settings: head · index · four plates —————
+   Plates are numbered like the sheets of a drawing set (01–04, explicit in settings.js), so
+   "the backup one" is also "number two"; the index beside them is what stays on screen. */
+.view-settings .sec-top { position: static; }           /* the index is what stays */
+.set-layout { display: block; }                          /* block at narrow widths, so the sticky strip has room to stick */
+.set-index {
+  position: sticky; top: 0; z-index: 3;
+  display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: none;
+  margin: 0 calc(var(--gutter) * -1) var(--s5); padding: var(--s2) var(--gutter);
+  background: var(--bg); border-bottom: 1px solid var(--line);
 }
-.set-h { margin: 0 0 4px; font: 800 var(--t5) var(--grot); letter-spacing: var(--tr-tight); color: var(--text-strong); }
-/* sections are numbered like the plates of a drawing set: 01, 02, 03 — a place-marker
-   for a long page, so "the backup one" is also "number four" */
-.set-h::before {
-  counter-increment: set-card;
-  content: counter(set-card, decimal-leading-zero);
-  font: 500 var(--t1) var(--mono);
-  letter-spacing: var(--tr-label);
-  color: var(--accent-text);
-  padding: 3px 7px;
-  border: 1px solid var(--accent-border);
-  border-radius: var(--pill);
-  margin-right: 2px;
+.set-index-item { flex: none; display: inline-flex; align-items: center; gap: var(--s2); height: var(--ctl-h); padding: 0 14px;
+  border: 1px solid var(--card-line-2); border-radius: var(--pill); background: var(--bg-card);
+  font: 650 var(--t3) var(--grot); color: var(--text-soft); white-space: nowrap; transition: background .13s, color .13s, border-color .13s; }
+.set-index-item:hover { color: var(--text-strong); border-color: var(--edge); }
+.set-index-item[aria-current='true'] { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-card); }   /* ink disc */
+.set-index-item[aria-current='true'] .set-index-n { color: var(--bg-card); }
+.set-index-s { display: none; font: 500 var(--t1)/1.3 var(--mono); letter-spacing: var(--tr-label); text-transform: lowercase; color: var(--text-mut); }
+.set-index-s.is-danger { color: var(--red); }
+.set-plates { container: plates / inline-size; display: flex; flex-direction: column; gap: var(--s4); min-width: 0;
+  max-width: calc(var(--measure-form) + var(--s7) + 260px); }
+.set-card { scroll-margin-top: 72px; }
+/* below 980px the index is a sticky strip over the plates: keep focused controls out from under it */
+@media (min-width: 881px) { @container main (max-width: 979px) { .view-settings { scroll-padding-top: calc(60px + var(--s2)); } } }
+@media (max-width: 880px) { html:has(.view-settings:not([hidden])) { scroll-padding-top: calc(60px + var(--s2)); } }
+@container main (min-width: 980px) {
+  .set-layout { display: grid; grid-template-columns: 184px minmax(0, 1fr); column-gap: var(--s7); align-items: start; }
+  .set-index { top: var(--s5); flex-direction: column; gap: 1px; overflow: visible; margin: 0; padding: 0; background: none; border: 0; }
+  .set-index-item { position: relative; display: grid; grid-template-columns: 2.6ch minmax(0, 1fr); grid-template-areas: 'n name' 'n s';
+    row-gap: 1px; height: auto; padding: 8px 10px; border: 0; border-radius: var(--r4); background: none; text-align: left; white-space: normal; }
+  .set-index-n { grid-area: n; align-self: start; padding-top: 2px; }
+  .set-index-name { grid-area: name; }
+  .set-index-s { grid-area: s; display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .set-index-item:hover { background: var(--hov); }
+  .set-index-item[aria-current='true'] { background: var(--bg-card); color: var(--text-strong); }
+  .set-index-item[aria-current='true'] .set-index-n { color: var(--text-mut); }
+  .set-index-item[aria-current='true']::before { content: ''; position: absolute; left: 0; top: 50%; translate: 0 -50%;
+    width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--accent); }   /* the sidebar's active rail */
+  .set-card { scroll-margin-top: var(--s5); }
 }
-.set-card > .set-sub { margin: 0 0 14px; }
 
-.set-row { display: flex; align-items: center; gap: 16px; padding: 13px 0; border-top: 1px solid var(--line); }
-.set-card .set-h + .set-row { border-top: 0; }
-.set-row-text { flex: 1; min-width: 0; }
-.set-label { font: 700 var(--t3) var(--grot); color: var(--text-strong); }
-.set-sub { margin-top: 2px; }
+.set-card { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'body' 'notes'; row-gap: var(--s4);
+  padding: var(--s5) var(--s6); background: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--r6); }
+@container plates (min-width: 880px) {
+  .set-card { grid-template-columns: minmax(0, 1fr) 260px; grid-template-areas: 'head head' 'body notes'; column-gap: var(--s7); }
+  .set-notes { padding-left: var(--s5); border-left: 1px solid var(--line); }   /* margin notes, as on the Swiss poster */
+}
+.set-head { grid-area: head; display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: 'num h state' 'desc desc desc';
+  align-items: center; column-gap: var(--s3); row-gap: var(--s1); }
+.set-head:has(.set-head-aside) { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: 'num h state aside' 'desc desc desc desc'; }
+.set-num { grid-area: num; padding: 3px 7px; border: 1px solid var(--line-strong); border-radius: var(--pill); }   /* ink plate number (caption recipe) */
+.set-h { grid-area: h; margin: 0; font: 800 var(--t5) var(--grot); letter-spacing: var(--tr-tight); color: var(--text-strong); border-radius: var(--r1); }
+.set-h:focus { outline: none; }
+.set-h:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.set-state { grid-area: state; justify-self: end; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 3px 9px; border-radius: var(--pill); background: var(--bg-inset); color: var(--text-soft); white-space: nowrap; }
+.set-state.is-danger { color: var(--red); }
+.set-head-aside { grid-area: aside; }
+.set-desc { grid-area: desc; margin: 0; max-width: 72ch; font: 500 var(--t3)/1.5 var(--grot); color: var(--text-soft); }
 
-.set-control { display: flex; align-items: center; gap: 12px; flex: none; }
+/* ——— Settings controls (unchanged recipes) ——— */
 .set-select {
   font: 600 var(--t3) var(--grot);
   color: var(--text);
@@ -1603,9 +1923,81 @@ kbd {
 
 .set-toggle { display: flex; align-items: center; gap: 9px; font: 600 var(--t3) var(--grot); color: var(--text-soft); margin: 4px 0 14px; cursor: pointer; }
 .set-check { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
-.set-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.set-actions .btnx { height: 38px; padding: 0 16px; }
-.set-note { font: 500 var(--t2)/1.5 var(--grot); color: var(--text-mut); margin: 12px 0 0; }
+
+/* ——— Settings: body, rows, callouts and switches ——— */
+.set-body { grid-area: body; min-width: 0; container: platebody / inline-size; }
+.set-body > .sec-group + .sec-group { margin-top: var(--s5); }
+.set-body .sec-cap { margin-bottom: var(--s1); }
+.set-notes { grid-area: notes; display: flex; flex-direction: column; gap: var(--s3); }
+.set-callout { margin: 0; padding: var(--s1) 0 var(--s1) var(--s3); border-left: 2px solid var(--line-strong); font: 500 var(--t2)/1.55 var(--grot); color: var(--text-mut); }
+.set-callout strong { color: var(--text-soft); font-weight: 700; }
+.set-callout.is-danger { border-left-color: var(--red); color: var(--text-body); }
+.set-callout.is-danger strong { color: var(--red); }
+.set-body > .set-callout { margin-bottom: var(--s4); }
+
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--s4); row-gap: var(--s2);
+  padding: var(--s3) 0; border-top: 1px solid var(--line); }
+.sec-cap + .set-row, .sec-help + .set-row { border-top: 0; }
+.set-row-text { min-width: 0; }
+.set-label { display: block; font: 700 var(--t3) var(--grot); color: var(--text-strong); }
+.set-sub { margin-top: 2px; max-width: 56ch; font: 500 var(--t2)/1.45 var(--grot); color: var(--text-mut); }   /* row help: one step below .set-desc */
+.set-control { justify-self: end; max-width: 100%; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--s2) var(--s3); }
+.set-row-text .set-sample { display: block; width: auto; margin-top: var(--s1); white-space: normal; color: var(--text-body); }
+.set-card:has(#set-ticker-enable:not(:checked)) .is-dependent .set-label { color: var(--text-mut); }   /* recede by colour; still editable */
+.set-actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+/* a switch is a checkbox (it keeps .set-check for the dialogs that share it), so it comes after .set-check */
+.set-switch { appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 36px; height: 20px; margin: 0;
+  border: 1px solid var(--edge); border-radius: var(--pill); background: var(--bg-inset); cursor: pointer; transition: background .13s, border-color .13s; }
+.set-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--text-soft); transition: translate .13s; }
+.set-switch:checked { background: var(--accent); border-color: var(--accent); }
+.set-switch:checked::after { translate: 16px 0; background: var(--accent-contrast); }
+
+/* ——— cloud sync (Settings › Backup & sync) ——— */
+.cloud-provider { border: 1px solid var(--card-line-2); border-radius: var(--r5); padding: var(--s3) var(--s4); background: var(--bg); }
+.sec-group > .cloud-provider + .cloud-provider { margin-top: var(--s3); }
+/* "Coming soon" is quieter, not translucent. `opacity: .72` here dropped its heading to
+   3.3:1 and its meta line to 1.7:1 in dark — fading a whole block with opacity destroys
+   the contrast of everything inside it, which is exactly why nothing else in this sheet
+   does it. Recede by choosing dimmer colours instead. */
+.cloud-provider.is-soon .cloud-name { color: var(--text-soft); }
+.cloud-provider.is-soon .cloud-dot { background: var(--text-faint); }
+.cloud-provider.is-soon .cloud-meta { color: var(--text-mut); }
+.cloud-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cloud-name { display: flex; align-items: center; gap: 8px; font: 700 var(--t3) var(--grot); color: var(--text-strong); min-width: 0; }
+.cloud-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.cloud-dot.g { background: var(--text-faint); }
+.cloud-dot.g.is-on { background: var(--green); }   /* green only when connected */
+.cloud-acct { font: 600 var(--t3) var(--grot); color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cloud-badge { color: var(--text-soft); background: none; border: 1px solid var(--edge); border-radius: var(--pill); padding: 1px 7px; }   /* ink outline, not a lava fill */
+.cloud-btns { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.cloud-btns .btnx { display: flex; align-items: center; gap: 6px; }
+.cloud-btns .btnx svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cloud-meta { font: 500 var(--t2) var(--mono); color: var(--text-mut); margin-top: 8px; }
+.cloud-provider .set-actions { margin-top: var(--s3); }
+
+/* ——— ticker config chips (Settings › Market ticker) ——— */
+.tick-checks { display: flex; flex-wrap: wrap; gap: 6px; max-width: 320px; justify-content: flex-end; }
+.tick-check { font: 700 var(--t2) var(--mono); color: var(--text-soft); background: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--pill); padding: 5px 11px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+.tick-check:hover { color: var(--text-strong); }
+.tick-check.is-active { background: var(--text-strong); color: var(--bg-card); border-color: var(--text-strong); }
+
+/* a narrow plate body stacks every row — kept after each control rule it reflows */
+@container platebody (max-width: 520px) {
+  .set-row { grid-template-columns: minmax(0, 1fr); }
+  .set-control { justify-self: stretch; justify-content: flex-start; }
+  .set-seg { width: 100%; flex-wrap: wrap; }   /* four options at a large interface size still fit a phone */
+  .set-seg-btn { flex: 1 1 auto; padding-inline: 6px; text-align: center; }
+  .set-select { width: 100%; }
+  .tick-checks { justify-content: flex-start; max-width: none; }
+  .cloud-row { flex-wrap: wrap; }
+  .cloud-btns { justify-content: flex-start; }
+}
+@media (max-width: 880px) {
+  .set-card { padding: var(--s4); }
+  /* the document scrolls here, so the index sticks to the page: neither .main nor the view may be a scroll container */
+  .main:has(> .view-settings:not([hidden])) { overflow: clip; }
+  .view-settings { overflow: visible; }
+}
 
 /* search-filtered hiding */
 .filtered { display: none !important; }
@@ -1623,7 +2015,6 @@ kbd {
 /* ————— tags: card chips + editor popover ————— */
 
 .tag-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; display: inline-block; }
-.tag-dot.lg { width: 11px; height: 11px; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; min-width: 0; }
 .card-tag { display: inline-flex; align-items: center; gap: 4px; font: 600 var(--t1) var(--mono); color: var(--text-mut); background: var(--bg-inset); border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px 1px 5px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
@@ -1649,21 +2040,30 @@ kbd {
 .tagpop-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 .tagpop-hint { font: 500 var(--t1) var(--grot); color: var(--text-mut); margin-top: 7px; }
 
-/* ————— Tags view (filter + mind-graph + grid) ————— */
+/* ————— Tags view (index + mind-graph + list) ————— */
 
-.view-tags, .view-duplicates { overflow-y: auto; }
-
-.tag-filterbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.tag-chip { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t3) var(--grot); color: var(--text-soft); background: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--pill); padding: 6px 13px; cursor: pointer; transition: background .13s, color .13s, border-color .13s; }
+/* the tag index beside the reading area: a scrolling strip of chips when narrow, a column of
+   rows (with the sidebar's active rail) once the panel has room */
+.tags-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s5); align-items: start; }
+.tags-layout > .sec-group + .sec-group { margin-top: 0; }
+.tag-filterbar { display: flex; flex-wrap: nowrap; gap: var(--s2); margin: 0 -4px; padding: 4px; overflow-x: auto; scrollbar-width: thin; }
+@media (hover: none) { .tag-filterbar { scrollbar-width: none; } }
+.tag-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t3) var(--grot); color: var(--text-soft); background: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--pill); padding: 6px 13px; cursor: pointer; transition: background .13s, color .13s, border-color .13s; }
 .tag-chip:hover { color: var(--text-strong); border-color: var(--edge); }
-.tag-chip.is-active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.tag-chip.is-active { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-card); }   /* the ink disc, not a lava fill */
 .tag-chip-n { font: 600 var(--t1) var(--mono); color: var(--text-mut); }
-.tag-chip.is-active .tag-chip-n { color: var(--accent-contrast); opacity: .75; }
-.tag-section-h { display: flex; align-items: center; gap: 8px; margin: 24px 0 12px; font: 750 var(--t5) var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
-/* heading and its graph/list switch share one baseline row */
-.tag-sectionrow { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; }
-.tag-sectionrow .tag-section-h { margin-bottom: 12px; }
+.tag-chip.is-active .tag-chip-n { color: var(--bg-card); }                                                        /* colour, never opacity */
 .tag-modeseg { flex: none; }
+@container main (min-width: 1000px) {
+  .tags-layout { grid-template-columns: 232px minmax(0, 1fr); column-gap: var(--s6); }
+  .tags-index .tag-filterbar { flex-direction: column; gap: 1px; margin: 0; padding: 0; overflow-x: visible; overflow-y: auto; max-height: clamp(320px, 52vh, 560px); }
+  .tags-index .tag-chip { width: 100%; padding: 7px 10px; border-color: transparent; background: none; border-radius: var(--r4); }
+  .tags-index .tag-chip > span:not(.tag-dot):not(.tag-chip-n) { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tags-index .tag-chip:hover { background: var(--hov); }
+  .tags-index .tag-chip:focus-visible { outline-offset: -2px; }
+  .tags-index .tag-chip.is-active { background: var(--bg-card); color: var(--text-strong); box-shadow: inset 3px 0 0 var(--accent); }   /* the sidebar's active-row rail */
+  .tags-index .tag-chip.is-active .tag-chip-n { color: var(--text-soft); }
+}
 .tag-graph-wrap {
   position: relative;
   border: 1px solid var(--card-line-2);
@@ -1721,6 +2121,8 @@ kbd {
   border: 1px solid var(--line); border-radius: 4px;
   padding: 1px 4px; color: var(--text-soft);
 }
+/* the zoom half is its own span (touch hides it below): keep the hint's 4px rhythm around the kbd */
+.tg-hint-zoom { display: inline-flex; align-items: center; gap: 4px; }
 .tag-graph-wrap.is-panning .tg-hint { opacity: 0; }
 /* flashed when the user scrolls over the canvas without the zoom modifier */
 .tg-hint.is-nudge { color: var(--text-strong); border-color: var(--accent-border); }
@@ -1728,89 +2130,58 @@ kbd {
 .tg-item { cursor: pointer; transition: r .1s ease; }
 .tg-item:hover { r: 7; }
 .tg-hub { cursor: pointer; outline: none; }
-.tg-hub-label { font: 700 var(--t3) var(--grot); pointer-events: none; }
+.tg-hub-label { font: 700 var(--t3) var(--grot); pointer-events: none; fill: var(--text-body); paint-order: stroke; stroke: var(--bg-card); stroke-width: 3px; stroke-linejoin: round; }   /* hue stays on the circle */
+@container main (max-width: 520px) { .tg-hub-label { font-size: calc(var(--t3) * 1.6); } }   /* the 860-wide graph draws at ~0.4 here; labels compensate */
 .tg-hub circle { transition: fill-opacity .13s; }
 .tg-hub:hover circle { fill-opacity: 0.32; }
 /* focus must be clearly distinct from hover, not identical to it */
 .tg-hub:focus-visible circle { fill-opacity: 0.4; stroke-width: 3.2; }
 .tg-hub:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+@media (hover: none) { .tg-hint-zoom { display: none; } }
+@media (pointer: coarse) { .tg-cbtn { width: 36px; height: 36px; } }
 
-/* ————— Duplicates view ————— */
+/* ————— Duplicates view —————
+   a card per duplicated link: head (tile · title link · "N copies" · Forget), the copies, then a
+   foot that says what Keep selected will do */
 
-.dup-head { margin-bottom: 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.dup-h-text { min-width: 0; }
-.dup-clean { height: 34px; padding: 0 14px; flex: none; margin-top: 2px; }
-.dup-forget { flex: none; height: 30px; }
-.dup-title { margin: 0; font: 800 var(--t6) var(--grot); letter-spacing: var(--tr-tight); color: var(--text-strong); }
-.dup-title::after { content: '.'; color: var(--accent); }
-.dup-sub { margin: 5px 0 0; max-width: 62ch; }
-.dup-card { border: 1px solid var(--card-line-2); border-radius: var(--r6); background: var(--bg-card); margin-bottom: 12px; overflow: hidden; }
-.dup-card-head { display: flex; align-items: center; gap: 11px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
-.dup-link { display: flex; flex-direction: column; min-width: 0; flex: 1; text-decoration: none; }
+.dup-card { border: 1px solid var(--card-line-2); border-radius: var(--r6); background: var(--bg-card); margin-bottom: var(--s3); overflow: hidden; }
+.dup-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: 'tile title count forget';
+  align-items: center; gap: var(--s1) var(--s3); padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
+.dup-card-head > .tile { grid-area: tile; }
+.dup-h { grid-area: title; margin: 0; min-width: 0; font: inherit; }
+.dup-count { grid-area: count; font: 600 var(--t2) var(--mono); font-variant-numeric: tabular-nums; color: var(--text-strong); white-space: nowrap; }
+.dup-forget { grid-area: forget; }
+.dup-link { display: flex; flex-direction: column; min-width: 0; text-decoration: none; border-radius: var(--r2); }
+.dup-link:hover .dup-link-title { text-decoration: underline; text-underline-offset: 2px; }
 .dup-link-title { font: 600 var(--t3) var(--grot); color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dup-link-url { font: 500 var(--t2) var(--mono); color: var(--text-faint); }
-.dup-badge { font: 700 var(--t2) var(--mono); color: var(--red); background: color-mix(in srgb, var(--red) 8%, transparent); border-radius: 999px; padding: 2px 8px; flex: none; }
-.dup-resolve { height: 30px; padding: 0 12px; flex: none; }
+.dup-link-url { font: 500 var(--t2) var(--mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dup-occs { display: flex; flex-direction: column; }
-.dup-occ { display: flex; align-items: center; gap: 9px; padding: 8px 14px; cursor: pointer; transition: background .12s; }
+.dup-occ { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4); cursor: pointer; transition: background .12s; }
 .dup-occ + .dup-occ { border-top: 1px solid var(--line); }
 .dup-occ:hover { background: var(--hov); }
 .dup-occ:has(.dup-keep:checked) { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }   /* the kept row carries the same leading-edge rail as the active nav row */
 .dup-keep { width: 15px; height: 15px; margin: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
 .dup-src-ic { color: var(--text-faint); display: inline-flex; flex: none; }
-.dup-src-ic svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.dup-src { flex: 1; font: 500 var(--t3) var(--grot); color: var(--text-soft); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dup-src { flex: 1; min-width: 0; font: 500 var(--t3) var(--grot); color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dup-src-kind { flex: none; color: var(--text-soft); }   /* selected rows lift the surface under it */
 .dup-occ:has(.dup-keep:checked) .dup-src { color: var(--text-strong); font-weight: 600; }
+.dup-card-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s2) var(--s3); padding: var(--s2) var(--s4); border-top: 1px solid var(--line); }
+.dup-foot-state { min-width: 0; font: 500 var(--t2) var(--mono); color: var(--text-mut); }
 
 /* forgotten links — excluded from scans, restorable */
-.dup-forgot { margin-top: 28px; border-top: 1px dashed var(--line-strong); padding-top: 18px; }
-.dup-forgot-h { margin: 0 0 3px; }
-.dup-forgot-sub { margin: 0 0 10px; }
-.dup-forgot-row { display: flex; align-items: center; gap: 11px; padding: 8px 2px; }
+.dup-forgot-list { border: 1px solid var(--card-line-2); border-radius: var(--r5); background: var(--bg-card); padding: 0 var(--s3); }
+.dup-forgot-row { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) 0; }
 .dup-forgot-row + .dup-forgot-row { border-top: 1px solid var(--line); }
 .dup-forgot-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dup-forgot-title { font: 600 var(--t3) var(--grot); color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dup-forgot-url { font: 500 var(--t2) var(--mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dup-restore { height: 28px; padding: 0 11px; flex: none; }
-
-/* ————— cloud sync (Settings) ————— */
-
-.set-h { display: flex; align-items: center; gap: 8px; }
-.set-h svg { stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--accent-text); }
-.cloud-provider { border: 1px solid var(--card-line-2); border-radius: var(--r5); padding: 14px 16px; margin-top: 12px; background: var(--bg); }
-/* "Coming soon" is quieter, not translucent. `opacity: .72` here dropped its heading to
-   3.3:1 and its meta line to 1.7:1 in dark — fading a whole block with opacity destroys
-   the contrast of everything inside it, which is exactly why nothing else in this sheet
-   does it. Recede by choosing dimmer colours instead. */
-.cloud-provider.is-soon .cloud-name { color: var(--text-soft); }
-.cloud-provider.is-soon .cloud-dot { background: var(--text-faint); }
-.cloud-provider.is-soon .cloud-meta { color: var(--text-mut); }
-.cloud-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.cloud-name { display: flex; align-items: center; gap: 8px; font: 700 var(--t3) var(--grot); color: var(--text-strong); min-width: 0; }
-.cloud-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.cloud-dot.g { background: var(--green); }
-.cloud-dot.pro { background: var(--accent); }
-.cloud-acct { font: 600 var(--t3) var(--grot); color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* the one micro-label on a fill, so it overrides only the colour */
-.cloud-badge { color: var(--accent-contrast); background: var(--accent); border-radius: var(--pill); padding: 2px 8px; }
-.cloud-btns { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
-.cloud-btns .btnx { display: flex; align-items: center; gap: 6px; }
-.cloud-btns .btnx svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.cloud-meta { font: 500 var(--t2) var(--mono); color: var(--text-mut); margin-top: 8px; }
-.cloud-provider .set-actions { margin-top: 12px; }
-.btnx.ghosty { height: 34px; padding: 0 15px; color: var(--text-strong); border: 1px solid var(--edge); border-radius: var(--pill); background: transparent; font: 600 var(--t3) var(--grot); }
-.btnx.ghosty:hover { background: var(--hov); color: var(--text-strong); }
-/* A disabled button still has to be readable — you cannot act on a label you cannot read.
-   Dim by colour so the text keeps its contrast; the flat fill is what reads as inert. */
-.btnx[disabled] {
-  pointer-events: none;
-  background: var(--bg-inset);
-  border-color: var(--line-strong);
-  color: var(--text-mut);
-  box-shadow: none;
+.dup-saved { flex: none; font: 600 var(--t2) var(--mono); color: var(--text-soft); }
+@container main (max-width: 640px) {
+  .dup-card-head { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'tile title title' 'tile count forget'; }
+  .dup-occ { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; column-gap: var(--s2); }
+  .dup-occ > .dup-src-kind { grid-column: 3; grid-row: 2; }
+  .dup-occ > .icb { grid-column: 4; grid-row: 1; }
 }
-.btnx.is-busy { opacity: 0.6; pointer-events: none; }
 
 /* ————— market ticker (topbar marquee) ————— */
 
@@ -1836,57 +2207,52 @@ kbd {
 .tick-chg.down { color: var(--red); }
 .tick-item.muted { color: var(--text-mut); font-weight: 500; font-size: var(--t2); }
 
-/* ticker config chips (Settings) */
-.tick-checks { display: flex; flex-wrap: wrap; gap: 6px; max-width: 320px; justify-content: flex-end; }
-.tick-check { font: 700 var(--t2) var(--mono); color: var(--text-soft); background: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--pill); padding: 5px 11px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
-.tick-check:hover { color: var(--text-strong); }
-.tick-check.is-active { background: var(--text-strong); color: var(--bg-card); border-color: var(--text-strong); }
-
 @media (max-width: 980px) { .ticker { display: none !important; } }
 
-/* ————— Notes & Todos (mosaic) ————— */
-.view-notes { overflow-y: auto; }
-
-/* The bar reads as a bar: a rule under it, and controls that hold their own weight
-   against the canvas. The sub-line used to be --text-mut (2.9:1 on paper — under AA);
-   everything in this header now clears it comfortably. */
-.notes-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: var(--s4); flex-wrap: wrap;
-  padding-bottom: var(--s3); margin-bottom: var(--s4);
-  border-bottom: 1px solid var(--line-strong);
-}
-.notes-sub { margin: 5px 0 0; }
-.notes-tools { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+/* ————— Notes & Todos (mosaic) —————
+   The shell is built once (the caret survives live renders): the section head with its
+   quick-add bar, then one "cards" group holding the mosaic. */
+.notes-shell { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 .notes-menu-wrap { position: relative; }
 .notes-tool { gap: 6px; }
-.btnx.soft.notes-tool { font-weight: 700; }   /* hover inverts to ink, like every .soft */
-.notes-help { width: 36px; padding: 0; justify-content: center; }
 .notes-tool svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.menu-caret { display: inline-flex; }
+.menu-caret svg { rotate: 90deg; }   /* points down: it opens a menu (the guide already says "New ▾") */
 .notes-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 220px; background: var(--bg-side); border: 1px solid var(--card-line-2); border-radius: var(--r6); box-shadow: var(--shadow-pop); padding: 6px; display: flex; flex-direction: column; }
 .notes-menu[hidden] { display: none; }
-.notes-menu-item { padding: 9px 12px; border-radius: var(--r4); font: 600 var(--t3) var(--grot); color: var(--text-body); text-align: left; }
+.notes-menu-cap { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); padding: var(--s2) 12px var(--s1); }
+.notes-menu-cap:not(:first-child) { margin-top: var(--s1); border-top: 1px solid var(--line); }
+.notes-menu-cap > * { white-space: nowrap; }   /* caption and status pill each stay on one line; the menu widens instead */
+.notes-menu-badge { font: 600 var(--t1) var(--mono); text-transform: none; color: var(--text-soft); background: var(--bg-inset); border-radius: var(--pill); padding: 1px 7px; }
+.notes-menu-item { display: flex; align-items: flex-start; gap: var(--s2); padding: 9px 12px; border-radius: var(--r4); font: 600 var(--t3) var(--grot); color: var(--text-body); text-align: left; }
 .notes-menu-item:hover { background: var(--hov); color: var(--text-strong); }
+.notes-menu-item svg { flex: none; margin-top: 1px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.notes-menu-item:focus-visible { background: var(--hov); outline-offset: -2px; }
+.notes-menu-label { min-width: 0; }   /* a long label and its note wrap inside the row */
+.notes-menu-note { display: block; margin-top: 2px; font: 500 var(--t1) var(--mono); color: var(--text-mut); }
+.notes-menu-item.is-danger { color: var(--red); }   /* replaces data — in the danger contract */
 
-/* composer: quick-add a task + a New menu that can start either kind */
-.mos-composer { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-.todo-addrow { flex: 1; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border: 1px solid var(--edge); border-radius: var(--pill); background: var(--bg-card); color: var(--text-soft); transition: border-color .13s, box-shadow .13s; }
+/* composer: the head's quick-add bar — a reminder per Enter, focus stays for the next */
+.notes-composer > .todo-addrow { flex: 1; }
+.todo-addrow { flex: 1; display: flex; align-items: center; gap: 8px; height: var(--ctl-h); padding: 0 16px; border: 1px solid var(--edge); border-radius: var(--pill); background: var(--bg-card); color: var(--text-soft); transition: border-color .13s, box-shadow .13s; }
 .todo-addrow:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 .todo-addrow svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
 .todo-add { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font: 500 var(--t3) var(--grot); color: var(--text); }
 .todo-add::placeholder { color: var(--text-soft); }
+.todo-add-kbd { display: none; }
+.todo-addrow:focus-within .todo-add-kbd { display: inline-block; }
 
 /* masonry mosaic — cards flow into columns and never split across one.
    column-width (not column-count) so the column count derives from the mosaic's
    own width: the sidebar and max-width make it much narrower than the viewport,
    so viewport breakpoints would guess wrong. */
-.mosaic { column-width: 250px; column-gap: 14px; }
+.mosaic { column-width: 250px; column-gap: var(--s4); }
 
 .mos-card {
   break-inside: avoid; -webkit-column-break-inside: avoid;
   display: flex; flex-direction: column;
-  margin: 0 0 14px;
+  margin: 0 0 var(--s4);
   border: 1px solid var(--card-line-2);
   border-radius: var(--r6);
   box-shadow: var(--shadow-tile);
@@ -2018,6 +2384,13 @@ kbd {
 .fmt-btn[disabled]:hover { background: none; color: var(--text-soft); }
 .fmt-btn svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .fmt-sep { width: 1px; height: 17px; background: var(--line-strong); margin: 0 3px; flex: none; }
+/* a narrow card keeps every format button: smaller circles, wrapping — after the rules it tightens */
+.mos-card { container: card / inline-size; }
+@container card (max-width: 300px) {
+  .fmt-bar { gap: 1px; padding: 5px 6px; flex-wrap: wrap; }
+  .fmt-btn { width: 24px; height: 24px; }
+  .fmt-sep { margin: 0 1px; }
+}
 
 /* ————— rendered markdown (note preview) ————— */
 .note-md { font: 500 var(--t3)/1.55 var(--grot); color: var(--text-body); cursor: text; overflow-wrap: anywhere; }
@@ -2145,16 +2518,17 @@ kbd {
 }
 /* desktop only: below 881px the header is the two-row mobile grid further down */
 @media (min-width: 881px) {
+  /* ONE gutter steps down with the panel: the top bar, the strip, section heads, view bodies, board */
+  @container main (max-width: 1000px) { .main > * { --gutter: var(--s5); } }
+  @container main (max-width: 580px)  { .main > * { --gutter: var(--s4); } }
   @container main (max-width: 1000px) {
-    .top { gap: 10px; padding: 0 18px; }
+    .top { gap: 10px; }
     .searchbox { margin-left: 0; }
     .top-actions { gap: 6px; }
-    .seg-label { display: none; }
-    .tray { padding: 0 18px; }
   }
   @container main (max-width: 900px) {
     /* icon-only: the label is still the button's accessible name (font-size, not display) */
-    #stash-window-btn { width: 38px; height: 38px; padding: 0; gap: 0; justify-content: center; font-size: 0; }
+    .window-acts .btnx { width: 38px; height: 38px; padding: 0; gap: 0; justify-content: center; font-size: 0; }
   }
   @container main (max-width: 760px) {
     .theme-choice-seg { display: none; }
@@ -2164,50 +2538,60 @@ kbd {
   }
   @container main (max-width: 580px) {
     /* the search takes its own row rather than shrinking to nothing */
-    .top { flex-wrap: wrap; height: auto; row-gap: 10px; padding: 12px 16px; }
+    .top { flex-wrap: wrap; height: auto; row-gap: 10px; padding: 12px var(--gutter); }
     .searchbox { order: 6; flex-basis: 100%; max-width: none; }
-    .view-heading { flex: 1 1 0; }   /* shrink (ellipsis) before wrapping, so row 1 is title + actions, row 2 search */
+    .view-heading { flex: 1 1 auto; min-width: 0; }   /* shrink (ellipsis) before wrapping, so row 1 is title + actions, row 2 search */
     .view-kicker { display: none; }
   }
 }
 
 /* ————— narrow: one panel in the frame, a two-row header, the sidebar as a drawer ————— */
 @media (max-width: 880px) {
+  :root { --gutter: var(--s4); --readout: calc(24px * var(--fs-small)); }
   .app { padding: 6px; gap: 6px; }   /* the sidebar is off-canvas here, so the frame wraps the panel on all sides */
   .main { border-radius: 14px; }
   .top {
     display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-columns: 36px minmax(0, 1fr) auto auto;
     grid-template-areas:
-      'menu title quick'
-      'search search search';
+      'menu title quick acts'
+      'search search search search';
     align-items: center;
     column-gap: 8px;
     row-gap: 10px;
     height: auto;
     min-height: 64px;
-    padding: 12px 14px;
+    padding: 12px var(--gutter);
   }
   .drawer-btn { grid-area: menu; }
-  .view-heading { grid-area: title; }
+  .view-heading { grid-area: title; min-width: 0; }
   .view-kicker { display: none; }
   .view-title { font-size: var(--t6); }
   .mobile-quick-actions { grid-area: quick; display: flex; align-items: center; gap: 4px; }
   .mobile-theme-cycle, .mobile-stash { width: 36px; height: 36px; }
-  .top-actions { display: none; }
+  /* Save window and Stash stay on row 1 as circles; the theme folds into the cycle button */
+  .top-actions { grid-area: acts; display: flex; gap: 4px; margin: 0; }
+  .top-actions .theme-choice-seg, .mobile-stash { display: none; }
+  .window-acts { padding-left: 0; border-left: 0; gap: 4px; }
+  .window-acts .btnx { width: 36px; height: 36px; padding: 0; gap: 0; justify-content: center; font-size: 0; }
   .searchbox { grid-area: search; order: initial; width: 100%; }
-  .tray { padding: 10px 14px; }
-  .view-board { padding: 14px; }
+  .tray { padding: 10px var(--gutter); }
+  .chip-tab .title { max-width: 120px; }
   .colcard { width: 100%; }
+  /* the closed drawer is out of the tab order, not just off screen */
+  .icb.drawer-close { display: inline-flex; }
+  .side { visibility: hidden; transition: transform .22s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear .22s; }
+  .app.drawer-open .side { visibility: visible; transition: transform .22s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s; }
 }
 
 /* ————— reduced motion — kept LAST on purpose: a media query adds no specificity, so this block
    only wins against the transition/animation rules above by coming after them ————— */
 @media (prefers-reduced-motion: reduce) {
-  .side, .drawer-scrim, .tcard, .btnx, .chipx, .icb, .navx, .ghost, .chip-tab, .searchbox,
+  .side, .app.drawer-open .side, .drawer-scrim, .tcard, .btnx, .chipx, .icb, .navx, .ghost, .chip-tab, .searchbox,
   .toast, .undo-bar, .modal, .modal-scrim, .win-chev, .col-chev, .col-dot, .colr-sw, .mos-card,
   .mos-grip, .fmt-btn, .todo-check, .todo-addrow, .tag-chip, .tick-check, .tg-cbtn, .tg-item,
-  .tg-hub circle, .tg-hint, .crumb, .set-seg-btn, .set-step, .modal-btn, .undo-action, .notes-menu-item, .plus-tile { transition: none; }
+  .tg-hub circle, .tg-hint, .crumb, .set-seg-btn, .set-step, .modal-btn, .undo-action, .notes-menu-item, .plus-tile, .side .nav-ic,
+  .set-switch, .set-switch::after, .set-index-item, .dup-occ { transition: none; }
   .tcard:hover, .tcard:active, .btnx:active, .chipx:active, .col-dot:hover, .colr-sw:hover { transform: none; }
   .tick-track { animation: none; padding-left: 2px; }
   .check-prog::after { transition: none; }

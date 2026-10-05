@@ -36,9 +36,14 @@ normal-profile window.
 
 ## The layout
 
-- **Sidebar** — switch views (**Collections**, **My Space**, **Vault**, **Library**, **Settings**), pick your active
-  **Space** (environment), and
-  see every open **window** and every collection with live counts. Click a window to
+- **Sidebar** — a column of tiles on the dark frame: **views** (Collections, My Space, Vault,
+  Library, Tags, Duplicates, Notes — each with its live count), **spaces**, the active space's
+  **collections**, open **windows**, and **Settings**. Pick your active **Space** (its row takes a
+  wash of the Space's own colour), and
+  see every open **window** and every collection with live counts. The button beside the
+  wordmark **folds the sidebar to a 72px icon rail** — every view stays one click away with its
+  count as a badge, spaces become their colour marks — and the choice is remembered; it is
+  handy next to the vertical tab rail or on a smaller screen. Click a window to
   expand it into a tab list — click a tab to jump to it, hover to close it, or **drag it**
   into any collection (column or sidebar row) or the Library. Hovering another window's row
   also reveals **open** (switch to that window) next to save and stash. Searching
@@ -46,9 +51,16 @@ normal-profile window.
   and **delete**.
 - **Topbar** — search (`⌘K` or `/`, with a clear button once you've typed; the box stays
   tinted while a filter is active), the theme segment (**auto** follows your OS and switches
-  live, or pin **light** / **dark** / **linen**), and **Stash & close**. On narrow windows the
-  sidebar tucks away behind a **menu** button and slides in as a drawer, so every section
-  (Spaces, Windows, Collections) stays reachable.
+  live, or pin **light** / **dark** / **linen**), and this window's two verbs: **Save window**
+  (save its tabs to a new collection, keep them open) and **Stash & close**. On narrow windows the
+  sidebar tucks away behind a **menu** button and slides in as a drawer with touch-sized rows and a
+  close button, so every section (Spaces, Collections, Windows) stays reachable.
+- **Every view has the same head** — under the top bar: what you are looking at (a scope such
+  as "space · Personal" or "folder · Reading list"), its counts as large numerals (the first one
+  is the same number as the sidebar badge), a "matching “…”" chip while you search, one plain
+  sentence, and the view's own buttons with at most one lava button — the main thing to do
+  there. Below it, content sits in captioned groups; empty, no-match and locked states live in
+  the body, so the head never disappears.
 - **Open tabs bar** — the current window's live tabs. Click to jump, hover to close,
   **drag one anywhere** — onto a collection, the board, or the Library — to save it.
   Settings → Appearance chooses where it lives:
@@ -62,7 +74,8 @@ normal-profile window.
   is the same tabs twice and 64px of the board spent on the copy. Whichever you pick, the
   per-window rows — switch to it, save it, stash it — stay in the sidebar; those are
   window actions, not a tab list.
-- **Board** — your collections as columns on a dotted canvas.
+- **Board** — your collections as columns on a dotted canvas. Its head carries the layout
+  switch (columns · tiles · mosaic), export, and **New collection**.
 - **Library** — Chrome's bookmarks, browsed folder by folder. The breadcrumb starts at
   **All bookmarks**, which lists Chrome's permanent roots (Bookmarks Bar, Other Bookmarks,
   Mobile Bookmarks). Chrome refuses to rename, move or delete those, so on them the Library
@@ -112,7 +125,8 @@ hand back a fresh five. Getting back in then needs one of two proofs of ownershi
 
 **Collections** (saved tab sets, stored locally):
 - **Stash & close** saves this window's tabs to a new collection **and closes them** — frees
-  memory; the dashboard survives. **Save all →** does the same but keeps tabs open. Both
+  memory; the dashboard survives. **Save window** (beside it in the top bar) does the same but
+  keeps the tabs open. Both
   also exist per-window in the sidebar (hover a window row).
 - **Open all** on a collection revives it in a **new window**; if it holds **more than 10
   links** it asks for confirmation first.
@@ -227,13 +241,14 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
   one anyway, the row tells you exactly what you'll get instead. Only *Hanken Grotesk* and
   *JetBrains Mono* ship with the extension and are guaranteed everywhere; the rest are system
   fonts, so availability depends on your OS.
-- **Backup & restore** — **Export** everything — spaces, collections, notes, tags, forgotten
+- **Backup & sync** (one Settings section: a file on this device, or your Google Drive)
+  — **Export** everything — spaces, collections, notes, tags, forgotten
   duplicates, **My Space and the Vault** (contents plus the PIN record; the PIN itself is never
   stored, only its salted hash), and settings — to a JSON file, optionally **including your
   Chrome bookmarks**. **Import** restores from that file (replaces
   your spaces/collections/settings after a confirm; bookmarks, if present, are added under a new
   "StackNest Import" folder — nothing is overwritten).
-- **Cloud sync** — back up and restore the same data to your own **Google Drive**, so you can move
+- **Google Drive** — back up and restore the same data to your own **Google Drive**, so you can move
   between machines. The backup lives in a private *app folder* only StackNest can read — it never
   appears in your Drive. It is **one file, overwritten in place** on every backup: the upload
   patches the existing file rather than creating another, and if stray copies ever exist (two
@@ -289,7 +304,7 @@ removed so that statement stays true.)
 
 Google Drive backup uses `chrome.identity` OAuth, which needs a one-time client that's tied to
 *your* extension's ID. The code is ready — it just needs the client ID. Until you add it, Settings
-shows Cloud sync as **"Set up required"** (in the dev preview it's simulated, so you can try the
+shows Google Drive (Settings › Backup & sync) as **"Set up required"** (in the dev preview it's simulated, so you can try the
 whole flow without Google).
 
 1. **Load the extension unpacked** (`chrome://extensions` → Developer mode → *Load unpacked*) and
@@ -308,7 +323,7 @@ whole flow without Google).
      and paste the extension **ID** from step 1/2.
 4. **Wire it in.** Put the generated client ID into `manifest.json` → `oauth2.client_id` (replacing
    the `REPLACE_WITH_…` placeholder). It must end in `.apps.googleusercontent.com`.
-5. **Reload the extension.** Settings → Cloud sync now shows **Connect** → sign in →
+5. **Reload the extension.** Settings → Backup & sync now shows **Connect** → sign in →
    **Back up now / Restore latest**. The backup lives in Drive's private `appDataFolder`
    (invisible in your Drive UI). **Disconnect** revokes the grant, not just the local token cache.
 
@@ -366,11 +381,16 @@ everything in `css/newtab.css` follows from them:
 4. **Mono annotates.** JetBrains Mono is the drafting hand: counts, domains, dates, section
    captions (lowercase, lightly tracked, each with a hairline running out to its actions) and
    the lava kicker above each view title. Counts that matter read as large light numerals —
-   the live-tab readout ("7 live / open tabs") and each collection's tab count. Settings
-   sections are numbered like the plates of a drawing set (01, 02, 03…).
+   the live-tab readout ("7 live / open tabs") and each collection's tab count. Settings is
+   four numbered plates — 01 Appearance, 02 Backup & sync, 03 Vault, 04 Market ticker — with an
+   index beside them that follows your scroll, like the plates of a drawing set.
 5. **Hatching means "space to fill".** Diagonal hatch appears only where something is waiting:
    the New collection tile, an Add tab slot under the pointer, drop targets, the empty-state
    mark. Never on content.
+6. **One section anatomy.** The top bar names the view. Under it every view has the same head —
+   what is here now, one sentence, its tools quiet → loud with at most one lava primary last —
+   then captioned groups, then margin notes. States never remove the head; a locked or empty
+   state lives in the body and owns its one button.
 
 **Themes.** *Light* is ink on paper inside the void frame. *Dark* is snow on Dark Void inside a
 deeper void (#0C0B0E), with Gluon #1B1B1E columns and cards between Gluon and Slate. *Linen* is

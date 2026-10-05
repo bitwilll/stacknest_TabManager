@@ -380,6 +380,69 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+## Section system + bento sidebar (2026-10-06)
+
+The owner: "design the proper section and make sure it is well organized", then "make the side
+bar a little more interesting and responsive, making it easy to read."
+
+**How it was designed.** Nine auditors (one per section: board, My Space, Vault, Library, Tags,
+Duplicates, Notes, Settings, app chrome) inventoried every control and its handler and listed
+organization problems. Three independent proposals (consistency-first, scannability/ADHD-first,
+minimal-risk) were scored by three judges (product design, codebase/feature safety,
+accessibility/cognitive load); the judges split, so one spec grafted P3's mechanics, P1's anatomy
+and P2's primary-action rules, and resolved every must-fix. The spec carried a per-section
+preservation checklist; eight builders implemented it in parallel on disjoint files, a reconcile
+pass audited classes/imports/syntax, and nine adversarial reviewers checked each section against
+its checklist. Their 33 findings were all fixed, then four more reviewers verified the fixes and
+the new sidebar.
+
+**The section anatomy (rule 6).** `js/ui.js` gains `sectionHead` / `secState` / `setSecNote` /
+`secGroup` / `noMatch` / `goTo` / `tabSourceHint` / `plural`, `emptyState` variants (`gate`,
+`caption`, `steps`) and `confirmDialog({ alert })`. Every view renders `.sec-top` (trail? · head ·
+bar?) → `.sec-body` of captioned `.sec-group`s → `.sec-foot?`. The head: scope, large light counts
+(the first equals the sidebar badge), a "matching" chip with its own ×, one sentence, tools quiet →
+loud with at most one lava primary. Heads are sticky on desktop (static at ≤880 and ≤700px tall);
+`--sec-top-h` (published by a ResizeObserver) sets each scroller's `scroll-padding-top` so focus is
+never hidden under the head. One `--gutter` aligns title, head, tray and content; one link-card grid
+anatomy for `.tabcard` and `.bmcard` (full title up to two lines, domain + actions, tags).
+
+**Per section.** Board: the layout switch, export and New collection moved from the top bar into
+the board's head; empty Space is one drop-target block. Top bar: **Save window** (was "Save all →"
+in the tray) sits beside Stash & close on every view. Library: trail above the head, folder scope,
+folders/links groups, the new-folder field as the first folder cell. Tags: an index column (strip
+when narrow) beside one graph or list. Duplicates: one primary with its true scope under it, cards
+with visible keep-state text, forgotten links as an aside column on wide panels. Notes: one
+"Backup & import" menu (grouped, keyboard-operable, clamped on screen), the New ▾ primary, the
+composer as the head's bar. Settings: four numbered plates (Appearance · Backup & sync · Vault ·
+Market ticker) with an index that follows the scroll, margin notes, switches, and exactly one lava
+button. Vault/My Space: the head always renders; locked states are a gate card owning its button.
+
+**Sidebar.** Bento tiles on the frame, one per group, each caption inside its tile; labels 13.5px
+(15px in the drawer) in `--text-body`; view icons in 28px tiles that invert to a snow disc when
+active; mono count pills; the active Space washed in its own colour; Windows moved below
+Collections. Responsive: compact rows when the window is ≤760px tall, 44px touch rows in the ≤880
+drawer (now with a close button, focus management and everything behind it `inert`), and an icon
+**rail** (`#side-collapse`, `data-side='rail'`, remembered in localStorage) that keeps every view
+one click away with count badges and folds Collections/Windows behind the expand button.
+
+**Second verification round** (four lenses: fixes landed · sidebar features · accessibility +
+responsive · cascade) found 25 more items, all fixed: a pre-paint `js/boot.js` (classic script in
+<head>) applies the remembered sidebar mode *and theme*, so neither flashes on a new tab; New space
+from the rail expands the sidebar first, and in the drawer the board waits until the name is in;
+rail Spaces carry their initial in a ring of their colour (not colour alone) and the active row has
+`aria-current`; very short windows (≤640px tall, e.g. a tiled laptop window) scroll the whole
+sidebar as one column; Linen's active-Space marker is deepened to clear 3:1; rail badges use the
+caption size; captions keep every letter beside an aside; the collections scope wraps instead of
+truncating; the search keeps one width on every view (a 154px title slot); crumbs align with the
+head text; the Tags strip only takes the wheel while it can still move, and its nudges convert
+zoomed px; graph labels grow at ≤520; Settings' sticky index strip gets scroll padding.
+
+**Verified.** Rendered-element contrast audit: zero AA failures across 8 views × 3 themes × 2
+tab-bar modes × 2 sidebar modes; search width constant across views (1440 and 1280); no overflow at
+1440, 1280, 1024 (with the vertical rail), 683×384 and 375; drawer inert/focus checks; New space
+from the rail and the drawer. Flagged, unchanged: search-Enter still falls back to a board card
+from other views (a behaviour change needing the owner's yes).
+
 ## "Precision" redesign from reference images (2026-10-06)
 
 The owner supplied four references and asked for a redesign with every feature and function

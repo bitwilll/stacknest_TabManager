@@ -23,14 +23,16 @@
 // This view used to rebuild its whole DOM whenever storage changed — including the echo
 // of its own debounced auto-save — which tore the focused field out from under the caret
 // mid-word. Four rules keep that from happening again:
-//   1. The shell (header + composer) is built once and never replaced.
+//   1. The shell (section head + composer bar + cards group) is built once and never
+//      replaced; render() only refills the head's state, note and caption count in place.
 //   2. Text edits save with { rerender: false } and their storage echo is ignored.
 //   3. Any render that does run snapshots and restores focus + caret — keyed on
 //      (card id, ROW id, field class), because a checklist has many same-classed fields
 //      and "first match wins" would throw the caret from row 5 back to row 0.
 //   4. The markdown preview swap is driven by focus on that one card, never by a render.
 
-import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, shortDate, viewHidden, emptyState } from './ui.js';
+import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, shortDate, viewHidden, emptyState,
+  sectionHead, secGroup, secState, setSecNote, noMatch, plural } from './ui.js';
 import { getKey, update, queued } from './store.js';
 import { exportBackup } from './backup.js';
 import { backupNow, restoreLatest, loadCloudState } from './drive.js';
@@ -82,7 +84,7 @@ const pad2 = (n) => String(n).padStart(2, '0');
 const toLocalInput = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 
 let root, getQuery, countEl;
-let shell = null; // { wrap, sub, host } — built once, never torn down
+let shell = null; // { wrap, head, capN, host } — built once, never torn down
 
 export function initNotes(options) {
   ({ root, getQuery, countEl } = options);
@@ -308,20 +310,32 @@ export async function render() {
   if (!shell || !root.contains(shell.wrap)) buildShell();
   const lists = items.filter((i) => i.kind === 'todo').length;
   const notes = items.filter((i) => i.kind === 'note').length;
-  shell.sub.textContent = `${open} open · ${lists} list${lists === 1 ? '' : 's'} · ${notes} note${notes === 1 ? '' : 's'}`;
-
+  const reminders = items.filter((i) => i.kind === 'reminder').length;
+  const overdue = items.filter((i) => i.reminder && !cardDone(i) && fireTime(i.reminder) <= Date.now()).length;
   const shown = q ? items.filter((i) => matches(q, ...searchText(i))) : items;
+
+  // The head is refilled in place — never rebuilt — so the composer keeps its focus and caret.
+  // Its first numeral is the same `open` the sidebar badge shows.
+  secState({
+    stats: [{ n: open, unit: 'open' }, { n: items.length, unit: plural(items.length, 'card') },
+      ...(overdue ? [{ n: overdue, unit: 'overdue', tone: 'danger' }] : [])],
+    match: q ? { q, shown: shown.length, total: items.length } : null,
+  }, shell.head._state);
+  setSecNote(shell.head, `${notes} ${plural(notes, 'note')} · ${lists} ${plural(lists, 'list')} · ${reminders} ${plural(reminders, 'reminder')} — everything saves as you type.`);
+  shell.capN.textContent = q ? `${shown.length} of ${items.length}` : String(items.length);
+
   const focus = snapshotFocus();
   if (!shown.length) {
     shell.host.replaceChildren(q
-      ? emptyState({ icon: 'search', title: 'No cards match', hint: 'Search looks at titles, bodies, checklist items and tags.' })
+      ? noMatch(q, 'Search looks at titles, bodies, checklist items and tags.')
       : emptyState({
         icon: 'note',
         title: 'A quiet scratchpad',
         hint: 'Type a reminder in the bar above and press Enter, or start a note or a checklist. Everything saves as you type.',
         actions: [
-          el('button', { class: 'btnx primary', onclick: () => newItem('note') }, icon('note', 14), el('span', { text: 'New note' })),
-          el('button', { class: 'btnx soft', onclick: () => newItem('todo') }, icon('checklist', 14), el('span', { text: 'New to-do list' })),
+          el('button', { class: 'btnx soft', type: 'button', onclick: () => newItem('note') }, icon('note', 14), el('span', { text: 'New note' })),
+          el('button', { class: 'btnx soft', type: 'button', onclick: () => newItem('todo') }, icon('checklist', 14), el('span', { text: 'New to-do list' })),
+          el('button', { class: 'btnx ghosty', type: 'button', onclick: importFromFile }, icon('upload', 14), el('span', { text: 'Import…' })),
         ],
       }));
   } else {
@@ -375,7 +389,6 @@ function restoreFocus(s) {
 }
 
 function buildShell() {
-  const sub = el('p', { class: 'notes-sub' });
   const host = el('div', { class: 'mosaic-host' });
   host.addEventListener('focusout', () => setTimeout(() => {
     if (editingInMosaic()) return;
@@ -383,36 +396,43 @@ function buildShell() {
     hideFormatBar();
     if (renderPending) { renderPending = false; render(); }
   }, 0));
-  const wrap = el('div', { class: 'notes-shell' }, headerBar(sub), composer(), host);
-  shell = { wrap, sub, host };
+  // No title here: the top bar's h1 already names the view. The head carries live state
+  // (open · cards · overdue), its tools quiet → loud, the New ▾ primary last, and the
+  // quick-add composer as its bar row so it stays reachable while the head is sticky.
+  const head = sectionHead({
+    stats: [{ n: 0, unit: 'open' }],
+    tools: [
+      backupMenu(),
+      el('button', { class: 'icb notes-help', type: 'button', title: 'How Notes & Todos works', 'aria-label': 'How Notes & Todos works', onclick: openGuide }, icon('help', 16)),
+    ],
+    primary: menuButton('New', 'plus', [{ items: [
+      { label: 'New note', icon: 'note', run: () => newItem('note') },
+      { label: 'New to-do list', icon: 'checklist', run: () => newItem('todo') },
+      { label: 'New reminder', icon: 'bell', run: () => newItem('reminder') },
+    ] }], 'primary'),
+    bar: composer(),
+  });
+  const cards = secGroup({ caption: 'cards', count: 0, aside: 'drag the grip to reorder', className: 'notes-cards' }, host);
+  const wrap = el('div', { class: 'notes-shell' }, head, el('div', { class: 'sec-body' }, cards));
+  shell = { wrap, head, capN: cards.querySelector('.sec-cap-n'), host };
   root.replaceChildren(wrap);
 }
 
-function headerBar(sub) {
-  return el('div', { class: 'notes-head' },
-    // No heading here: the topbar h1 already says "Notes & Todos" ~50px above, in the same
-    // weight and size. This is the only view that printed its own title twice. The sub-line
-    // stays, because it carries live state ("3 open · 2 lists · 5 notes") rather than a name.
-    el('div', { class: 'notes-h-text' }, sub),
-    el('div', { class: 'notes-tools' },
-      menuButton('Export', 'download', [
-        { label: 'Full backup (everything)', run: () => exportBackup(false) },
-        { label: 'Notes only', run: exportNotesOnly },
-      ]),
-      menuButton('Import', 'upload', [
-        { label: 'From a file…', run: importFromFile },
-        { label: 'From Apple Notes…', run: openAppleNotesImport },
-      ]),
-      menuButton('Drive', 'cloud', [
-        { label: 'Back up to Drive', run: driveBackup },
-        { label: 'Fetch from Drive', run: driveRestore },
-      ]),
-      el('button', { class: 'btnx soft notes-tool notes-help', title: 'How Notes & Todos works', 'aria-label': 'Help', onclick: openGuide }, icon('help', 15)),
-    ),
-  );
-}
+// Export, import and Drive in one menu — the same six handlers the three old menus ran.
+const backupMenu = () => menuButton('Backup & import', 'cloud', [
+  { caption: 'export', items: [
+    { label: 'Full backup (everything)', icon: 'download', run: () => exportBackup(false) },
+    { label: 'Notes only', icon: 'note', run: exportNotesOnly }] },
+  { caption: 'import', items: [
+    { label: 'From a file…', icon: 'upload', run: importFromFile },
+    { label: 'From Apple Notes…', icon: 'note', run: openAppleNotesImport }] },
+  { caption: 'google drive', badge: async () => { const c = await loadCloudState(); return (c.connected || c.email) ? 'connected' : 'not connected'; },
+    items: [
+      { label: 'Back up to Drive', icon: 'cloud', run: driveBackup },
+      { label: 'Fetch from Drive', icon: 'download', note: 'replaces everything on this device', danger: true, run: driveRestore }] },
+]);
 
-// quick-add a reminder, plus a New menu for all three kinds
+// quick-add a reminder — the head's bar row (New ▾ for all three kinds is the head's primary)
 function composer() {
   const input = el('input', { class: 'todo-add', placeholder: 'Add a reminder…', 'aria-label': 'Add a reminder' });
   const add = async () => {
@@ -424,14 +444,8 @@ function composer() {
     input.focus();          // stay put so reminders can be typed one after another
   };
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
-  return el('div', { class: 'mos-composer' },
-    el('div', { class: 'todo-addrow' }, icon('plus', 15), input),
-    menuButton('New', 'plus', [
-      { label: 'New note', run: () => newItem('note') },
-      { label: 'New to-do list', run: () => newItem('todo') },
-      { label: 'New reminder', run: () => newItem('reminder') },
-    ], 'primary'),
-  );
+  return el('div', { class: 'sec-bar notes-composer' },
+    el('div', { class: 'todo-addrow' }, icon('plus', 15), input, el('kbd', { class: 'todo-add-kbd', 'aria-hidden': 'true', text: '↵' })));
 }
 
 async function newItem(kind) {
@@ -454,16 +468,72 @@ function focusRow(cardId, rowId) {
 }
 
 // tiny click-to-open menu (progressive disclosure — one button, actions on demand)
-function menuButton(label, iconName, items, variant = 'soft') {
-  const menu = el('div', { class: 'notes-menu', hidden: 'true' },
-    ...items.map((it) => el('button', { class: 'notes-menu-item', onclick: () => { close(); it.run(); } }, el('span', { text: it.label }))));
-  const btn = el('button', { class: `btnx ${variant} notes-tool`, onclick: (e) => { e.stopPropagation(); toggle(); } },
-    icon(iconName, 15), el('span', { text: label }), icon('chevron', 13));
+// groups: [{ caption?, badge?: async () => text, items: [{ label, icon?, note?, danger?, run }] }]
+function menuButton(label, iconName, groups, variant = 'soft') {
+  const btn = el('button', { class: `btnx ${variant} notes-tool`, type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false' },
+    icon(iconName, 15), el('span', { text: label }), el('span', { class: 'menu-caret', 'aria-hidden': 'true' }, icon('chevron', 13)));
+  const menu = el('div', { class: 'notes-menu', role: 'menu', 'aria-label': label, hidden: 'true' });
+  const badges = [];
+  for (const g of groups) {
+    if (g.caption) {
+      const badge = g.badge ? el('span', { class: 'notes-menu-badge' }) : null;
+      if (badge) badges.push([badge, g.badge]);
+      menu.append(el('div', { class: 'notes-menu-cap', role: 'presentation' }, el('span', { text: g.caption }), badge));
+    }
+    for (const it of g.items) {
+      menu.append(el('button', { class: `notes-menu-item${it.danger ? ' is-danger' : ''}`, type: 'button', role: 'menuitem', tabindex: '-1',
+        // keyboard activation (detail 0) hands focus back to the trigger, as Escape does; items that
+        // move focus themselves (New note, the Apple Notes dialog) still win because they run after it
+        onclick: (e) => { close(e.detail === 0); it.run(); } },
+        it.icon ? icon(it.icon, 15) : null,
+        el('span', { class: 'notes-menu-label' }, el('span', { text: it.label }), it.note ? el('span', { class: 'notes-menu-note', text: it.note }) : null)));
+    }
+  }
   const wrap = el('div', { class: 'notes-menu-wrap' }, btn, menu);
-  function toggle() { menu.hidden ? open() : close(); }
-  function open() { closeAllMenus(); menu.hidden = false; document.addEventListener('mousedown', onDoc, true); }
-  function close() { menu.hidden = true; document.removeEventListener('mousedown', onDoc, true); }
+  const entries = () => [...menu.querySelectorAll('[role="menuitem"]')];
+  function open(focusFirst = false) {
+    closeAllMenus();
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    place();
+    // a badge can widen the menu once it arrives, so the menu is re-placed after each one
+    for (const [node, read] of badges) Promise.resolve(read()).then((t) => { node.textContent = t; if (!menu.hidden) place(); }).catch(() => {});
+    document.addEventListener('mousedown', onDoc, true);
+    if (focusFirst) entries()[0]?.focus();
+  }
+  // never off the panel, on either side. getBoundingClientRect() is in zoomed px (interface size);
+  // style.left is in CSS px, so the overflow is divided by the root zoom
+  function place() {
+    menu.style.left = ''; menu.style.right = '';
+    const r = menu.getBoundingClientRect(), panel = wrap.closest('.main')?.getBoundingClientRect();
+    if (!panel || r.left >= panel.left + 8) return;
+    const z = menu.offsetWidth ? r.width / menu.offsetWidth : 1;
+    menu.style.right = 'auto'; menu.style.left = '0';
+    const r2 = menu.getBoundingClientRect();
+    if (r2.right > panel.right - 8) menu.style.left = `${Math.max(panel.left + 8 - r2.left, panel.right - 8 - r2.right) / z}px`;
+  }
+  function close(refocus = false) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('mousedown', onDoc, true);
+    if (refocus) btn.focus();
+  }
   function onDoc(e) { if (!wrap.contains(e.target)) close(); }
+  btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden ? open(e.detail === 0) : close(); });   // keyboard click → focus first item
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); open(true); }
+    if (e.key === 'Escape' && !menu.hidden) { e.preventDefault(); e.stopPropagation(); close(); }
+  });
+  menu.addEventListener('keydown', (e) => {
+    const list = entries(), i = list.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length]?.focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length]?.focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); list[0]?.focus(); }
+    else if (e.key === 'End') { e.preventDefault(); list[list.length - 1]?.focus(); }
+    else if (e.key === 'Tab') close();
+  });
   wrap._closeMenu = close;
   return wrap;
 }
@@ -1124,7 +1194,7 @@ const GUIDE = [
     ['Export', 'Notes only (a small JSON of just this view) or a full StackNest backup that carries notes alongside spaces and collections.'],
     ['Import', 'Reads either file, old or new. Imported cards are added to what you already have — never replacing it — with fresh ids so nothing collides.'],
     ['Apple Notes', 'No extension can read Apple Notes directly. Copy the note there, paste it here, and optionally split on blank lines.'],
-    ['Drive', 'Backs up and fetches through the same full backup. Connect an account first in Settings → Cloud sync.'],
+    ['Drive', 'Backs up and fetches through the same full backup. Connect an account first in Settings › Backup & sync.'],
   ] },
 ];
 
@@ -1236,7 +1306,7 @@ function openAppleNotesImport() {
 
 async function driveBackup() {
   const cloud = await loadCloudState();
-  if (!(cloud.connected || cloud.email)) { toast('Connect Google Drive first — Settings → Cloud sync'); return; }
+  if (!(cloud.connected || cloud.email)) { toast('Connect Google Drive first — Settings › Backup & sync'); return; }
   await flushSaves();
   const r = await backupNow(false).catch((e) => { toast(e?.message || 'Backup failed'); return null; });
   if (r) toast('Backed up to Drive (notes included)');
@@ -1244,7 +1314,7 @@ async function driveBackup() {
 
 async function driveRestore() {
   const cloud = await loadCloudState();
-  if (!(cloud.connected || cloud.email)) { toast('Connect Google Drive first — Settings → Cloud sync'); return; }
+  if (!(cloud.connected || cloud.email)) { toast('Connect Google Drive first — Settings › Backup & sync'); return; }
   const ok = await confirmDialog({ title: 'Fetch from Drive?', message: 'This restores your latest Drive backup — replacing your current spaces, collections, settings and notes.', confirmLabel: 'Fetch & restore', danger: true });
   if (!ok) return;
   const r = await restoreLatest().catch((e) => { toast(e?.message || 'Restore failed'); return null; });

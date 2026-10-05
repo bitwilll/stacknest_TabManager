@@ -1,6 +1,7 @@
 // Library view — Chrome bookmarks as a folder-first card grid with breadcrumbs.
 
-import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget, confirmDialog, viewHidden, emptyState } from './ui.js';
+import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget, confirmDialog, viewHidden, emptyState,
+  sectionHead, secGroup, noMatch, plural } from './ui.js';
 import { TAGS_KEY, loadTags, tagChips, openTagEditor } from './tags.js';
 import { moveFromLibrary } from './myspace.js';
 import { hasPin } from './lock.js';
@@ -95,17 +96,19 @@ export async function render() {
   if (viewHidden(root)) return; // rebuilt when the view opens
   const q = getQuery();
   const tagsMap = await loadTags();
-  const frag = document.createDocumentFragment();
 
   if (q) {
     const results = (await chrome.bookmarks.search(q)).filter((n) => n.url).slice(0, 60);
-    if (results.length) {
-      frag.append(el('div', { class: 'crumbs' }, el('span', { class: 'crumb current', text: `${results.length} match${results.length === 1 ? '' : 'es'}` })));
-      frag.append(el('div', { class: 'bm-grid' }, ...results.map((n) => bookmarkCard(n, tagsMap))));
-    } else {
-      frag.append(emptyState({ icon: 'search', title: 'No bookmarks match', hint: ['Nothing in the Library matches ', el('strong', {}, q), '.'] }));
-    }
-    root.replaceChildren(frag);
+    const head = sectionHead({
+      scope: { key: 'searching', value: 'Every folder' },
+      // the search is capped at 60, so a full page says so rather than implying that is all there is
+      stats: [{ n: results.length, unit: results.length === 60 ? 'matches · first 60' : plural(results.length, 'match', 'matches') }],
+      match: { q },
+    });
+    const body = results.length
+      ? secGroup({ caption: 'matches', count: results.length }, el('div', { class: 'bm-grid' }, ...results.map((n) => bookmarkCard(n, tagsMap))))
+      : noMatch(q, 'Library search looks at bookmark titles and addresses.');
+    root.replaceChildren(head, el('div', { class: 'sec-body' }, body));
     return;
   }
 
@@ -114,67 +117,79 @@ export async function render() {
   const children = subtree.children || [];
   const folders = children.filter((n) => !n.url);
   const links = children.filter((n) => n.url);
+  const atRoot = folderId === ROOT_ID;
+  const newFolderSlot = el('div', { class: 'bm-newslot' });   // first cell of the folders grid: where the folder will land
 
-  frag.append(await crumbsBar(subtree));
+  const head = sectionHead({
+    trail: await crumbsBar(subtree),
+    scope: { key: atRoot ? 'chrome' : 'folder', value: subtree.title || 'Bookmarks' },
+    stats: atRoot ? [{ n: folders.length, unit: plural(folders.length, 'folder') }]
+      : [{ n: folders.length, unit: plural(folders.length, 'folder') }, { n: links.length, unit: plural(links.length, 'link') }],
+    note: atRoot ? 'Chrome keeps its permanent folders here — open one to add to it.'
+      : 'Your Chrome bookmarks, live. Drop an open tab anywhere on this page to save it into this folder.',
+    // nothing can be created INTO the tree root — Chrome rejects it
+    tools: atRoot ? [] : [el('button', { class: 'btnx soft', type: 'button', title: 'New folder here', onclick: startNewFolder }, icon('plus', 14), el('span', { text: 'New folder' }))],
+  });
 
-  const newFolderSlot = el('div', { style: 'margin-bottom: 12px' });
-  if (folderId !== ROOT_ID) frag.append(newFolderSlot);
-
-  if (children.length) {
-    frag.append(el('div', { class: 'bm-grid' },
-      ...folders.map((n) => folderCard(n)),
-      ...links.map((n) => bookmarkCard(n, tagsMap)),
-    ));
-  } else {
-    frag.append(folderId === ROOT_ID
+  const body = el('div', { class: 'sec-body' });
+  // a non-root folder always carries the folders group (CSS hides it while it holds neither a card nor the name field)
+  if (!atRoot || folders.length) {
+    body.append(secGroup({ caption: 'folders', count: folders.length, className: 'lib-folders' },
+      el('div', { class: 'bm-grid bm-grid-folders' }, atRoot ? null : newFolderSlot, ...folders.map((n) => folderCard(n)))));
+  }
+  if (links.length) {
+    body.append(secGroup({ caption: 'links', count: links.length, aside: 'drop an open tab here to save it' },
+      el('div', { class: 'bm-grid' }, ...links.map((n) => bookmarkCard(n, tagsMap)))));
+  }
+  if (!children.length) {
+    body.append(atRoot
       ? emptyState({ icon: 'folder', title: 'No bookmark folders yet', hint: 'Chrome keeps its permanent roots here — the Bookmarks Bar and Other Bookmarks appear as folders once they hold something.' })
       : emptyState({
         icon: 'folder',
         title: 'This folder is empty',
-        hint: 'Drag a tab here from the tray or a window to bookmark it, or make a sub-folder.',
-        actions: [el('button', { class: 'btnx soft', onclick: startNewFolder }, icon('plus', 14), el('span', { text: 'New folder' }))],
+        hint: 'Drop an open tab here to bookmark it, or start a sub-folder with New folder.',
+        actions: [el('button', { class: 'btnx soft', type: 'button', onclick: startNewFolder }, icon('plus', 14), el('span', { text: 'New folder' }))],
       }));
   }
 
-  root.replaceChildren(frag);
+  root.replaceChildren(head, body);
   root._newFolderSlot = newFolderSlot;
 }
 
 async function crumbsBar(current) {
-  const trail = [];
-  if (current.id !== ROOT_ID) {
-    let node = current;
-    while (node && node.parentId && node.parentId !== ROOT_ID) {
-      const [parent] = await chrome.bookmarks.get(node.parentId);
-      trail.unshift(parent);
-      node = parent;
-    }
-    // "All bookmarks" heads every trail, so the permanent roots are always one click away
-    trail.unshift({ id: ROOT_ID, title: 'All bookmarks' });
+  const nav = el('nav', { class: 'sec-trail', 'aria-label': 'Folder path' });
+  if (current.id === ROOT_ID) {
+    nav.append(el('span', { class: 'sec-trail-note', text: 'top level' }));
+    return nav;
   }
 
-  const bar = el('nav', { class: 'crumbs', 'aria-label': 'Folder path' });
+  const trail = [];
+  let node = current;
+  while (node && node.parentId && node.parentId !== ROOT_ID) {
+    const [parent] = await chrome.bookmarks.get(node.parentId);
+    trail.unshift(parent);
+    node = parent;
+  }
+  // "All bookmarks" heads every trail, so the permanent roots are always one click away
+  trail.unshift({ id: ROOT_ID, title: 'All bookmarks' });
+
+  const list = el('ol', { class: 'crumb-list' });
   for (const ancestor of trail) {
-    const crumb = el('button', { class: 'crumb', text: ancestor.title || 'Bookmarks', onclick: () => openFolder(ancestor.id) });
+    const crumb = el('button', { class: 'crumb', type: 'button', text: ancestor.title || 'Bookmarks', onclick: () => openFolder(ancestor.id) });
     // nothing can be dropped INTO the tree root — Chrome rejects it
     if (ancestor.id !== ROOT_ID) acceptMoves(crumb, ancestor.id);
-    bar.append(crumb, el('span', { class: 'crumb-sep', text: '›', 'aria-hidden': 'true' }));
+    list.append(el('li', {}, crumb));
   }
-  bar.append(el('span', { class: 'crumb current', text: current.title || 'Bookmarks' }));
-
-  if (current.id !== ROOT_ID) {
-    bar.append(el('div', { class: 'bm-toolbar' },
-      el('button', { class: 'ghost tool-ghost', title: 'New folder here', onclick: startNewFolder },
-        icon('plus', 14), 'New folder'),
-    ));
-  }
-  return bar;
+  // the current folder is the head's scope ("you are here"); the trail ends in a slash, with the name for screen readers
+  list.append(el('li', {}, el('span', { class: 'sr-only', 'aria-current': 'page', text: current.title || 'Bookmarks' })));
+  nav.append(list);
+  return nav;
 }
 
 function startNewFolder() {
   const slot = root._newFolderSlot;
   if (!slot || slot.firstChild) return;
-  const input = el('input', { class: 'inline-edit', placeholder: 'Folder name…', 'aria-label': 'New folder name', style: 'max-width: 280px' });
+  const input = el('input', { class: 'inline-edit bm-newslot-input', placeholder: 'Folder name…', 'aria-label': 'New folder name' });
   slot.append(input);
   input.focus();
   let done = false; // Enter removes the input, which can fire blur → guard the second commit
@@ -197,7 +212,7 @@ function startNewFolder() {
 }
 
 function folderTile() {
-  const wrap = el('span', { class: 'tile', style: 'width:40px;height:40px' });
+  const wrap = el('span', { class: 'tile tile-folder' });
   wrap.append(icon('folder', 18));
   return wrap;
 }
@@ -215,14 +230,17 @@ function folderCard(node) {
       el('span', { class: 'domain', text: `${count} item${count === 1 ? '' : 's'}` }),
     ),
     el('span', { class: 'acts' },
-      actionBtn('external', 'Open all as a new window', () => openAll(node)),
+      actionBtn('window', 'Open all as a new window', () => openAll(node)),
       permanent ? null : moveOutBtn(node),
       permanent ? null : actionBtn('rename', 'Rename', () => startRename(card, node)),
       permanent ? null : deleteBtn(node, `Delete folder and its ${count} items`),
     ),
   );
   card.addEventListener('click', () => openFolder(node.id));
-  card.addEventListener('keydown', (e) => { if (e.key === 'Enter') openFolder(node.id); });
+  // only the card itself: Enter / Space on one of its action buttons belongs to that button
+  card.addEventListener('keydown', (e) => {
+    if (e.target === card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openFolder(node.id); }
+  });
   if (!permanent) makeDraggable(card, node);
   acceptMoves(card, node.id);
   return card;
