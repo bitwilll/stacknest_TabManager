@@ -380,6 +380,63 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+## "Precision" redesign from reference images (2026-10-06)
+
+The owner supplied four references and asked for a redesign with every feature and function
+unchanged: a framed bento card ("Impact." — lava block with a hatched header, a big light "72",
+a mono `client: NOVA` caption between circular arrow buttons); a palette sheet (Dark Void
+#151419, Liquid Lava #F56E0F, Gluon #1B1B1E, Slate #262626, Dusty #878787, Snow #FBFBFB); an
+orange studio wall behind frosted glass; and a Swiss technical poster ("Craft & Precision") set
+in monospace with small orange annotations and hairline rules.
+
+**What changed (CSS-first; behaviour untouched).**
+- *Shell.* `body` is `--frame`; `.app` pads the frame around rounded panels (`--panel-r` 18px,
+  `--frame-gap` 8px). The sidebar sits on the frame and re-declares the ink tokens for that
+  surface (`:root:not([data-theme='linen']) .side { … }`), so every row, count, rename field and
+  drop line inside it works unchanged. `.main` and the vertical tab rail (`data-tabsbar='side'`)
+  are panels; `.main` clips to its radius.
+- *Palette.* Light: paper #ECECE9, columns #F6F6F4, Snow cards, ink #151419, accent #E8590C
+  (lava one step deeper so it clears 3:1 on paper), `--accent-text` #A33E08, crimson danger
+  #B3243A. Dark: Dark Void panels in a #0C0B0E frame, Gluon columns, lava #F56E0F as-is.
+  Linen: unchanged tokens, frame is paper (#ECE5D9) — the all-light option. New tokens:
+  `--frame`, `--hatch`, `--pill`, `--panel-r`, `--frame-gap`, `--red-contrast` (the dark danger
+  is light, so its label is ink — fixes white-on-#ff6b6b at 2.8:1 in the danger confirm).
+- *Shape.* Containers are rounded rectangles; buttons, fields, segments and chips are pills;
+  single-glyph `.icb` buttons are circles (`.armed` grows into a pill). Segments show the chosen
+  option as a solid ink disc.
+- *Type.* Captions (`.side-label`, `.side-nav-label`, `.tray-label`, `.seg-label`, `.view-kicker`,
+  popover headers…) are one rule: mono, lowercase, 0.06em. Sidebar captions carry a hairline
+  out to their actions. `--t7` is now 24px and sets the view title, which ends in a lava full
+  stop (`.view-title::after`), as does the wordmark. The kicker is lava ink led by a short rule.
+- *Numerals.* The tray count is a large light numeral beside "live / open tabs" — `tabs.js`
+  now renders `.tray-num` + `.tray-unit` spans instead of one text node (same words, same
+  element). Each collection's count is a large light numeral in its header.
+- *Hatching* only on space-to-fill: `.newcol`, `.addtab:hover`, `.drop-target` (lava hatch),
+  `.empty-ic`.
+- *Settings* cards are numbered 01, 02… with a CSS counter on `.set-h::before`.
+- *Vault / My Space* states now use the shared `emptyState()` (the old `.lib-empty` blocks had
+  their buttons left-aligned under centred text); dead `.lib-empty` / `.vault-shut` CSS removed.
+  Bookmark folder tiles are ink, not accent — a folder is a kind, not a state.
+- *Responsive.* `.main` is a size container (`container: main / inline-size`), so the header
+  folds by panel width — which the vertical tab rail changes — not window width: captions →
+  Stash label (icon-only; `font-size: 0` keeps the accessible name) → theme segment folds into
+  the existing cycle button → search takes its own row. The ≤880px drawer + two-row grid header
+  is kept. The previous "2026 workspace refresh" override layer was folded into the base rules.
+
+**Verified** in the mock preview: an automated rendered-element contrast audit (alpha-composited
+backgrounds) found zero AA failures across all eight views × both tab-bar modes × all three
+themes; header fit checked at 1440, 1024 (top and side rail) and 375 (drawer).
+
+**Review fixes.** An independent diff review found no broken features and five small CSS issues,
+all fixed: (1) the lava ring was 2.76:1 on the grey wells — focus now has its own token,
+`--focus` (#C84D0A in light: 3.6 inset / 3.9 paper; plain accent elsewhere); (2) in Linen a
+hovered nav row's count fell to 4.15:1 — hovered counts lift to `--text-soft` like active ones;
+(3) the large count numerals follow the **Small text** dial (`calc(24px|30px * var(--fs-small))`),
+as Settings promises, not the Headings dial; (4) at ≤580px panel width the header wrapped to three
+rows — the title now shrinks (ellipsis) before anything wraps; (5) the icon-only Stash button is a
+38px circle, not an oval. Also: the Undo button's ring on the inverted snackbar uses `--bg`
+(was 2.85:1 in dark — pre-existing).
+
 ## Calm structure + Linen theme (2026-09-07)
 
 The owner: "a little boring — keep it minimal but add some professional and ADHD-friendly vibes,

@@ -46,7 +46,7 @@ normal-profile window.
   and **delete**.
 - **Topbar** — search (`⌘K` or `/`, with a clear button once you've typed; the box stays
   tinted while a filter is active), the theme segment (**auto** follows your OS and switches
-  live, or pin **light** / **dark** / **linen**), and **Stash window**. On narrow windows the
+  live, or pin **light** / **dark** / **linen**), and **Stash & close**. On narrow windows the
   sidebar tucks away behind a **menu** button and slides in as a drawer, so every section
   (Spaces, Windows, Collections) stays reachable.
 - **Open tabs bar** — the current window's live tabs. Click to jump, hover to close,
@@ -111,7 +111,7 @@ hand back a fresh five. Getting back in then needs one of two proofs of ownershi
   in the active space. Existing data migrates into a default "Personal" space on first run.
 
 **Collections** (saved tab sets, stored locally):
-- **Stash window** saves this window's tabs to a new collection **and closes them** — frees
+- **Stash & close** saves this window's tabs to a new collection **and closes them** — frees
   memory; the dashboard survives. **Save all →** does the same but keeps tabs open. Both
   also exist per-window in the sidebar (hover a window row).
 - **Open all** on a collection revives it in a **new window**; if it holds **more than 10
@@ -255,8 +255,8 @@ focuses it, `Enter` opens the first match, `Esc` clears.
 
 Clicking a saved card navigates in place (it's your new tab); `Cmd/Ctrl`-click opens a
 background tab. Theme follows your system until you pin one with the sun / moon / leaf buttons in
-the topbar theme segment; the auto button hands it back to the OS. **Linen** is the third, warmer theme: linen paper, walnut
-ink and one pine accent, with sentence-case section labels.
+the topbar theme segment; the auto button hands it back to the OS. **Linen** is the third, warmer theme: the
+all-paper one — linen paper inside a paper frame, walnut ink and one pine accent.
 
 **Wayfinding.** Colour marks where you are and what you own: the active view carries a short
 rail; the active **Space** row's rail is that Space's own colour and the board title shows the
@@ -343,75 +343,67 @@ token for the extension.
 
 ## Design
 
-The interface follows **Nothing's design psychology** — the London phone maker's argument that
-technology should ask for less of your attention, not more. Four rules, and everything in
-`css/newtab.css` follows from them:
+**"Precision"** (2026-10-06) — an instrument panel, not a dashboard. The direction comes from
+four references the owner chose: a framed bento card with a lava-orange block and a hatched
+header, a Dark Void / Liquid Lava / Snow palette, an orange studio wall seen through frosted
+glass, and a Swiss technical poster set in monospace with orange annotations. Five rules, and
+everything in `css/newtab.css` follows from them:
 
-1. **Monochrome, so attention is a budget.** The chrome is pure greyscale. Colour belongs to
-   *your* data — space and collection dots, tag dots, note tints — and to exactly one signal:
-   **red**. Red is permitted on the live-tabs pulse, destructive actions, an overdue reminder,
-   the duplicate count, and ticker-down. Nowhere else. If red appears twice on one screen, one
-   of them is a bug.
-2. **Flat.** No gradients, no glows, no coloured shadows anywhere. Depth is a hairline and one
-   honest step of background value. The only real elevation is the floating layer (modals,
-   popovers), and it uses a single neutral shadow token shared by both themes.
-3. **Structure is visible.** Hairline rules between sections and a **dot-matrix ground** on the
-   board, the tag graph and every empty state — the grid the layout sits on, left exposed
-   rather than painted over. It is Nothing's transparent back panel, applied to software.
-4. **Neutral greys on graphite.** The greys carry no blue cast, and dark mode is **#171717**,
-   not #000. True black was the original call, on the OLED-phone argument — but this is a
-   desktop surface stared at for hours in a lit room, and #fff on #000 is 21:1. That much
-   contrast makes stems shimmer and reads as glare rather than crispness. The canvas sits at
-   #171717 and the brightest text at #e9e9e9, landing the top end at **14.8:1** — far above
-   AA's 4.5, comfortably below the point where it fights the eye.
+1. **A frame and its panels.** The app is a Dark Void shell (`--frame`, #151419). The sidebar
+   lives on the frame; the main view — and the vertical tab rail, when it's on — are rounded
+   paper panels set into it. Where you are and where your work is are two different materials,
+   readable at a glance.
+2. **One lava accent.** Liquid Lava (#F56E0F; one step deeper, #E8590C, on light paper so it
+   clears 3:1) is the only chrome colour. It marks state — the active row's rail, the current
+   tab, the primary action, focus, checked boxes, drop targets, finished-progress fills, the
+   live pulse — and the full stop at the end of every view title and the wordmark
+   ("Collections."). Everything else is ink, paper and four greys. Your own colours (Spaces,
+   collections, tags, note tints) stay as wayfinding. Danger is a separate crimson, 50° away
+   from the lava, so "this deletes" never reads as "this is selected".
+3. **Rectangles hold, pills act.** Containers — panels, columns, cards, popovers — are rounded
+   rectangles. Anything you press or type into — buttons, fields, segments, chips — is a pill.
+   Single-glyph buttons are circles. A chosen segment is a solid ink disc (snow in dark).
+4. **Mono annotates.** JetBrains Mono is the drafting hand: counts, domains, dates, section
+   captions (lowercase, lightly tracked, each with a hairline running out to its actions) and
+   the lava kicker above each view title. Counts that matter read as large light numerals —
+   the live-tab readout ("7 live / open tabs") and each collection's tab count. Settings
+   sections are numbered like the plates of a drawing set (01, 02, 03…).
+5. **Hatching means "space to fill".** Diagonal hatch appears only where something is waiting:
+   the New collection tile, an Add tab slot under the pointer, drop targets, the empty-state
+   mark. Never on content.
 
-Selection **inverts** to solid ink rather than tinting, so a chosen chip is unmistakable; the
-active nav row adds a hard marker on its leading edge. Micro-labels are mono, uppercase and
-widely tracked — the app's signature piece of type.
+**Themes.** *Light* is ink on paper inside the void frame. *Dark* is snow on Dark Void inside a
+deeper void (#0C0B0E), with Gluon #1B1B1E columns and cards between Gluon and Slate. *Linen* is
+the all-paper theme — the frame is warm paper too, walnut ink, one pine accent — for anyone who
+wants no dark surface on screen.
 
-**Type scale — 1.125 (major second), 13px base.** The sheet previously used fifteen unrelated
-sizes (9, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 16, 17, 18, 19px). Seven steps on
-one ratio replace them, exposed as custom properties:
+**Type scale — 13px base**, exposed as custom properties and multiplied by the per-role text-size
+dials in Settings › Appearance:
 
 | Token | Size | Role |
 |---|---|---|
-| `--t1` | 10.5px | micro — mono uppercase section labels |
+| `--t1` | 10.5px | caption — mono, lowercase: section labels, kicker, units |
 | `--t2` | 11.5px | meta — counts, timestamps, domains |
 | `--t3` | 13px | base — body, nav, buttons, inputs |
 | `--t4` | 14.5px | title — card and collection titles |
 | `--t5` | 16.5px | section headings |
-| `--t6` | 18.5px | view titles |
-| `--t7` | 21px | display numerals |
+| `--t6` | 18.5px | in-view headings |
+| `--t7` | 24px | view titles and large numerals |
 
-1.125 is deliberately tight — an editorial 1.25 makes a dense tool shout. Where two roles
-converged on 13px (a settings label and its description, say) the hierarchy moved to **weight
-and colour** instead of size, which keeps the smaller text fully readable. Steps are rounded to
-half-pixels so stems stay crisp.
+**Contrast.** Every text token clears WCAG AA on the lightest surface it can land on, in every
+theme — verified on rendered elements across all eight views, both tab-bar modes and all three
+themes with proper alpha compositing. Lava text uses its own deeper token (`--accent-text`);
+the label on a lava fill is ink (5.1:1), never white (3.6:1). Two rules keep it that way:
 
-**Contrast.** Every text token clears WCAG AA on every surface it is used on, in both themes —
-worst case **4.8:1** against a 4.5 requirement, measured with proper alpha compositing. Every
-non-text element that has to be seen clears the 3:1 bar — worst case **3.0:1**. Idle icons
-(`--text-ghost`) are never used for text, and placeholders use `--text-faint`, since a
-placeholder *is* text.
+- **Fade with colour, never with `opacity`.** `opacity` is reserved for genuinely hidden things
+  and WCAG-exempt states (`[disabled]`, `.dragging`).
+- **A border that *is* the control uses `--edge`** (≥3:1), not the decorative hairlines.
 
-Two rules keep it that way:
-
-- **Fade with colour, never with `opacity`.** A half-transparent icon composites to whatever the
-  backdrop makes of it — `opacity: .58` on a card action measured 1.95:1. `opacity` is now
-  reserved for genuinely hidden things (hover-revealed actions) and WCAG-exempt states
-  (`[disabled]`, `.dragging`).
-- **A border that *is* the control uses `--edge`** (3:1), not the decorative `--line` /
-  `--line-strong` hairlines. Outlined buttons, selects, unchecked boxes and dashed drop targets
-  have no other visual definition, so their outline has to carry it.
-
-**Calm structure, one accent (2026-09-07).** On top of the rules above, colour is spent on two
-jobs only. The user's own Space and collection colours are fixed-position wayfinding marks — a
-rail on the active Space row, a swatch beside the board title, a 3px top edge on each collection
-column. One accent carries every "you are here / do this" state — the active rail, the focus
-ring, selection, checked boxes, drop targets and checklist progress. In light and dark that
-accent *is* ink, so those themes stay strictly monochrome; **Linen**, the third theme, is warm
-paper and walnut ink with a pine accent, AA-checked with every token defined. The colour
-contract is written at the top of `css/newtab.css`.
+**Responsive.** The header answers to its *panel*, not the window: `.main` is a size container,
+so turning on the vertical tab rail folds the header just as a narrower window would — segment
+captions go first, then the Stash label (icon-only, still named), then the theme segment folds
+into one cycling button, and only then does search drop to its own row. Below 881px the sidebar
+becomes a drawer and the header a two-row grid.
 
 Hanken Grotesk + JetBrains Mono, bundled in `fonts/` — no webfont requests. The `new design/`
 folder is earlier reference material — delete it before packaging for the Web Store.

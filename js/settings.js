@@ -62,7 +62,7 @@ export const TICKER_FX = ['EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'CNY', 'CHF'
 // each role is a multiplier the tokens are computed from (see the :root block in the CSS).
 // The interface-size zoom above scales everything at once; these tune one kind of text.
 export const TYPE_ROLES = [
-  { id: 'heading', label: 'Headings', sub: 'View and section titles.', sample: 'Collections', token: '--t6' },
+  { id: 'heading', label: 'Headings', sub: 'View and section titles.', sample: 'Collections', token: '--t7' },
   { id: 'title', label: 'Titles', sub: 'Card and collection titles.', sample: 'Weekend reading', token: '--t4' },
   { id: 'body', label: 'Body text', sub: 'Navigation, buttons, inputs, notes.', sample: 'Drag a tab down from the tray', token: '--t3' },
   { id: 'small', label: 'Small text', sub: 'Counts, domains, timestamps, section labels.', sample: 'UPDATED SEP 7 · 12 TABS', token: '--t2', mono: true },

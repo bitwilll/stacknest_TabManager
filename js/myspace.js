@@ -15,7 +15,7 @@
    folder and drops it from here. Nothing is destroyed by moving.
    ———————————————————————————————————————————————————————————— */
 
-import { el, icon, actionBtn, toast, tile, domainOf, matches, confirmDialog } from './ui.js';
+import { el, icon, actionBtn, toast, tile, domainOf, matches, confirmDialog, emptyState } from './ui.js';
 import { getKey, update, queued } from './store.js';
 import { promptUnlock, isSessionUnlocked, hasPin, isLockedOut, relock } from './lock.js';
 import { pushHistory, flashDeleted } from './history.js';
@@ -170,14 +170,13 @@ function listPanel(items, q, vault) {
   ));
 
   if (!items.length) {
-    frag.append(el('div', { class: 'lib-empty' },
-      vault
-        ? el('span', {}, 'The Vault is empty. Move something here from ', el('strong', {}, 'My Space'), ' to keep it behind your PIN.')
-        : el('span', {}, 'Nothing here yet. In ', el('strong', {}, 'Library'), ', use the ', el('strong', {}, 'move'), ' action on a bookmark or folder to take it out of Chrome and keep it here.')));
+    frag.append(vault
+      ? emptyState({ icon: 'lock', title: 'The Vault is empty', hint: ['Move something here from ', el('strong', {}, 'My Space'), ' to keep it behind your PIN.'] })
+      : emptyState({ icon: 'box', title: 'Nothing kept here yet', hint: ['In ', el('strong', {}, 'Library'), ', use the ', el('strong', {}, 'move'), ' action on a bookmark or folder to take it out of Chrome and keep it here.'] }));
     return frag;
   }
   if (!shown.length) {
-    frag.append(el('div', { class: 'lib-empty' }, 'Nothing here matches ', el('strong', {}, q), '.'));
+    frag.append(emptyState({ icon: 'search', title: 'No matches', hint: ['Nothing here matches ', el('strong', {}, q), '.'] }));
     return frag;
   }
 
@@ -198,30 +197,34 @@ function listPanel(items, q, vault) {
 
 async function vaultPanel(items, q) {
   if (!(await hasPin())) {
-    return el('div', { class: 'lib-empty' },
-      el('p', {}, 'The Vault needs a PIN before it can hold anything.'),
-      el('button', {
-        class: 'btnx primary', style: 'margin-top: 12px',
+    return emptyState({
+      icon: 'lock', title: 'Set a PIN to open the Vault',
+      hint: 'The Vault needs a PIN before it can hold anything.',
+      actions: [el('button', {
+        class: 'btnx primary',
         onclick: () => document.querySelector('[data-view="settings"]')?.click(),
-      }, el('span', { text: 'Set a PIN in Settings' })));
+      }, el('span', { text: 'Set a PIN in Settings' }))],
+    });
   }
   if (await isLockedOut()) {
-    return el('div', { class: 'lib-empty' },
-      el('p', {}, 'Too many wrong PINs — the Vault is locked.'),
-      el('p', { style: 'margin-top: 6px' }, 'Recover it in Settings with your security question, or by signing in to the Google account that set the PIN.'),
-      el('button', {
-        class: 'btnx primary', style: 'margin-top: 12px',
+    return emptyState({
+      icon: 'lock', title: 'Too many wrong PINs — the Vault is locked',
+      hint: 'Recover it in Settings with your security question, or by signing in to the Google account that set the PIN.',
+      actions: [el('button', {
+        class: 'btnx primary',
         onclick: () => document.querySelector('[data-view="settings"]')?.click(),
-      }, el('span', { text: 'Go to Settings' })));
+      }, el('span', { text: 'Go to Settings' }))],
+    });
   }
   if (!isSessionUnlocked()) {
-    return el('div', { class: 'lib-empty vault-shut' },
-      icon('lock', 28),
-      el('p', { style: 'margin-top: 10px' }, `${items.length} bookmark${items.length === 1 ? '' : 's'} locked.`),
-      el('button', {
-        class: 'btnx primary', style: 'margin-top: 12px',
+    return emptyState({
+      icon: 'lock', title: `${items.length} bookmark${items.length === 1 ? '' : 's'} locked`,
+      hint: 'Enter your PIN to open the Vault for this session.',
+      actions: [el('button', {
+        class: 'btnx primary',
         onclick: async () => { if (await promptUnlock()) render(); },
-      }, el('span', { text: 'Unlock' })));
+      }, icon('unlock', 15), el('span', { text: 'Unlock' }))],
+    });
   }
   return listPanel(items, q, true);
 }

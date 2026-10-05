@@ -65,7 +65,11 @@ export async function render() {
 
   // ——— horizontal strip: the focused window's tabs as chips ———
   const current = byWindow.get(focusedId) || [];
-  trayCount.textContent = `${current.length} open tab${current.length === 1 ? '' : 's'}`;
+  // the count is set as a large numeral with its unit beside it; it still reads "12 open tabs"
+  trayCount.replaceChildren(
+    el('span', { class: 'tray-num', text: String(current.length) }),
+    el('span', { class: 'tray-unit', text: ` open tab${current.length === 1 ? '' : 's'}` }),
+  );
 
   // Build the chips only when the bar is on — 'off' hides it entirely, and hidden-but-present
   // chips would still be found by search's Enter-to-open shortcut, so pressing Enter would
