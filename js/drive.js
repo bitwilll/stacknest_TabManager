@@ -48,7 +48,7 @@ export const isConfigured = () => {
   } catch { return false; }
 };
 
-const NOT_CONFIGURED = () => new Error("Google Drive sync isn't set up in this build yet — add your OAuth client ID to the manifest (see README → Cloud sync setup).");
+const NOT_CONFIGURED = () => new Error("Google Drive backup isn't available in this build.");
 
 export async function loadCloudState() {
   const s = await getKey(CLOUD_KEY, {});
@@ -81,7 +81,7 @@ function authError(raw, interactive) {
   const m = (raw || '').toLowerCase();
   if (m.includes('did not approve') || m.includes('cancel')) return new Error('Google sign-in was cancelled.');
   if (m.includes('invalid_client') || m.includes('bad client') || m.includes('not granted') || m.includes('revoked')) {
-    return new Error("Couldn't sign in to Google Drive. This build's Drive sync may not be fully set up — see README → Cloud sync setup.");
+    return new Error("Google Drive sign-in isn't available right now. Please try again later.");
   }
   if (!interactive) return new Error('Your Google Drive session expired — reconnect in Settings.');
   return new Error('Google sign-in failed. Please try again.');
@@ -207,7 +207,7 @@ export async function connect({ chooseAccount = false } = {}) {
 // so plainly rather than reconnecting the same account and looking broken.
 export async function switchAccount() {
   if (isLive() && !canChooseAccount()) {
-    throw new Error('Chrome signs Drive in with the Google account this Chrome profile uses, and offers no picker. Use a different Chrome profile, or turn on the account chooser — see js/authConfig.js.');
+    throw new Error('Drive uses the Google account this Chrome profile is signed into. Switch Chrome profiles to use another account.');
   }
   await dropAllTokens();
   await patchState({ connected: false, email: null });

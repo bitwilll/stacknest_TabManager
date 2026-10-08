@@ -60,12 +60,31 @@ async function main() {
   // The rail keeps every view one click away with its count as a badge; the Collections and
   // Windows lists wait behind the expand button (the board and the tab strip carry the same).
   const SIDE_KEY = 'stacknest:sidebar';
+  const sidebar = document.getElementById('sidebar');
   const sideBtn = document.getElementById('side-collapse');
+  const wide = matchMedia('(min-width: 881px)');   // the rail is desktop-only (newtab.css)
+  // In the rail a name shows as a CSS tooltip read from data-tip; a native title would pop a second,
+  // slower one over it. A title moves to data-tip when its item is first pointed at or focused (Space
+  // rows re-render, so this is lazy) and every parked title moves back when the rail goes away.
+  const parkTitle = (e) => {
+    if (document.documentElement.dataset.side !== 'rail' || !wide.matches) return;
+    const item = e.target.closest?.('[title]');
+    if (!item || !sidebar.contains(item)) return;
+    item.dataset.tip = item.title;
+    item.removeAttribute('title');
+  };
+  const unparkTitles = () => {
+    for (const item of sidebar.querySelectorAll('[data-tip]')) { item.title = item.dataset.tip; delete item.dataset.tip; }
+  };
+  sidebar.addEventListener('pointerover', parkTitle);
+  sidebar.addEventListener('focusin', parkTitle);
+  wide.addEventListener('change', () => { if (!wide.matches) unparkTitles(); });   // the drawer shows the words again
   const applySide = (mode) => {
     const rail = mode === 'rail';
+    if (!rail) unparkTitles();
     document.documentElement.dataset.side = rail ? 'rail' : 'full';
     const label = rail ? 'Expand sidebar' : 'Collapse sidebar';
-    sideBtn.title = label;
+    if (rail) { sideBtn.dataset.tip = label; sideBtn.removeAttribute('title'); } else sideBtn.title = label;
     sideBtn.setAttribute('aria-label', label);
     sideBtn.setAttribute('aria-expanded', String(!rail));
   };

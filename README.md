@@ -6,6 +6,8 @@ with proper light and dark themes. No build step, no dependencies, no data leave
 
 ## Install (load unpacked)
 
+Requires **Chrome 128 or later**.
+
 1. Open `chrome://extensions` in Chrome.
 2. Turn on **Developer mode** (top-right toggle).
 3. Click **Load unpacked** and select this folder (`StackNest - Tab Manager`).
@@ -254,8 +256,7 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
   patches the existing file rather than creating another, and if stray copies ever exist (two
   machines' first-ever backups can race) it keeps the newest and deletes the rest, so no extra
   Drive space is ever taken. Restore reads the newest copy. A restored Vault starts locked. See [Cloud sync setup](#cloud-sync-setup) below (needs a one-time Google
-  OAuth client). *StackNest Cloud (Pro)*, a managed subscription tier on stacknest.com, is marked
-  **coming soon** — it needs a hosted backend that isn't built yet.
+  OAuth client).
 - **Market ticker** — an optional live **crypto + forex** marquee beside the search bar (**off by
   default**). Pick a **reference currency** and which coins (BTC, ETH, SOL, …) and FX pairs to
   show. Prices come from **CoinGecko** and **open.er-api.com** — enabling it makes network requests
@@ -293,10 +294,18 @@ the one or two actions that fill it (new collection, new folder, new note or lis
 | `bookmarks` | the Library view |
 | `storage` | saving your collections locally (`chrome.storage.local`) |
 | `favicon` | Chrome's local favicon cache (no network requests) |
-| `identity` | Google sign-in for **Cloud sync** (Drive backup) |
-| `host_permissions` | `googleapis.com` (Drive backup), `api.coingecko.com` + `open.er-api.com` (market ticker) |
+| `identity` | Google sign-in for **Google Drive backup** (Settings › Backup & sync) |
+| `alarms` | scheduling Notes reminders, so they fire with no StackNest tab open |
+| `notifications` | showing a reminder when it is due |
 
-Cloud sync and the ticker are the only features that reach the network, and both are opt-in.
+There are **no host permissions**: the four services StackNest can talk to — Google Drive and its
+sign-in (`www.googleapis.com`, `oauth2.googleapis.com`) and the market ticker's price sources
+(`api.coingecko.com`, `open.er-api.com`) — all answer cross-origin requests, and the manifest's
+content security policy (`connect-src`) allows exactly those four and nothing else.
+
+Drive backup and the ticker are the only features that reach the network, and both are opt-in.
+The ticker credits both price sources on screen, as their terms ask, fetches exchange rates at
+most once an hour, and pauses while the tab is hidden. See [PRIVACY.md](PRIVACY.md).
 (An unused grammar-check module that would have sent search text to a third-party service was
 removed so that statement stays true.)
 
@@ -318,7 +327,10 @@ whole flow without Google).
 3. **Create the OAuth client.** In the [Google Cloud Console](https://console.cloud.google.com/):
    - **APIs & Services → Enable APIs → Google Drive API** → Enable.
    - **OAuth consent screen** → External → add scopes `.../auth/drive.appdata` and
-     `.../auth/userinfo.email`, and add your Google account under **Test users** (while unpublished).
+     `.../auth/userinfo.email` (both non-sensitive). While the app is in **Testing**, only the
+     **Test users** you list can sign in, and their grants expire after 7 days — fine for your own
+     machine. For a public release, fill in Branding (name, support email, home page, privacy
+     policy URL) and **publish the app to In production**; see `docs/store/launch-checklist.md`.
    - **Credentials → Create credentials → OAuth client ID → Application type: Chrome Extension**,
      and paste the extension **ID** from step 1/2.
 4. **Wire it in.** Put the generated client ID into `manifest.json` → `oauth2.client_id` (replacing
@@ -402,7 +414,7 @@ dials in Settings › Appearance:
 
 | Token | Size | Role |
 |---|---|---|
-| `--t1` | 10.5px | caption — mono, lowercase: section labels, kicker, units |
+| `--t1` | 11px | caption — mono, lowercase: section labels, kicker, units, counts in pills |
 | `--t2` | 11.5px | meta — counts, timestamps, domains |
 | `--t3` | 13px | base — body, nav, buttons, inputs |
 | `--t4` | 14.5px | title — card and collection titles |
@@ -428,6 +440,24 @@ becomes a drawer and the header a two-row grid.
 Hanken Grotesk + JetBrains Mono, bundled in `fonts/` — no webfont requests. The `new design/`
 folder is earlier reference material — delete it before packaging for the Web Store.
 
+## Release (Chrome Web Store)
+
+```
+sh scripts/package.sh
+```
+
+builds `dist/stacknest-<version>.zip` from an allowlist — the manifest without its dev `"key"`,
+`newtab.html`, `css/`, `js/` (minus the dev-only `js/mock.js`), `fonts/` (with `OFL.txt`) and the
+icon PNGs — and checks the store limits (description ≤ 132 characters, version format, every file
+the manifest names). `node scripts/smoke-test.mjs` then loads that build into a throwaway headless
+Chrome as the real extension and walks every view in every theme — it exits non-zero on any
+exception, console error, CSP violation or failed load. Upload **only** that zip.
+`node scripts/store-assets.mjs` re-captures the
+1280×800 store screenshots and the promo tile; `node scripts/render-icons.mjs` re-renders the
+icons from `icons/icon.svg`. The listing copy, permission justifications and the owner's launch
+steps are in `docs/store/`; the privacy policy is [PRIVACY.md](PRIVACY.md). Bump `version` in
+`manifest.json` for every upload.
+
 ## Development
 
 The page runs outside Chrome too: serve the folder (`python3 -m http.server`) and open
@@ -435,8 +465,9 @@ The page runs outside Chrome too: serve the folder (`python3 -m http.server`) an
 with demo data. The mock never activates inside Chrome.
 
 ```
-manifest.json      MV3 manifest (new-tab override)
+manifest.json      MV3 manifest (new-tab override, toolbar action, CSP)
 newtab.html        app shell (sidebar · topbar · tray · board · library)
+js/boot.js         pre-paint: applies the remembered theme and sidebar mode (no flash)
 css/newtab.css     all styling; light (1a) + dark (1c) theme tokens at the top
 js/app.js          boot, theme, view switching, unified search
 js/tabs.js         open-tabs tray + WINDOWS sidebar + save/stash

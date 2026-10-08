@@ -16,7 +16,7 @@
    ———————————————————————————————————————————————————————————— */
 
 import { el, icon, actionBtn, toast, tile, domainOf, matches, confirmDialog, emptyState,
-         sectionHead, secGroup, noMatch, goTo, plural } from './ui.js';
+         sectionHead, secGroup, noMatch, goTo, plural, badgeText } from './ui.js';
 import { getKey, update, queued } from './store.js';
 import { promptUnlock, isSessionUnlocked, hasPin, isLockedOut, relock } from './lock.js';
 import { pushHistory, flashDeleted } from './history.js';
@@ -144,9 +144,9 @@ export async function render() {
 
   const open = items.filter((i) => !i.vault);
   const vaulted = items.filter((i) => i.vault);
-  if (countEls.space) countEls.space.textContent = open.length ? String(open.length) : '';
+  if (countEls.space) countEls.space.textContent = badgeText(open.length);
   // the Vault's own badge stays blank while locked — a count is information too
-  if (countEls.vault) countEls.vault.textContent = isSessionUnlocked() && vaulted.length ? String(vaulted.length) : '';
+  if (countEls.vault) countEls.vault.textContent = isSessionUnlocked() ? badgeText(vaulted.length) : '';
 
   if (spaceRoot) spaceRoot.replaceChildren(...mySpacePanel(open, q));
   if (vaultRoot) vaultRoot.replaceChildren(...(await vaultPanel(vaulted, q)));
@@ -174,14 +174,14 @@ function mySpacePanel(items, q) {
     match: q ? { q, shown: shown.length, total: items.length } : null,
     note: 'Moved out of Chrome — gone from its bookmarks bar, bookmarks page and address-bar suggestions. Put any back whenever you like.',
     tools: items.length ? [el('button', { class: 'btnx soft', type: 'button', title: 'Open the Library to move bookmarks here', onclick: () => goTo('library') },
-      icon('box', 14), el('span', { text: 'Add from Library' }))] : [],
+      icon('library', 14), el('span', { text: 'Add from Library' }))] : [],
   });
   const body = !items.length
     ? [emptyState({
       icon: 'box', title: 'Nothing kept here yet',
       steps: ['In Library, press the box on a bookmark or folder.', 'It leaves Chrome’s bar, bookmarks page and suggestions.', 'Put it back from here any time.'],
       hint: ['Right-click the box to send it straight to the ', el('strong', {}, 'Vault'), '.'],
-      actions: [el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('library') }, icon('box', 14), el('span', { text: 'Open Library' }))],
+      actions: [el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('library') }, icon('library', 14), el('span', { text: 'Open Library' }))],
     })]
     : !shown.length ? [noMatch(q)] : groupedBody(shown, false);
   return [head, el('div', { class: 'sec-body' }, ...body)];
@@ -189,7 +189,7 @@ function mySpacePanel(items, q) {
 
 const VAULT_FOOT = 'stored in plain text on this device · the pin hides these links from this page, it doesn’t encrypt them · bookmark exports don’t include them';
 const pinRecoveryBtn = () => el('button', { class: 'btnx ghosty', type: 'button', title: 'Open Settings › Vault', onclick: () => goTo('settings', 'set-vault') },
-  icon('person', 14), el('span', { text: 'PIN & recovery' }));
+  icon('key', 14), el('span', { text: 'PIN & recovery' }));
 const gate = (o) => el('div', { class: 'sec-body' }, emptyState({ variant: 'gate', icon: 'lock', ...o }));
 
 // One anatomy in all five states: the head always renders, only the body swaps; the gate owns its primary.
@@ -198,14 +198,14 @@ async function vaultPanel(items, q) {
   if (!(await hasPin())) {
     return [sectionHead({ scope: { key: 'vault', value: 'No PIN yet' }, note: 'The Vault keeps links behind a PIN. Set one to start using it.' }),
       gate({ caption: 'no pin', title: 'Set a PIN to open the Vault', hint: 'The Vault needs a PIN before it can hold anything.',
-        actions: [el('button', { class: 'btnx primary', type: 'button', onclick: () => goTo('settings', 'set-vault') }, el('span', { text: 'Set a PIN in Settings' }))] }),
+        actions: [el('button', { class: 'btnx primary', type: 'button', onclick: () => goTo('settings', 'set-vault') }, icon('key', 15), el('span', { text: 'Set a PIN in Settings' }))] }),
       foot];
   }
   if (await isLockedOut()) {
     return [sectionHead({ scope: { key: 'vault', value: 'Locked out', tone: 'danger' }, note: 'Too many wrong PINs. Guessing again won’t help — recover it in Settings.' }),
       gate({ caption: 'locked out', title: 'Too many wrong PINs — the Vault is locked',
         hint: 'Recover it in Settings with your security question, or by signing in to the Google account that set the PIN.',
-        actions: [el('button', { class: 'btnx primary', type: 'button', onclick: () => goTo('settings', 'set-vault') }, el('span', { text: 'Go to Settings' }))] }),
+        actions: [el('button', { class: 'btnx primary', type: 'button', onclick: () => goTo('settings', 'set-vault') }, icon('key', 15), el('span', { text: 'Go to Settings' }))] }),
       foot];
   }
   if (!isSessionUnlocked()) {
@@ -249,7 +249,7 @@ function spaceCard(item, vault) {
           if (!(await hasPin())) { toast('Set a PIN in Settings first'); return; }
           await setVault([item.id], true); toast('Moved to the Vault');
         }),
-      actionBtn('undo', 'Put back in Chrome bookmarks', async () => {
+      actionBtn('library', 'Put back in Chrome bookmarks', async () => {
         const where = await restoreToChrome(item);
         toast(`Put back in “${where}”`);
       }),
@@ -273,12 +273,12 @@ function spaceCard(item, vault) {
 
 function deleteBtn(item) {
   let armed = false;
-  return actionBtn('close', 'Delete', async (_, btn) => {
+  return actionBtn('trash', 'Delete', async (_, btn) => {
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
       btn.replaceChildren('sure?');
-      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('close', 14)); }, 2600);
+      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('trash', 14)); }, 2600);
       return;
     }
     const [removed] = await removeItems([item.id]);

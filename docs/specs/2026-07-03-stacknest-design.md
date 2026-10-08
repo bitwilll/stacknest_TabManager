@@ -380,6 +380,58 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+## Design-chief polish + launch readiness (2026-10-09)
+
+The owner: "fix minor indentation and placement, also font size issues, and make this app launch
+ready … make sure the appropriate icons are added where needed [only put icons where needed] …
+while collapsing the side bar, make the side bar icons a little bigger and stylish."
+
+**Method.** Five measured audits (placement · type · icon coverage · the collapsed rail · Chrome
+Web Store readiness) on private servers; a design-chief synthesis resolved their conflicts into one
+change list (29 CSS, 15 JS, 3 HTML items); the launch auditor went on to build the store kit.
+
+**Placement.** One left edge in the sidebar (logo, view icons and captions at 22px), caption buttons
+on the count-pill column, the column header on the cards' 12px inset, state and tools sharing one
+centre line when a head has no note, scope/numeral/unit on one baseline, the column count on the
+name's baseline, the vertical tab rail's hairline continuing the top bar's (`--top-h`), Notes and
+Duplicates row glyphs on their neighbours' insets, crumbs on the head's text edge, index lists
+hanging into the gutter, one 36px control height (`--ctl-h`), tools that start on the scope's edge
+when the head stacks, and the sidebar markup re-indented.
+
+**Type.** `--t1` is 11px (the smallest real text), captions and counts share it; timestamps moved
+to `--t2`; popover chips match card tags; help text is grotesk, never mono prose; one section-heading
+style (750 / --t5); control labels at 600 with only the primary at 700; view titles get line-height
+1.25 so descenders never clip; Settings' text-size previews use the weights of the text they control.
+
+**Icons — only where they help.** New glyphs: trash, library, columns, key, merge, cloudUp,
+cloudDown, reset, paste. A permanent delete wears trash (× stays for remove/close/clear); a move or
+go-to wears its destination (Library = books, Collections = columns); Drive arrows show direction;
+the Vault's PIN actions wear a key; "Keep one of each" (the only head primary without one) gets
+merge; the Library nav glyph no longer copies Stash's archive box; one tag glyph everywhere; every
+labelled pill draws its glyph at 15px (13 in small pills, 16 when folded to a circle). Dead glyphs
+(logo, sun, moon, refresh, person) removed. Badges cap at "99+" (`badgeText`).
+
+**The rail.** 72px, one centre line for every mark; 40px view tiles with 20px glyphs (34/18 on
+short windows); Spaces as 36px rings in their colour with the initial (filled when chosen); a dashed
+new-Space slot; crisp count badges cut out of the tile; state drawn once (snow tile + lava edge);
+anchored name tooltips (`data-tip`, so no doubled native title), keyboard- and reduced-motion-safe.
+
+**Launch.** Manifest: description 124/132, `short_name`, `homepage_url`, `minimum_chrome_version`
+128, a toolbar `action`, a strict `extension_pages` CSP with `connect-src` for exactly the four API
+origins, and **no host permissions** (all four answer CORS). New brand icons (`icons/icon.svg` →
+16/32/48/128). `scripts/package.sh` (allowlist zip, key stripped, mock excluded, store limits),
+`scripts/smoke-test.mjs` (real extension, headless Chrome, every view × theme), `scripts/store-assets.mjs`
+(1280×800 screenshots + promo tile), `scripts/render-icons.mjs`. `PRIVACY.md`, `docs/store/`
+(listing, permission justifications, launch checklist), `fonts/OFL.txt`. Code: the "StackNest
+Cloud PRO" teaser removed; developer copy out of the UI; Switch account only where Chrome can pick;
+the ticker credits CoinGecko and ExchangeRate-API, caches FX an hour, pauses while hidden, times out
+and keeps last-good prices; the worker re-arms reminders on install/update and startup.
+
+**Verified.** Rendered-element contrast audit: zero AA failures across 8 views × 3 themes × 2
+tab-bar modes × 2 sidebar modes; no horizontal overflow in any of them; every rail mark centred at
+x=40 with no overflow; real-extension smoke test (store build and dev build): 0 exceptions, 0
+console errors, 0 CSP violations, 0 failed loads.
+
 ## Section system + bento sidebar (2026-10-06)
 
 The owner: "design the proper section and make sure it is well organized", then "make the side

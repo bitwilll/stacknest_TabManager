@@ -4,7 +4,7 @@
 // a mind-graph (tags as hubs, items linked to them) plus a per-tag sorting grid.
 
 import { el, icon, tile, domainOf, toast, hueOf, matches, normalizeUrl, debounce, viewHidden, emptyState,
-  sectionHead, secGroup, noMatch, goTo, plural } from './ui.js';
+  sectionHead, secGroup, noMatch, goTo, plural, badgeText } from './ui.js';
 import { getKey, update } from './store.js';
 import { SPACES_KEY, loadSpaces } from './spacesStore.js';
 
@@ -90,7 +90,7 @@ export async function openTagEditor(anchor, { url, title }) {
   });
 
   const pop = el('div', { class: 'tagpop', role: 'dialog', 'aria-label': 'Edit tags' },
-    el('div', { class: 'tagpop-h', text: 'Tags' }), chips,
+    el('div', { class: 'tagpop-h' }, icon('tag', 13), el('span', { text: 'Tags' })), chips,
     el('div', { class: 'tagpop-add' }, input, datalist),
     el('div', { class: 'tagpop-hint', text: 'Enter or comma to add · Esc to close' }),
   );
@@ -226,7 +226,7 @@ export async function render() {
   const counts = new Map();
   for (const it of items) for (const t of it.tags) counts.set(t, (counts.get(t) || 0) + 1);
   const tagList = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count]) => ({ name, count }));
-  if (countEl) countEl.textContent = tagList.length ? String(tagList.length) : '';
+  if (countEl) countEl.textContent = badgeText(tagList.length);
   if (activeTag && !counts.has(activeTag)) activeTag = null;
   if (viewHidden(root)) return; // badge stays live; the DOM is rebuilt when the view opens
 
@@ -237,8 +237,8 @@ export async function render() {
       icon: 'tag', title: 'No tags yet',
       hint: ['Hover any saved link or bookmark and use its ', el('strong', {}, 'tag'), ' action. Tagged links gather here, with a graph of how they relate.'],
       actions: [
-        el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('board') }, el('span', { text: 'Open Collections' })),
-        el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('library') }, el('span', { text: 'Open Library' })),
+        el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('board') }, icon('columns', 14), el('span', { text: 'Open Collections' })),
+        el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('library') }, icon('library', 14), el('span', { text: 'Open Library' })),
       ] })));
     return;
   }

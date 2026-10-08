@@ -1,6 +1,7 @@
 // Background service worker.
 //
-// Exists for one reason: chrome.identity's OAuth flows can't run from an
+// Three jobs: OAuth delegation for incognito pages, task reminders (alarms → notifications),
+// and the toolbar button. The first exists because chrome.identity's OAuth flows can't run from an
 // incognito page, so incognito newtabs delegate token mint/evict here via
 // runtime messages (see getToken in drive.js). With "incognito": "spanning"
 // there is a single extension instance — this worker always runs in the
@@ -76,6 +77,27 @@ chrome.alarms?.onAlarm.addListener(async (alarm) => {
     });
   } catch (e) { console.error('reminder alarm failed:', e); }
 });
+
+// Chrome may drop alarms when the extension updates, and a store update arrives silently — so
+// the worker re-arms every pending reminder on install/update and on browser start, instead
+// of waiting for a StackNest tab to open (notes.js rearmAlarms does the same from the page).
+// Same rule as notes.js: fire at `at` minus the lead time, unfinished cards only, future only.
+async function rearmReminders() {
+  try {
+    const store = (await chrome.storage.local.get(NOTES_KEY))[NOTES_KEY] || {};
+    const list = Array.isArray(store.items) ? store.items : [...(store.todos || []), ...(store.notes || [])];
+    for (const item of list) {
+      if (!item?.id || !item.reminder?.at || isFinished(item)) continue;
+      const when = new Date(item.reminder.at).getTime() - (item.reminder.lead || 0) * 60000;
+      if (when > Date.now()) chrome.alarms.create(REMINDER_PREFIX + item.id, { when });
+    }
+  } catch (e) { console.error('re-arming reminders failed:', e); }
+}
+chrome.runtime.onInstalled.addListener(rearmReminders);
+chrome.runtime.onStartup.addListener(rearmReminders);
+
+// the toolbar button opens a new tab — which is StackNest
+chrome.action?.onClicked.addListener(() => chrome.tabs.create({}));
 
 // clicking the notification opens StackNest on the Notes view (app.js reads the hash)
 chrome.notifications?.onClicked.addListener((id) => {

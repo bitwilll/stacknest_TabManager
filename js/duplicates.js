@@ -1,7 +1,7 @@
 // Duplicates view — finds the same URL saved more than once across your collections
 // and Chrome bookmarks, groups the copies, and lets you prune the redundant ones.
 
-import { el, icon, actionBtn, tile, domainOf, toast, matches, normalizeUrl, confirmDialog, debounce, viewHidden, emptyState, sectionHead, secGroup, noMatch, plural } from './ui.js';
+import { el, icon, actionBtn, tile, domainOf, toast, matches, normalizeUrl, confirmDialog, debounce, viewHidden, emptyState, sectionHead, secGroup, noMatch, plural, badgeText } from './ui.js';
 import { SPACES_KEY, loadSpaces, loadWorkspaces, mutateSpace, insertTabAt } from './spacesStore.js';
 import { getKey, update } from './store.js';
 import { pushHistory, flashDeleted } from './history.js';
@@ -74,7 +74,7 @@ export async function render() {
   const shown = q ? groups.filter((g) => g.some((o) => matches(q, o.title, o.url))) : groups;
 
   const totalRedundant = groups.reduce((n, g) => n + (g.length - 1), 0);
-  if (countEl) countEl.textContent = totalRedundant ? String(totalRedundant) : '';
+  if (countEl) countEl.textContent = badgeText(totalRedundant);
   if (viewHidden(root)) return; // badge stays live; the DOM is rebuilt when the view opens
 
   // the head stays in every state — empty and no-match live inside the "duplicated links" group
@@ -86,7 +86,7 @@ export async function render() {
       : 'Every link across your collections and Chrome bookmarks is saved exactly once.',
     primary: groups.length ? el('button', { class: 'btnx primary dup-clean', type: 'button',
       title: 'For every duplicated link: keep one copy, remove all the others',
-      onclick: () => autoClean(groups, totalRedundant) }, el('span', { text: 'Keep one of each' })) : null,
+      onclick: () => autoClean(groups, totalRedundant) }, icon('merge', 15), el('span', { text: 'Keep one of each' })) : null,
     // the truth about the existing scope, next to the button: it ignores search and ticks
     // only worth saying "not just the n shown" when the search actually hides some of them
     primaryNote: groups.length
@@ -163,7 +163,7 @@ function groupCard(group) {
     box.addEventListener('change', () => setKept(box.checked));
     const row = el('div', { class: 'dup-occ' },
       box,
-      el('span', { class: `dup-src-ic ${o.type}` }, icon(o.type === 'bookmark' ? 'archive' : 'folder', 13)),
+      el('span', { class: `dup-src-ic ${o.type}` }, icon(o.type === 'bookmark' ? 'library' : 'columns', 13)),
       el('span', { class: 'dup-src', text: o.sourceLabel }),
       // says what × does to this copy: collection removals go through undo, bookmark removals do not
       el('span', { class: 'dup-src-kind', text: o.type === 'collection' ? 'collection · undoable' : 'bookmark · permanent' }),

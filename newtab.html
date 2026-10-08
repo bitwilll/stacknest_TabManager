@@ -45,10 +45,10 @@
           <span class="nav-count" id="nav-vault-count"></span>
         </button>
         <button class="navx view-link" id="nav-library" data-view="library" title="Library">
-          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="4.5" rx="1.2"/><path d="M5.5 8.5v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9"/><path d="M10 12.5h4"/></svg></span>Library
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="4" height="16" rx="1"/><rect x="8.5" y="4" width="4" height="16" rx="1"/><path d="m14.2 5.6 3.6-.9 3.4 14.7-3.6.9Z"/></svg></span>Library
         </button>
         <button class="navx view-link" id="nav-tags" data-view="tags" title="Tags">
-          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13 11 6h5a2 2 0 0 1 2 2v5l-7 7a1.6 1.6 0 0 1-2.3 0L4 15.3a1.6 1.6 0 0 1 0-2.3Z"/><circle cx="14" cy="10" r="1.15"/></svg></span>Tags
+          <span class="nav-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg></span>Tags
           <span class="nav-count" id="nav-tags-count"></span>
         </button>
         <button class="navx view-link" id="nav-duplicates" data-view="duplicates" title="Duplicates">
@@ -62,35 +62,35 @@
       </nav>
 
       <div class="side-scroll">
-      <div class="side-sec" role="group" aria-labelledby="cap-spaces">
-        <div class="side-label-row">
-          <h2 class="side-label" id="cap-spaces">Spaces</h2>
-          <button class="icb" id="new-space-btn" title="New space" aria-label="New space">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-          </button>
-        </div>
-        <div id="spaces-nav"></div>
-      </div>
-
-      <div class="side-sec" role="group" aria-labelledby="cap-collections">
-        <div class="side-label-row">
-          <h2 class="side-label" id="cap-collections">Collections<span class="side-label-scope" id="collections-scope"></span></h2>
-          <div class="label-acts">
-            <button class="icb" id="export-all-btn" title="Export this space’s collections (bookmarks .html)" aria-label="Export this space’s collections">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>
-            </button>
-            <button class="icb" id="new-collection-btn" title="New collection" aria-label="New collection">
+        <div class="side-sec" role="group" aria-labelledby="cap-spaces">
+          <div class="side-label-row">
+            <h2 class="side-label" id="cap-spaces">Spaces</h2>
+            <button class="icb" id="new-space-btn" title="New space" aria-label="New space">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
           </div>
+          <div id="spaces-nav"></div>
         </div>
-        <div id="collections-nav"></div>
-      </div>
 
-      <div class="side-sec side-sec-grow" role="group" aria-labelledby="cap-windows">
-        <h2 class="side-label" id="cap-windows">Windows</h2>
-        <div id="windows-root"></div>
-      </div>
+        <div class="side-sec" role="group" aria-labelledby="cap-collections">
+          <div class="side-label-row">
+            <h2 class="side-label" id="cap-collections">Collections<span class="side-label-scope" id="collections-scope"></span></h2>
+            <div class="label-acts">
+              <button class="icb" id="export-all-btn" title="Export this space’s collections (bookmarks .html)" aria-label="Export this space’s collections">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></svg>
+              </button>
+              <button class="icb" id="new-collection-btn" title="New collection" aria-label="New collection">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+          </div>
+          <div id="collections-nav"></div>
+        </div>
+
+        <div class="side-sec side-sec-grow" role="group" aria-labelledby="cap-windows">
+          <h2 class="side-label" id="cap-windows">Windows</h2>
+          <div id="windows-root"></div>
+        </div>
       </div>
 
       <div class="side-sec side-settings">

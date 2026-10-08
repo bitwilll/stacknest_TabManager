@@ -63,10 +63,10 @@ export const TICKER_FX = ['EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'CNY', 'CHF'
 // each role is a multiplier the tokens are computed from (see the :root block in the CSS).
 // The interface-size zoom above scales everything at once; these tune one kind of text.
 export const TYPE_ROLES = [
-  { id: 'heading', label: 'Headings', sub: 'View and section titles.', sample: 'Collections', token: '--t7' },
-  { id: 'title', label: 'Titles', sub: 'Card and collection titles.', sample: 'Weekend reading', token: '--t4' },
-  { id: 'body', label: 'Body text', sub: 'Navigation, buttons, inputs, notes.', sample: 'Drag a tab down from the tray', token: '--t3' },
-  { id: 'small', label: 'Small text', sub: 'Counts, domains, timestamps, section labels.', sample: 'UPDATED SEP 7 · 12 TABS', token: '--t2', mono: true },
+  { id: 'heading', label: 'Headings', sub: 'View and section titles.', sample: 'Collections', token: '--t7', weight: 800 },
+  { id: 'title', label: 'Titles', sub: 'Card and collection titles.', sample: 'Weekend reading', token: '--t4', weight: 700 },
+  { id: 'body', label: 'Body text', sub: 'Navigation, buttons, inputs, notes.', sample: 'Drag a tab down from the tray', token: '--t3', weight: 500 },
+  { id: 'small', label: 'Small text', sub: 'Counts, domains, timestamps, section labels.', sample: 'updated sep 7 · 12 tabs', token: '--t2', mono: true, weight: 500 },
 ];
 export const TYPE_STEPS = [0.85, 0.92, 1, 1.08, 1.16, 1.25, 1.35];
 export const DEFAULT_TYPE_SIZES = Object.fromEntries(TYPE_ROLES.map((r) => [r.id, 1]));
@@ -513,7 +513,6 @@ function backupPlate({ cloud, live, needsSetup, connected }, st) {
       help: 'Applies to Export backup and Back up now. Not remembered after this tab closes.' })),
     group('file on this device', setRow({ label: 'Backup file', help: 'A JSON file you can re-import later or on another machine.', control: [exportBtn, importBtn] })),
     group('google drive', driveGroup(cloud, needsSetup, connected)),
-    group('stacknest cloud', soonBlock()),
   ], [
     callout('Import replaces your current spaces, collections, notes, tags, My Space, the Vault and settings. Bookmarks, if present, are added under a new "StackNest Import" folder (nothing is overwritten).'),
     callout(driveNote(live, needsSetup)),
@@ -536,40 +535,36 @@ function driveGroup(cloud, needsSetup, connected) {
     box.append(
       el('div', { class: 'cloud-row' }, name(el('span', { class: 'cloud-acct', text: cloud.email || 'Google Drive' })),
         el('div', { class: 'cloud-btns' },
-          el('button', { class: 'btnx ghosty', type: 'button', dataset: { key: 'drive-switch' }, title: 'Sign in with a different Google account',
-            onclick: withBusy(async () => { await switchAccount(); toast('Switched account'); }) }, icon('swap', 13), el('span', { text: 'Switch account' })),
+          // only where Chrome offers an account picker; otherwise the button could only show an error
+          canChooseAccount() ? el('button', { class: 'btnx ghosty', type: 'button', dataset: { key: 'drive-switch' }, title: 'Sign in with a different Google account',
+            onclick: withBusy(async () => { await switchAccount(); toast('Switched account'); }) }, icon('swap', 15), el('span', { text: 'Switch account' })) : null,
           el('button', { class: 'btnx ghosty', type: 'button', dataset: { key: 'drive-signout' }, title: 'Sign out of Google Drive on this device',
-            onclick: withBusy(signOutFlow) }, icon('logout', 13), el('span', { text: 'Sign out' })))),
+            onclick: withBusy(signOutFlow) }, icon('logout', 15), el('span', { text: 'Sign out' })))),
       el('div', { class: 'cloud-meta', text: `Last backup ${shortWhen(cloud.lastBackupAt)} · last restore ${shortWhen(cloud.lastRestoreAt)}` }),
       el('div', { class: 'set-actions' },
         el('button', { class: 'btnx primary', type: 'button', dataset: { key: 'drive-backup' },              // THE page primary when connected
           onclick: withBusy(async () => { const r = await backupNow(includeBookmarks); toast(`Backed up ${r.collections} collection${r.collections === 1 ? '' : 's'}${r.bookmarks ? ' + bookmarks' : ''} to Drive`); }) },
-          icon('cloud', 14), el('span', { text: 'Back up now' })),
+          icon('cloudUp', 14), el('span', { text: 'Back up now' })),
         el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'drive-restore' }, onclick: withBusy(async () => {
           const ok = await confirmDialog({ title: 'Restore from Drive?', message: 'This replaces your current spaces, collections, notes, tags, My Space, the Vault and settings with the latest cloud backup.', confirmLabel: 'Restore', danger: true });
           if (!ok) return;
           const r = await restoreLatest(); toast(`Restored ${r.collections} collection${r.collections === 1 ? '' : 's'} from Drive`);
-        }) }, el('span', { text: 'Restore latest' }))));
+        }) }, icon('cloudDown', 14), el('span', { text: 'Restore latest' }))));
   }
   return box;
 }
 
 function driveNote(live, needsSetup) {
-  if (needsSetup) return 'Google Drive sync isn’t set up in this build yet. Add your own Google OAuth client ID to the manifest to enable it — see the README’s “Cloud sync setup” steps.';
+  if (needsSetup) return 'Google Drive backup isn’t available in this build.';
   if (!live) return 'Preview mode: Google sign-in and Drive aren’t available outside the packaged extension, so this simulates the cloud locally. In the real extension it uses your Google account.';
   // Be explicit about WHOSE account this is: nothing is pre-connected, and the backup
   // goes to the signed-in person's own private Drive folder.
   return canChooseAccount()
     ? 'You choose the Google account. “Connect” opens Google’s account picker, and “Switch account” moves Drive sync to a different one at any time. Your backup lives in that account’s private StackNest folder — no one else can read it.'
-    : 'Drive sync signs in as the Google account this Chrome profile is signed into, and Chrome offers no picker for it. To use a different account, switch Chrome profiles — or turn on the built-in account chooser by adding a Web OAuth client ID (see js/authConfig.js). Your backup always lives in your own private Drive folder; the developer has no access to it.';
+    : 'Drive sync uses the Google account this Chrome profile is signed into. To back up to a different account, use a different Chrome profile. Your backup lives in a private folder in your own Drive; the developer has no access to it.';
 }
 
 // StackNest Cloud (Pro) — needs a hosted backend; placeholder for now
-const soonBlock = () => el('div', { class: 'cloud-provider is-soon' },
-  el('div', { class: 'cloud-row' },
-    el('span', { class: 'cloud-name' }, el('span', { class: 'cloud-dot pro' }), 'StackNest Cloud', el('span', { class: 'cloud-badge', text: 'PRO' })),
-    el('button', { class: 'btnx soft', disabled: 'true' }, el('span', { text: 'Coming soon' }))),
-  el('div', { class: 'cloud-meta', text: 'Managed cross-device sync on stacknest.com — a subscription tier arriving later.' }));
 
 /* ——— 03 Vault: the PIN and the two ways back in ——— */
 async function vaultPlate(st) {
@@ -585,7 +580,7 @@ async function vaultPlate(st) {
   if (!pinSet) {   // same row skeleton as the PIN-set state; Set a Vault PIN is .soft (was .primary)
     body.push(group('pin', setRow({ label: 'PIN', help: 'Not set — the Vault stays closed until you set one.',
       control: el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'pin-set' },
-        onclick: withBusy(async () => { if (await setPinFlow()) render(); }) }, icon('lock', 14), el('span', { text: 'Set a Vault PIN' })) })));
+        onclick: withBusy(async () => { if (await setPinFlow()) render(); }) }, icon('key', 14), el('span', { text: 'Set a Vault PIN' })) })));
     return plate(PLATES[2], { desc, status: st }, body, [caveat]);
   }
 
@@ -593,15 +588,15 @@ async function vaultPlate(st) {
     group('pin', setRow({ label: 'PIN',
       help: lockedOut ? 'Locked after too many wrong attempts.' : `Set. ${MAX_FAILS} wrong attempts in a row locks the Vault.`,
       control: el('button', { class: 'btnx ghosty', type: 'button', dataset: { key: 'pin-change' }, disabled: lockedOut ? 'true' : null,
-        onclick: withBusy(async () => { if (await requirePin() && await setPinFlow({ keepQuestion: true })) render(); }) }, el('span', { text: 'Change PIN' })) })),
+        onclick: withBusy(async () => { if (await requirePin() && await setPinFlow({ keepQuestion: true })) render(); }) }, icon('key', 14), el('span', { text: 'Change PIN' })) })),
     group('recovery',
       setRow({ label: 'Recover with your security question', help: hasQ ? lock.question : 'No security question was set for this PIN.',
         control: el('button', { class: 'btnx ghosty', type: 'button', dataset: { key: 'pin-answer' }, disabled: hasQ ? null : 'true',
-          onclick: withBusy(async () => { await recoverByQuestionFlow(); render(); }) }, el('span', { text: 'Answer question' })) }),
+          onclick: withBusy(async () => { await recoverByQuestionFlow(); render(); }) }, icon('help', 14), el('span', { text: 'Answer question' })) }),
       setRow({ label: 'Recover with Google',
         help: lock.ownerEmail ? `Sign out of Drive and back in as ${lock.ownerEmail} to clear the PIN.` : 'No Google account was connected when this PIN was set, so this route is unavailable.',
         control: el('button', { class: 'btnx ghosty', type: 'button', dataset: { key: 'pin-reset' }, disabled: lock.ownerEmail ? null : 'true',
-          onclick: withBusy(async () => { await resetPinFlow(); render(); }) }, el('span', { text: 'Sign out and reset' })) })),
+          onclick: withBusy(async () => { await resetPinFlow(); render(); }) }, icon('logout', 14), el('span', { text: 'Sign out and reset' })) })),
   );
   return plate(PLATES[2], { desc, status: st }, body, [caveat]);
 }
@@ -698,7 +693,7 @@ function fontRow(labelText, subText, list, current, onPick, sampleClass, key) {
 // on different rows cannot clobber each other (saveSettings reads inside the queue).
 function typeSizeGroup(sizes) {
   const steppers = {};
-  const resetBtn = el('button', { class: 'btnx ghosty sm', type: 'button', dataset: { key: 'type-reset' }, onclick: () => setAll(DEFAULT_TYPE_SIZES) }, el('span', { text: 'Reset' }));
+  const resetBtn = el('button', { class: 'btnx ghosty sm', type: 'button', dataset: { key: 'type-reset' }, onclick: () => setAll(DEFAULT_TYPE_SIZES) }, icon('reset', 13), el('span', { text: 'Reset' }));
   const syncReset = () => {
     const allDefault = TYPE_ROLES.every((r) => (sizes[r.id] ?? 1) === 1);
     resetBtn.disabled = allDefault;
@@ -714,7 +709,7 @@ function typeSizeGroup(sizes) {
 
   const rows = TYPE_ROLES.map((r) => {
     const value = el('span', { class: 'set-step-val' });
-    const sample = el('span', { class: `set-sample set-sample-role${r.mono ? ' sample-mono' : ' sample-ui'}`, text: r.sample, style: `font-size: var(${r.token})` });
+    const sample = el('span', { class: `set-sample set-sample-role${r.mono ? ' sample-mono' : ' sample-ui'}`, text: r.sample, style: `font-size: var(${r.token}); font-weight: ${r.weight}` });
     const minus = el('button', { class: 'set-step', title: `Smaller ${r.label.toLowerCase()}`, 'aria-label': `Smaller ${r.label.toLowerCase()}` }, icon('minus', 13));
     const plus = el('button', { class: 'set-step', title: `Larger ${r.label.toLowerCase()}`, 'aria-label': `Larger ${r.label.toLowerCase()}` }, icon('plus', 13));
     const show = (v) => {

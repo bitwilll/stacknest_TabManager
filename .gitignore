@@ -12,3 +12,6 @@ Thumbs.db
 *.crx
 *.pem
 *.zip
+
+# Web Store build output (scripts/package.sh)
+dist/

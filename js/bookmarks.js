@@ -336,7 +336,7 @@ function moveOutBtn(node) {
 
 function deleteBtn(node, label) {
   let armed = false;
-  return actionBtn('close', label, async (_, btn) => {
+  return actionBtn('trash', label, async (_, btn) => {
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
@@ -344,7 +344,7 @@ function deleteBtn(node, label) {
       setTimeout(() => {
         armed = false;
         btn.classList.remove('armed');
-        btn.replaceChildren(icon('close', 14));
+        btn.replaceChildren(icon('trash', 14));
       }, 2600);
       return;
     }

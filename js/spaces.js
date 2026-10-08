@@ -5,7 +5,7 @@
 import {
   el, icon, actionBtn, toast, tile, domainOf, shortDate, matches,
   addDropTarget, normalizeUrl, confirmDialog, exportDownload, emptyState,
-  secState, noMatch, plural, tabSourceHint,
+  secState, noMatch, plural, tabSourceHint, badgeText,
 } from './ui.js';
 import {
   SPACES_KEY, WORKSPACES_KEY, ACTIVE_WS_KEY, DOT_COLORS, WS_COLORS,
@@ -180,7 +180,7 @@ export async function render() {
   const q = getQuery();
   const [workspaces, activeId, spaces, tagsMap] = await Promise.all([loadWorkspaces(), getActiveWorkspaceId(), loadActiveSpaces(), loadTags()]);
 
-  navCount.textContent = spaces.length ? String(spaces.length) : '';
+  navCount.textContent = badgeText(spaces.length);
   // the active Space's colour — the board head shows it as the scope swatch
   const activeWs = workspaces.find((w) => w.id === activeId);
   const wsColor = activeWs?.color || WS_COLORS[0];
@@ -323,13 +323,13 @@ function startWsRename(row, label, w, afterwards = null) {
 
 function wsDeleteBtn(w, total) {
   let armed = false;
-  return actionBtn('close', 'Delete space and its collections', async (_, btn) => {
+  return actionBtn('trash', 'Delete space and its collections', async (_, btn) => {
     if (total <= 1) { toast('Keep at least one space'); return; }
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
       btn.replaceChildren('sure?');
-      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('close', 14)); }, 2600);
+      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('trash', 14)); }, 2600);
       return;
     }
     await removeWorkspace(w);
@@ -476,12 +476,12 @@ function startColRename(nameSpan, space) {
 
 function navDeleteBtn(space) {
   let armed = false;
-  return actionBtn('close', 'Delete collection', async (_, btn) => {
+  return actionBtn('trash', 'Delete collection', async (_, btn) => {
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
       btn.replaceChildren('sure?');
-      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('close', 14)); }, 2600);
+      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('trash', 14)); }, 2600);
       return;
     }
     await removeCollection(space);
@@ -570,8 +570,8 @@ function tabCard(space, tab, index, tagsMap) {
       tagsMap ? tagChips(tagsMap, tab.url) : null,
     ),
     el('span', { class: 'acts' },
-      actionBtn('tag', 'Edit tags', (_, btn) => openTagEditor(btn, { url: tab.url, title: tab.title || tab.url })),
       actionBtn('external', 'Open in background tab', () => { chrome.tabs.create({ url: tab.url, active: false }); toast('Opened in background'); }),
+      actionBtn('tag', 'Edit tags', (_, btn) => openTagEditor(btn, { url: tab.url, title: tab.title || tab.url })),
       actionBtn('close', 'Remove from collection', () => removeTab(space, tab, index), 'danger'),
     ),
   );
@@ -617,12 +617,12 @@ function addTabGhost(space) {
 
 function deleteBtn(space) {
   let armed = false;
-  return actionBtn('close', 'Delete collection', async (_, btn) => {
+  return actionBtn('trash', 'Delete collection', async (_, btn) => {
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
       btn.replaceChildren('sure?');
-      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('close', 14)); }, 2600);
+      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('trash', 14)); }, 2600);
       return;
     }
     await removeCollection(space);

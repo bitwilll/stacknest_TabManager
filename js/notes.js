@@ -32,7 +32,7 @@
 //   4. The markdown preview swap is driven by focus on that one card, never by a render.
 
 import { el, icon, actionBtn, toast, confirmDialog, exportDownload, pickFile, matches, shortDate, viewHidden, emptyState,
-  sectionHead, secGroup, secState, setSecNote, noMatch, plural } from './ui.js';
+  sectionHead, secGroup, secState, setSecNote, noMatch, plural, badgeText } from './ui.js';
 import { getKey, update, queued } from './store.js';
 import { exportBackup } from './backup.js';
 import { backupNow, restoreLatest, loadCloudState } from './drive.js';
@@ -304,7 +304,7 @@ export async function render() {
   const q = getQuery ? getQuery() : '';
 
   const open = openCount(items);
-  if (countEl) countEl.textContent = open ? String(open) : '';
+  if (countEl) countEl.textContent = badgeText(open);
   if (viewHidden(root)) return; // nothing to paint — app.js re-renders the view when it opens
 
   if (!shell || !root.contains(shell.wrap)) buildShell();
@@ -425,11 +425,11 @@ const backupMenu = () => menuButton('Backup & import', 'cloud', [
     { label: 'Notes only', icon: 'note', run: exportNotesOnly }] },
   { caption: 'import', items: [
     { label: 'From a file…', icon: 'upload', run: importFromFile },
-    { label: 'From Apple Notes…', icon: 'note', run: openAppleNotesImport }] },
+    { label: 'From Apple Notes…', icon: 'paste', run: openAppleNotesImport }] },
   { caption: 'google drive', badge: async () => { const c = await loadCloudState(); return (c.connected || c.email) ? 'connected' : 'not connected'; },
     items: [
-      { label: 'Back up to Drive', icon: 'cloud', run: driveBackup },
-      { label: 'Fetch from Drive', icon: 'download', note: 'replaces everything on this device', danger: true, run: driveRestore }] },
+      { label: 'Back up to Drive', icon: 'cloudUp', run: driveBackup },
+      { label: 'Fetch from Drive', icon: 'cloudDown', note: 'replaces everything on this device', danger: true, run: driveRestore }] },
 ]);
 
 // quick-add a reminder — the head's bar row (New ▾ for all three kinds is the head's primary)
@@ -567,7 +567,7 @@ function itemCard(it) {
       actionBtn('bell', it.reminder ? 'Edit reminder' : 'Set reminder', (_, b) => openReminderEditor(b, it), it.reminder ? 'rem-bell on' : 'rem-bell'),
       actionBtn('tag', 'Tags', (_, b) => openTagPicker(b, it)),
       actionBtn('palette', 'Card colour', (_, b) => openColorPicker(b, it)),
-      actionBtn('close', `Delete ${label}`, () => removeCard(it), 'danger'),
+      actionBtn('trash', `Delete ${label}`, () => removeCard(it), 'danger'),
     ),
   ));
 
@@ -1112,7 +1112,7 @@ function openTagPicker(anchor, it) {
     chips.replaceChildren(...tags.map((t) => el('span', { class: 'tagpop-chip' },
       el('span', { class: 'tag-dot', style: `background:${tagColor(t)}` }),
       el('span', { class: 'tagpop-chip-t', text: t }),
-      el('button', { class: 'tagpop-x', title: `Remove ${t}`, onclick: () => commit(tags.filter((x) => x !== t)) }, icon('close', 11)))));
+      el('button', { class: 'tagpop-x', title: `Remove ${t}`, 'aria-label': `Remove ${t}`, onclick: () => commit(tags.filter((x) => x !== t)) }, icon('close', 11)))));
     if (!tags.length) chips.append(el('span', { class: 'tagpop-empty', text: 'No tags yet' }));
   };
   let current = [...(it.tags || [])];
@@ -1130,7 +1130,7 @@ function openTagPicker(anchor, it) {
   });
   draw(current);
   mountPop(el('div', { class: 'tagpop', role: 'dialog', 'aria-label': 'Edit tags' },
-    el('div', { class: 'tagpop-h', text: 'Tags' }), chips,
+    el('div', { class: 'tagpop-h' }, icon('tag', 13), el('span', { text: 'Tags' })), chips,
     el('div', { class: 'tagpop-add' }, input),
     el('div', { class: 'tagpop-hint', text: 'Enter or comma to add · Esc to close' }),
   ), anchor, input);
