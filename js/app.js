@@ -23,70 +23,163 @@ async function main() {
   applySettings(await loadSettings());
   await ensureWorkspaces();
 
-  // — theme: one button that flips, showing the icon for the theme it will switch TO —
-  const themeBtn = document.getElementById('theme-toggle');
-  let theme;
-  const applyTheme = (next) => {
-    theme = next;
-    document.documentElement.dataset.theme = next;
-    themeBtn.setAttribute('aria-pressed', String(next === 'dark'));
-    const to = next === 'dark' ? 'light' : 'dark';
-    themeBtn.title = `Switch to ${to} theme`;
-    themeBtn.setAttribute('aria-label', `Switch to ${to} theme`);
+  // — theme: auto (follows the OS, live) · light · dark · any extra theme the HTML declares —
+  // Buttons carry data-theme-choice; a theme is a :root[data-theme='<id>'] token block in the CSS.
+  const themeBtns = Object.fromEntries([...document.querySelectorAll('[data-theme-choice]')].map((b) => [b.dataset.themeChoice, b]));
+  const systemDark = matchMedia('(prefers-color-scheme: dark)');
+  const applyTheme = (choice) => {
+    const theme = choice === 'auto' ? (systemDark.matches ? 'dark' : 'light') : choice;
+    document.documentElement.dataset.theme = theme;
+    for (const [k, b] of Object.entries(themeBtns)) { b.classList.toggle('is-active', k === choice); b.setAttribute('aria-pressed', String(k === choice)); }
   };
-  applyTheme(localStorage.getItem(THEME_KEY)
-    || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-  themeBtn.addEventListener('click', () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
+  const themeChoice = () => { const v = localStorage.getItem(THEME_KEY); return Object.hasOwn(themeBtns, v) ? v : 'auto'; };
+  applyTheme(themeChoice());
+  systemDark.addEventListener('change', () => { if (themeChoice() === 'auto') applyTheme('auto'); });
+  // On narrow screens the full four-choice segment would crowd out search. Cycle through
+  // the same persisted choices with one explicit, labelled control instead.
+  const mobileThemeCycle = document.getElementById('mobile-theme-cycle');
+  const updateMobileThemeControl = () => {
+    const current = themeChoice();
+    const label = current === 'auto' ? 'Follow system theme' : `${current[0].toUpperCase()}${current.slice(1)} theme`;
+    mobileThemeCycle.title = `${label}. Change theme`;
+    mobileThemeCycle.setAttribute('aria-label', `${label}. Change theme`);
+  };
+  updateMobileThemeControl();
+  for (const [k, b] of Object.entries(themeBtns)) {
+    b.addEventListener('click', () => { localStorage.setItem(THEME_KEY, k); applyTheme(k); updateMobileThemeControl(); });
+  }
+  mobileThemeCycle.addEventListener('click', () => {
+    const choices = Object.keys(themeBtns);
+    const next = choices[(choices.indexOf(themeChoice()) + 1) % choices.length];
     localStorage.setItem(THEME_KEY, next);
     applyTheme(next);
+    updateMobileThemeControl();
   });
 
-  // — board layout (columns / tiles) —
+  // — sidebar: full, or folded to an icon rail (desktop widths only; remembered per browser) —
+  // The rail keeps every view one click away with its count as a badge; the Collections and
+  // Windows lists wait behind the expand button (the board and the tab strip carry the same).
+  const SIDE_KEY = 'stacknest:sidebar';
+  const sidebar = document.getElementById('sidebar');
+  const sideBtn = document.getElementById('side-collapse');
+  const wide = matchMedia('(min-width: 881px)');   // the rail is desktop-only (newtab.css)
+  // In the rail a name shows as a CSS tooltip read from data-tip; a native title would pop a second,
+  // slower one over it. A title moves to data-tip when its item is first pointed at or focused (Space
+  // rows re-render, so this is lazy) and every parked title moves back when the rail goes away.
+  const parkTitle = (e) => {
+    if (document.documentElement.dataset.side !== 'rail' || !wide.matches) return;
+    const item = e.target.closest?.('[title]');
+    if (!item || !sidebar.contains(item)) return;
+    item.dataset.tip = item.title;
+    item.removeAttribute('title');
+  };
+  const unparkTitles = () => {
+    for (const item of sidebar.querySelectorAll('[data-tip]')) { item.title = item.dataset.tip; delete item.dataset.tip; }
+  };
+  sidebar.addEventListener('pointerover', parkTitle);
+  sidebar.addEventListener('focusin', parkTitle);
+  wide.addEventListener('change', () => { if (!wide.matches) unparkTitles(); });   // the drawer shows the words again
+  const applySide = (mode) => {
+    const rail = mode === 'rail';
+    if (!rail) unparkTitles();
+    document.documentElement.dataset.side = rail ? 'rail' : 'full';
+    const label = rail ? 'Expand sidebar' : 'Collapse sidebar';
+    if (rail) { sideBtn.dataset.tip = label; sideBtn.removeAttribute('title'); } else sideBtn.title = label;
+    sideBtn.setAttribute('aria-label', label);
+    sideBtn.setAttribute('aria-expanded', String(!rail));
+  };
+  let sideMode = 'full';
+  try { sideMode = localStorage.getItem(SIDE_KEY) === 'rail' ? 'rail' : 'full'; } catch { /* storage blocked: start full */ }
+  applySide(sideMode);
+  sideBtn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.side === 'rail' ? 'full' : 'rail';
+    try { localStorage.setItem(SIDE_KEY, next); } catch { /* not remembered, still applied */ }
+    applySide(next);
+  });
+
+  // — board layout: columns (kanban) · tiles (full-width rows) · mosaic (masonry of cards) —
   const BOARD_MODE_KEY = 'stacknest:boardmode';
   const boardEl = document.getElementById('board-root');
-  const colBtn = document.getElementById('view-columns');
-  const tileBtn = document.getElementById('view-tiles');
+  const modeBtns = {
+    columns: document.getElementById('view-columns'),
+    tiles: document.getElementById('view-tiles'),
+    mosaic: document.getElementById('view-mosaic'),
+  };
   const applyBoardMode = (mode) => {
-    const tiles = mode === 'tiles';
-    boardEl.classList.toggle('tiles', tiles);
-    colBtn.classList.toggle('is-active', !tiles);
-    tileBtn.classList.toggle('is-active', tiles);
+    if (!Object.hasOwn(modeBtns, mode)) mode = 'columns';   // an unknown stored value falls back
+    boardEl.classList.toggle('tiles', mode === 'tiles');
+    boardEl.classList.toggle('mosaic', mode === 'mosaic');
+    for (const [k, b] of Object.entries(modeBtns)) { b.classList.toggle('is-active', k === mode); b.setAttribute('aria-pressed', String(k === mode)); }
   };
   applyBoardMode(localStorage.getItem(BOARD_MODE_KEY) || 'columns');
-  colBtn.addEventListener('click', () => { localStorage.setItem(BOARD_MODE_KEY, 'columns'); applyBoardMode('columns'); });
-  tileBtn.addEventListener('click', () => { localStorage.setItem(BOARD_MODE_KEY, 'tiles'); applyBoardMode('tiles'); });
+  for (const [k, b] of Object.entries(modeBtns)) {
+    b.addEventListener('click', () => { localStorage.setItem(BOARD_MODE_KEY, k); applyBoardMode(k); });
+  }
 
   // — views (Collections board / Library) —
   const views = {
-    board: { el: document.getElementById('view-board'), title: 'Collections' },
-    myspace: { el: document.getElementById('view-myspace'), title: 'My Space' },
-    vault: { el: document.getElementById('view-vault'), title: 'Vault' },
-    library: { el: document.getElementById('view-library'), title: 'Library' },
-    tags: { el: document.getElementById('view-tags'), title: 'Tags' },
-    duplicates: { el: document.getElementById('view-duplicates'), title: 'Duplicates' },
-    notes: { el: document.getElementById('view-notes'), title: 'Notes & Todos' },
-    settings: { el: document.getElementById('view-settings'), title: 'Settings' },
+    board: { el: document.getElementById('view-board'), title: 'Collections', kicker: 'Saved tabs' },
+    myspace: { el: document.getElementById('view-myspace'), title: 'My Space', kicker: 'Out of Chrome' },
+    vault: { el: document.getElementById('view-vault'), title: 'Vault', kicker: 'Behind a PIN' },
+    library: { el: document.getElementById('view-library'), title: 'Library', kicker: 'Chrome bookmarks' },
+    tags: { el: document.getElementById('view-tags'), title: 'Tags', kicker: 'Organize' },
+    duplicates: { el: document.getElementById('view-duplicates'), title: 'Duplicates', kicker: 'Clean up' },
+    notes: { el: document.getElementById('view-notes'), title: 'Notes & Todos', kicker: 'Scratchpad' },
+    settings: { el: document.getElementById('view-settings'), title: 'Settings', kicker: 'Preferences' },
   };
   const viewTitle = document.getElementById('view-title');
+  const viewKicker = document.getElementById('view-kicker');
   let currentView = 'board';
   const showView = (name) => {
     if (!views[name]) return;
     currentView = name;
     for (const [key, v] of Object.entries(views)) v.el.hidden = key !== name;
     viewTitle.textContent = views[name].title;
+    viewKicker.textContent = views[name].kicker;
     // Which view is open is a root-level fact, so the stylesheet can decide what belongs
-    // on screen (the tab strip and the board-layout toggle are board-only). Doing this in
+    // on screen (the horizontal tab strip is board-only). Doing this in
     // CSS rather than inline styles lets the "Open tabs bar" setting override it without
     // the two mechanisms fighting over `style.display`.
     document.documentElement.dataset.view = name;
     refreshView(name); // show current data when a view is opened
     document.querySelectorAll('.view-link').forEach((btn) => {
-      btn.classList.toggle('is-active', btn.dataset.view === name);
+      const active = btn.dataset.view === name;
+      btn.classList.toggle('is-active', active);
+      if (active) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
     });
+    // #view deep-links (e.g. the reminder notification opens newtab.html#notes)
+    try { history.replaceState(null, '', name === 'board' ? location.pathname : `#${name}`); } catch { /* not navigable */ }
+    closeDrawer();
   };
   document.querySelectorAll('.view-link').forEach((btn) => {
     btn.addEventListener('click', () => showView(btn.dataset.view));
+  });
+
+  // — narrow screens: the sidebar becomes a drawer behind a menu button —
+  // While it is open everything behind it is inert, focus lands on the active view row, and
+  // closing hands focus back to the menu button.
+  const app = document.querySelector('.app');
+  const narrow = matchMedia('(max-width: 880px)');
+  const drawerBtn = document.getElementById('drawer-btn');
+  const setDrawer = (open) => {
+    const was = app.classList.contains('drawer-open');
+    app.classList.toggle('drawer-open', open);
+    drawerBtn.setAttribute('aria-expanded', String(open));
+    // everything beside the sidebar goes inert, not just .main: in Vertical mode the tab rail
+    // (#tabs-bar) is a sibling of .main, and its chips must not be reachable behind the scrim
+    for (const n of app.children) if (n.id !== 'sidebar') n.inert = open && narrow.matches;
+    if (open && !was) requestAnimationFrame(() => document.querySelector('#sidebar .view-link.is-active')?.focus());
+    if (!open && was && document.getElementById('sidebar').contains(document.activeElement)) drawerBtn.focus();
+  };
+  function closeDrawer() { setDrawer(false); }
+  drawerBtn.addEventListener('click', () => setDrawer(!app.classList.contains('drawer-open')));
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  document.getElementById('drawer-scrim').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && app.classList.contains('drawer-open')) closeDrawer(); });
+  // widening past the drawer breakpoint with it open must not leave the panel inert
+  narrow.addEventListener('change', () => {
+    for (const n of app.children) if (n.id !== 'sidebar') n.inert = app.classList.contains('drawer-open') && narrow.matches;
   });
 
   // — columns —
@@ -104,6 +197,8 @@ async function main() {
     navRoot: document.getElementById('collections-nav'),
     wsRoot: document.getElementById('spaces-nav'),
     navCount: document.getElementById('nav-collections-count'),
+    boardState: document.getElementById('board-state'),
+    collectionsScope: document.getElementById('collections-scope'),
     getQuery,
     ensureBoardVisible: () => showView('board'),
     clearSearch: () => { search.value = ''; renderAll(); },
@@ -148,8 +243,14 @@ async function main() {
     else if (name === 'myspace' || name === 'vault') spaceCol.render();
   }
 
-  // topbar + tray actions
+  // open on the view named in the hash, if any (notification click → #notes)
+  const wanted = location.hash.slice(1);
+  if (views[wanted] && wanted !== 'board') showView(wanted);
+  window.addEventListener('hashchange', () => { const v = location.hash.slice(1) || 'board'; if (views[v] && v !== currentView) showView(v); });
+
+  // top-bar window actions (Save window, Stash & close, the narrow-screen stash) + sidebar caption actions
   document.getElementById('stash-window-btn').addEventListener('click', stashCurrentWindow);
+  document.getElementById('mobile-stash-window-btn').addEventListener('click', stashCurrentWindow);
   document.getElementById('save-all-btn').addEventListener('click', saveCurrentWindow);
   document.getElementById('new-collection-btn').addEventListener('click', () => {
     showView('board');
@@ -157,6 +258,9 @@ async function main() {
   });
   document.getElementById('export-all-btn').addEventListener('click', () => spacesCol.exportAll());
   document.getElementById('new-space-btn').addEventListener('click', () => spacesCol.newWorkspace());
+  // the board head: its one primary and the export circle (same handlers as the sidebar's)
+  document.getElementById('board-new-btn').addEventListener('click', () => spacesCol.createEmpty());
+  document.getElementById('board-export-btn').addEventListener('click', () => spacesCol.exportAll());
 
   // after a backup import, re-apply typography and re-render everything
   document.addEventListener('stacknest:imported', async () => {
@@ -190,17 +294,23 @@ async function main() {
   });
 
   // — unified search —
-  const renderAll = () => { tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); notesCol.render(); spaceCol.render(); };
+  const searchBox = search.closest('.searchbox');
+  const clearBtn = document.getElementById('search-clear');
+  const renderAll = () => {
+    searchBox.classList.toggle('has-query', !!search.value);
+    tabsCol.render(); spacesCol.render(); bmCol.render(); dupCol.render(); tagsCol.render(); notesCol.render(); spaceCol.render();
+  };
   let searchTimer;
   search.addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(renderAll, 90);
   });
+  const clearSearch = () => { search.value = ''; renderAll(); };
+  clearBtn.addEventListener('click', () => { clearSearch(); search.focus(); });
 
   search.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      search.value = '';
-      renderAll();
+      clearSearch();
       search.blur();
     }
     if (e.key === 'Enter') {

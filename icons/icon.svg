@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!--
+    StackNest brand mark: the sidebar logo (newtab.html .logo-tile) as an extension icon.
+    A Liquid Lava tile carrying the bookmark glyph in Dark Void.
+
+    Master at the Chrome Web Store spec: a 128px canvas with a 96px tile and 16px of
+    transparent padding on every side. scripts/render-icons.sh renders icon16/32/48/128.png
+    from this file. For the small sizes it crops the padding away (viewBox) and snaps the
+    glyph's stroke to whole pixels, so 16px stays a crisp 1px line instead of a grey blur.
+    Edit the shapes and colours here and the tuning table there, then re-run the script.
+  -->
+  <title>StackNest</title>
+  <rect id="tile" x="16" y="16" width="96" height="96" rx="24" fill="#F56E0F"/>
+  <path id="mark" transform="translate(64 64) scale(2.25) translate(-12 -11.5)"
+        d="M7 4h10a1 1 0 0 1 1 1v14l-6-3.4L6 19V5a1 1 0 0 1 1-1Z"
+        fill="none" stroke="#151419" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

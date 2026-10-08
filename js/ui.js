@@ -1,4 +1,4 @@
-// Shared DOM helpers, icons, letter-tiles, toast, favicon resolution, drag helpers.
+// Shared DOM helpers, icons, letter-tiles, empty states, the section anatomy (heads, groups), toast, favicon resolution, drag helpers.
 
 export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -29,17 +29,15 @@ export function el(tag, attrs = {}, ...children) {
 
 // 24-viewBox stroke icons, matching the Stash design language
 const ICONS = {
-  logo:     '<path d="M7 4h10a1 1 0 0 1 1 1v14l-6-3.4L6 19V5a1 1 0 0 1 1-1Z"/>',
   search:   '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
   close:    '<path d="M6 6l12 12M18 6 6 18"/>',
   plus:     '<path d="M12 5v14M5 12h14"/>',
+  minus:    '<path d="M5 12h14"/>',
   save:     '<path d="M12 3v10m0 0 3.5-3.5M12 13l-3.5-3.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
   archive:  '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/>',
   external: '<path d="M15 4h5v5"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
   folder:   '<path d="M3 6a1 1 0 0 1 1-1h5l2 2.4h9a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
   rename:   '<path d="M17 3.5 20.5 7 8 19.5 3.5 20.5 4.5 16z"/>',
-  sun:      '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/>',
-  moon:     '<path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5Z"/>',
   chevron:  '<path d="m9 6 6 6-6 6"/>',
   window:   '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/>',
   download: '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/>',
@@ -51,7 +49,6 @@ const ICONS = {
   unlock:   '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 7.7-1.5"/>',
   tag:      '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
   cloud:    '<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 9.5a3.5 3.5 0 0 1 .5 8.5H7Z"/>',
-  refresh:  '<path d="M20 11a8 8 0 0 0-14-4.5L4 8m0 0V4m0 4h4"/><path d="M4 13a8 8 0 0 0 14 4.5L20 16m0 0v4m0-4h-4"/>',
   note:     '<path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="m8.5 13 1.7 1.7L14 11"/>',
   check:    '<path d="M4 12.5 9 17.5 20 6.5"/>',
   upload:   '<path d="M12 21V10m0 0 4 4m-4-4-4 4"/><path d="M5 5h14"/>',
@@ -65,8 +62,18 @@ const ICONS = {
   strike:    '<path d="M4.5 12h15"/><path d="M8.8 8.2A3.2 3.2 0 0 1 12 5.2h1.2a3.2 3.2 0 0 1 2.9 1.9"/><path d="M8 15.8a3.2 3.2 0 0 0 3.2 3h1.4a3.2 3.2 0 0 0 2.8-1.7"/>',
   textUp:    '<path d="m2.5 18.5 5-12 5 12"/><path d="M4.3 14.6h6.4"/><path d="M17.5 10.5v7"/><path d="M14 14h7"/>',
   textDown:  '<path d="m2.5 18.5 5-12 5 12"/><path d="M4.3 14.6h6.4"/><path d="M14 14h7"/>',
+  bullets:   '<circle cx="5" cy="6" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="5" cy="18" r="1.1"/><path d="M10 6h11M10 12h11M10 18h11"/>',
+  numbers:   '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
   checklist: '<path d="m3 5.5 1.5 1.5L7.4 4"/><path d="m3 12.5 1.5 1.5L7.4 11"/><path d="m3 19.5 1.5 1.5L7.4 18"/><path d="M11 6h10M11 13h10M11 20h10"/>',
-  person:   '<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  trash:     '<path d="M4 7h16"/><path d="M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2"/><path d="m6 7 1 12.1a1.5 1.5 0 0 0 1.5 1.4h7a1.5 1.5 0 0 0 1.5-1.4L18 7"/><path d="M10 11v5.5M14 11v5.5"/>',
+  library:   '<rect x="3.5" y="4" width="4" height="16" rx="1"/><rect x="8.5" y="4" width="4" height="16" rx="1"/><path d="m14.2 5.6 3.6-.9 3.4 14.7-3.6.9Z"/>',
+  columns:   '<rect x="3.5" y="4.5" width="7" height="15" rx="1.5"/><rect x="13.5" y="4.5" width="7" height="9" rx="1.5"/>',
+  key:       '<circle cx="8" cy="15.5" r="4.5"/><path d="m11.2 12.3 8.3-8.3"/><path d="m17 6.5 2.5 2.5"/><path d="m14.5 9 2 2"/>',
+  merge:     '<path d="M6 3.5v3a5 5 0 0 0 5 5h2a5 5 0 0 0 5-5v-3"/><path d="M12 11.5v9"/><path d="m8.5 17 3.5 3.5 3.5-3.5"/>',
+  cloudUp:   '<path d="M8 16.5H7a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8a3.5 3.5 0 0 1 .5 8.5H16"/><path d="M12 20.5v-8m0 0-3 3m3-3 3 3"/>',
+  cloudDown: '<path d="M8 16.5H7a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8a3.5 3.5 0 0 1 .5 8.5H16"/><path d="M12 12.5v8m0 0-3-3m3 3 3-3"/>',
+  reset:     '<path d="M4 4.5V9h4.5"/><path d="M4.6 14.5a8 8 0 1 0 1.8-8.3L4 9"/>',
+  paste:     '<rect x="5" y="4.5" width="14" height="16.5" rx="2"/><rect x="9" y="3" width="6" height="3.5" rx="1"/><path d="M9 11.5h6M9 15.5h4"/>',
   swap:     '<path d="M4 8h13m0 0-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7m0 0 3.5 3.5M7 16l3.5-3.5"/>',
 };
 
@@ -76,6 +83,7 @@ export function icon(name, size = 15) {
   svg.setAttribute('width', size);
   svg.setAttribute('height', size);
   svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'ic');   // the stroke default lives in css (:where(svg.ic)), so no context can paint a black blob
   svg.innerHTML = ICONS[name] || '';
   return svg;
 }
@@ -156,6 +164,142 @@ export function tile(url, size = 34) {
   return wrap;
 }
 
+// One empty-state block for every view: an icon tile, a title, a plain-language hint and
+// optional actions — so "nothing here yet" looks the same on the board, in the Library,
+// under Tags/Duplicates and in Notes, and always says what to do next.
+// variant: null | 'gate' (framed bento: hatched mark left, text + one primary right —
+// locked/permission states). caption: mono line above the title. steps: numbered mono
+// how-to lines. Order is fixed: caption, title, steps, hint, actions.
+export function emptyState({ icon: name, title, hint = null, steps = null, actions = [], variant = null, caption = null } = {}) {
+  const text = [
+    caption ? el('div', { class: 'empty-cap', text: caption }) : null,
+    el('div', { class: 'empty-title', text: title }),
+    steps ? el('ol', { class: 'empty-steps' }, ...steps.map((s) => el('li', {}, s))) : null,
+    hint ? el('p', { class: 'empty-hint' }, ...[].concat(hint)) : null,
+    actions.length ? el('div', { class: 'empty-acts' }, ...actions) : null,
+  ];
+  return el('div', { class: `empty${variant ? ` is-${variant}` : ''}` },
+    el('span', { class: 'empty-ic', 'aria-hidden': 'true' }, icon(name || 'folder', variant === 'gate' ? 26 : 20)),
+    variant === 'gate' ? el('div', { class: 'empty-body' }, text) : text);
+}
+
+/* ————— THE SECTION ————— one anatomy for every view (see css "THE SECTION") ————— */
+
+export const plural = (n, one, many = `${one}s`) => (n === 1 ? one : many);
+// a sidebar count badge: the section head shows the full number, the badge never grows past 3 characters
+export const badgeText = (n) => (n > 99 ? '99+' : n ? String(n) : '');
+const clearSearchBox = () => document.getElementById('search-clear')?.click();   // = app.js clearSearch + refocus
+
+function matchChip({ q, shown = null, total = null, unit = '' }) {
+  const tail = total == null ? '' : ` · ${shown} of ${total}${unit ? ` ${unit}` : ''}`;
+  return el('span', { class: 'sec-match' },
+    el('span', { text: `matching “${q}”${tail}` }),
+    el('button', { class: 'icb', type: 'button', title: 'Clear search', 'aria-label': 'Clear search', onclick: clearSearchBox }, icon('close', 12)));
+}
+
+// The STATE part of a head. scope {key, value, swatch?, tone?:'state'|'danger'} · stats [{n, unit, tone?}]
+// (stats[0] is the same number as the view's sidebar badge) · match {q, shown?, total?, unit?}.
+// Pass `host` to refill an existing node (the board's static head, Notes' persistent shell).
+export function secState({ scope = null, stats = [], match = null } = {}, host = el('p', { class: 'sec-state' })) {
+  // replaceChildren, unlike el(), turns null into the text "null" — so absent parts are filtered out
+  host.replaceChildren(...[
+    scope ? el('span', { class: 'sec-scope' },
+      el('span', { class: 'sec-scope-k', text: scope.key }),
+      el('span', { class: `sec-scope-v${scope.tone ? ` is-${scope.tone}` : ''}`, title: scope.value },
+        scope.swatch ? el('span', { class: 'sec-swatch', style: `background:${scope.swatch}`, 'aria-hidden': 'true' }) : null,
+        el('span', { class: 'sec-scope-t', text: scope.value }))) : null,
+    ...stats.map((s) => el('span', { class: 'sec-stat' },
+      el('span', { class: `sec-num${s.tone ? ` is-${s.tone}` : ''}`, text: String(s.n) }),
+      el('span', { class: 'sec-unit', text: s.unit }))),
+    match?.q ? matchChip(match) : null,
+  ].filter(Boolean));
+  return host;
+}
+
+// The head. tools: quiet controls (segments, .icb circles, .soft/.ghosty pills — each .btnx with an icon).
+// primary: the ONE .btnx.primary (create / commit), always last; primaryNote: its scope in mono under it.
+// trail: a row above the head (Library path). bar: a row below it (Notes quick-add).
+export function sectionHead({ trail = null, scope = null, stats = [], match = null, note = null,
+  tools = [], primary = null, primaryNote = null, bar = null, className = '' } = {}) {
+  const state = secState({ scope, stats, match });
+  const noteEl = el('p', { class: 'sec-note' }, ...[].concat(note ?? []));
+  noteEl.hidden = !note;
+  const toolEls = tools.filter(Boolean);
+  const toolsEl = (toolEls.length || primary) ? el('div', { class: 'sec-tools' }, ...toolEls,
+    primary ? el('div', { class: 'sec-next' }, primary,
+      primaryNote ? el('span', { class: 'sec-next-note', text: primaryNote }) : null) : null) : null;
+  // a head pill folds to an icon-only circle when the panel is narrow (css: .sec-tools .btnx:not(.primary));
+  // its label stays the accessible name, and a title gives sighted mouse users the same words
+  for (const b of toolsEl ? toolsEl.querySelectorAll('.btnx:not(.primary)') : []) if (!b.title) b.title = b.textContent.trim();
+  const top = el('div', { class: `sec-top ${className}`.trim() }, trail, el('header', { class: 'sec-head' }, state, noteEl, toolsEl), bar);
+  top._state = state;
+  top._note = noteEl;
+  headSizes.observe(top);
+  return top;
+}
+// The sticky head's live height, published on its view as --sec-top-h: the view's scroll-padding
+// uses it so a focused card is never left hidden under the head (css: THE SECTION).
+// offsetHeight is unzoomed CSS px, which is what the custom property needs.
+const headSizes = new ResizeObserver((entries) => {
+  for (const { target } of entries) {
+    if (!target.isConnected) { headSizes.unobserve(target); continue; }
+    target.closest('.view')?.style.setProperty('--sec-top-h', `${target.offsetHeight}px`);
+  }
+});
+export function setSecNote(top, note) {
+  top._note.replaceChildren(...[].concat(note ?? []));
+  top._note.hidden = !note;
+}
+
+// A captioned sub-section: "caption  n ———————— aside  acts". User names pass data:true (keep case).
+let capSeq = 0;
+export function secGroup({ caption, count = null, data = false, glyph = null, swatch = null, aside = null,
+  acts = null, level = 2, className = '' }, ...content) {
+  const id = `sec-cap-${++capSeq}`;
+  return el('section', { class: `sec-group ${className}`.trim(), 'aria-labelledby': id },
+    el('div', { class: 'sec-cap' },
+      el(`h${level}`, { class: 'sec-cap-h', id },
+        el('span', { class: `sec-cap-t${data ? ' is-data' : ''}` },
+          glyph ? icon(glyph, 14) : null,
+          swatch ? el('span', { class: 'tag-dot', style: `background:${swatch}`, 'aria-hidden': 'true' }) : null,
+          el('span', { class: 'sec-cap-tt', text: caption, title: caption })),   // a long folder name truncates; the title keeps it readable
+        count == null ? null : el('span', { class: 'sec-cap-n', text: String(count) })),
+      aside ? el('span', { class: 'sec-cap-aside' }, ...[].concat(aside)) : null,
+      acts ? el('span', { class: 'sec-cap-acts' }, ...[].concat(acts)) : null),
+    ...content);
+}
+
+// The one no-match state for every searchable view.
+export function noMatch(q, hint = 'Search looks at titles and addresses.') {
+  return emptyState({ icon: 'search', title: `Nothing here matches “${q}”`, hint,
+    actions: [el('button', { class: 'btnx soft', type: 'button', onclick: clearSearchBox }, icon('close', 14), el('span', { text: 'Clear search' }))] });
+}
+
+// Open a view (same click the sidebar row gets) and, optionally, land on a sub-section such as a Settings plate.
+export function goTo(view, anchorId = null) {
+  document.querySelector(`.view-link[data-view="${view}"]`)?.click();
+  requestAnimationFrame(() => {
+    const t = anchorId && document.getElementById(anchorId);
+    if (t) {
+      t.scrollIntoView({ block: 'start' });
+      t.querySelector('h2, h3')?.focus({ preventScroll: true });
+      return;
+    }
+    // the button that called goTo sits in the view just hidden, so focus would fall to <body>:
+    // land it on the new view's title instead
+    const title = document.getElementById('view-title');
+    if (title) { if (!title.hasAttribute('tabindex')) title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: true }); }
+  });
+}
+
+// Where an open tab can be dragged from right now, for empty-state copy.
+export function tabSourceHint() {
+  const mode = document.documentElement.dataset.tabsbar;
+  if (mode === 'top' || (mode === 'side' && matchMedia('(max-width: 880px)').matches)) return 'the live strip above';
+  if (mode === 'side') return 'the tab rail on the left';
+  return 'a window in the sidebar';
+}
+
 let toastTimer;
 export function toast(message) {
   const node = document.getElementById('toast');
@@ -188,6 +332,13 @@ export function shortDate(ts) {
   } catch {
     return '';
   }
+}
+
+// True when the view section hosting `node` is hidden. Views re-render on open (app.js
+// refreshView), so a hidden view can skip its DOM work and keep only its nav badge live.
+export function viewHidden(node) {
+  const view = node?.closest?.('.view');
+  return !!(view && view.hidden);
 }
 
 export function debounce(fn, ms = 120) {
@@ -259,15 +410,16 @@ export function pickFile(accept = '') {
 // `extra` is an optional node dropped between the message and the buttons — for a choice
 // that belongs to the decision itself (e.g. "also revoke access" on sign-out) rather than
 // to a settings row you would have had to visit beforehand.
-export function confirmDialog({ title, message, extra = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false } = {}) {
+// `alert: true` is a notice, not a decision: one neutral button (confirmLabel) and role=alertdialog.
+export function confirmDialog({ title, message, extra = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, alert = false } = {}) {
   return new Promise((resolve) => {
-    const confirmBtn = el('button', { class: `modal-btn confirm${danger ? ' danger' : ''}`, text: confirmLabel });
+    const confirmBtn = el('button', { class: `modal-btn ${alert ? 'cancel' : `confirm${danger ? ' danger' : ''}`}`, text: confirmLabel });
     const cancelBtn = el('button', { class: 'modal-btn cancel', text: cancelLabel });
-    const modal = el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title || 'Confirm' },
+    const modal = el('div', { class: 'modal', role: alert ? 'alertdialog' : 'dialog', 'aria-modal': 'true', 'aria-label': title || 'Confirm' },
       el('h2', { class: 'modal-title', text: title || 'Are you sure?' }),
       message ? el('p', { class: 'modal-msg', text: message }) : null,
       extra,
-      el('div', { class: 'modal-actions' }, cancelBtn, confirmBtn),
+      el('div', { class: 'modal-actions' }, alert ? null : cancelBtn, confirmBtn),
     );
     const scrim = el('div', { class: 'modal-scrim' }, modal);
     let done = false;

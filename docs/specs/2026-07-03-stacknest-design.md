@@ -380,6 +380,351 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+## Design-chief polish + launch readiness (2026-10-09)
+
+The owner: "fix minor indentation and placement, also font size issues, and make this app launch
+ready … make sure the appropriate icons are added where needed [only put icons where needed] …
+while collapsing the side bar, make the side bar icons a little bigger and stylish."
+
+**Method.** Five measured audits (placement · type · icon coverage · the collapsed rail · Chrome
+Web Store readiness) on private servers; a design-chief synthesis resolved their conflicts into one
+change list (29 CSS, 15 JS, 3 HTML items); the launch auditor went on to build the store kit.
+
+**Placement.** One left edge in the sidebar (logo, view icons and captions at 22px), caption buttons
+on the count-pill column, the column header on the cards' 12px inset, state and tools sharing one
+centre line when a head has no note, scope/numeral/unit on one baseline, the column count on the
+name's baseline, the vertical tab rail's hairline continuing the top bar's (`--top-h`), Notes and
+Duplicates row glyphs on their neighbours' insets, crumbs on the head's text edge, index lists
+hanging into the gutter, one 36px control height (`--ctl-h`), tools that start on the scope's edge
+when the head stacks, and the sidebar markup re-indented.
+
+**Type.** `--t1` is 11px (the smallest real text), captions and counts share it; timestamps moved
+to `--t2`; popover chips match card tags; help text is grotesk, never mono prose; one section-heading
+style (750 / --t5); control labels at 600 with only the primary at 700; view titles get line-height
+1.25 so descenders never clip; Settings' text-size previews use the weights of the text they control.
+
+**Icons — only where they help.** New glyphs: trash, library, columns, key, merge, cloudUp,
+cloudDown, reset, paste. A permanent delete wears trash (× stays for remove/close/clear); a move or
+go-to wears its destination (Library = books, Collections = columns); Drive arrows show direction;
+the Vault's PIN actions wear a key; "Keep one of each" (the only head primary without one) gets
+merge; the Library nav glyph no longer copies Stash's archive box; one tag glyph everywhere; every
+labelled pill draws its glyph at 15px (13 in small pills, 16 when folded to a circle). Dead glyphs
+(logo, sun, moon, refresh, person) removed. Badges cap at "99+" (`badgeText`).
+
+**The rail.** 72px, one centre line for every mark; 40px view tiles with 20px glyphs (34/18 on
+short windows); Spaces as 36px rings in their colour with the initial (filled when chosen); a dashed
+new-Space slot; crisp count badges cut out of the tile; state drawn once (snow tile + lava edge);
+anchored name tooltips (`data-tip`, so no doubled native title), keyboard- and reduced-motion-safe.
+
+**Launch.** Manifest: description 124/132, `short_name`, `homepage_url`, `minimum_chrome_version`
+128, a toolbar `action`, a strict `extension_pages` CSP with `connect-src` for exactly the four API
+origins, and **no host permissions** (all four answer CORS). New brand icons (`icons/icon.svg` →
+16/32/48/128). `scripts/package.sh` (allowlist zip, key stripped, mock excluded, store limits),
+`scripts/smoke-test.mjs` (real extension, headless Chrome, every view × theme), `scripts/store-assets.mjs`
+(1280×800 screenshots + promo tile), `scripts/render-icons.mjs`. `PRIVACY.md`, `docs/store/`
+(listing, permission justifications, launch checklist), `fonts/OFL.txt`. Code: the "StackNest
+Cloud PRO" teaser removed; developer copy out of the UI; Switch account only where Chrome can pick;
+the ticker credits CoinGecko and ExchangeRate-API, caches FX an hour, pauses while hidden, times out
+and keeps last-good prices; the worker re-arms reminders on install/update and startup.
+
+**Verified.** Rendered-element contrast audit: zero AA failures across 8 views × 3 themes × 2
+tab-bar modes × 2 sidebar modes; no horizontal overflow in any of them; every rail mark centred at
+x=40 with no overflow; real-extension smoke test (store build and dev build): 0 exceptions, 0
+console errors, 0 CSP violations, 0 failed loads.
+
+## Section system + bento sidebar (2026-10-06)
+
+The owner: "design the proper section and make sure it is well organized", then "make the side
+bar a little more interesting and responsive, making it easy to read."
+
+**How it was designed.** Nine auditors (one per section: board, My Space, Vault, Library, Tags,
+Duplicates, Notes, Settings, app chrome) inventoried every control and its handler and listed
+organization problems. Three independent proposals (consistency-first, scannability/ADHD-first,
+minimal-risk) were scored by three judges (product design, codebase/feature safety,
+accessibility/cognitive load); the judges split, so one spec grafted P3's mechanics, P1's anatomy
+and P2's primary-action rules, and resolved every must-fix. The spec carried a per-section
+preservation checklist; eight builders implemented it in parallel on disjoint files, a reconcile
+pass audited classes/imports/syntax, and nine adversarial reviewers checked each section against
+its checklist. Their 33 findings were all fixed, then four more reviewers verified the fixes and
+the new sidebar.
+
+**The section anatomy (rule 6).** `js/ui.js` gains `sectionHead` / `secState` / `setSecNote` /
+`secGroup` / `noMatch` / `goTo` / `tabSourceHint` / `plural`, `emptyState` variants (`gate`,
+`caption`, `steps`) and `confirmDialog({ alert })`. Every view renders `.sec-top` (trail? · head ·
+bar?) → `.sec-body` of captioned `.sec-group`s → `.sec-foot?`. The head: scope, large light counts
+(the first equals the sidebar badge), a "matching" chip with its own ×, one sentence, tools quiet →
+loud with at most one lava primary. Heads are sticky on desktop (static at ≤880 and ≤700px tall);
+`--sec-top-h` (published by a ResizeObserver) sets each scroller's `scroll-padding-top` so focus is
+never hidden under the head. One `--gutter` aligns title, head, tray and content; one link-card grid
+anatomy for `.tabcard` and `.bmcard` (full title up to two lines, domain + actions, tags).
+
+**Per section.** Board: the layout switch, export and New collection moved from the top bar into
+the board's head; empty Space is one drop-target block. Top bar: **Save window** (was "Save all →"
+in the tray) sits beside Stash & close on every view. Library: trail above the head, folder scope,
+folders/links groups, the new-folder field as the first folder cell. Tags: an index column (strip
+when narrow) beside one graph or list. Duplicates: one primary with its true scope under it, cards
+with visible keep-state text, forgotten links as an aside column on wide panels. Notes: one
+"Backup & import" menu (grouped, keyboard-operable, clamped on screen), the New ▾ primary, the
+composer as the head's bar. Settings: four numbered plates (Appearance · Backup & sync · Vault ·
+Market ticker) with an index that follows the scroll, margin notes, switches, and exactly one lava
+button. Vault/My Space: the head always renders; locked states are a gate card owning its button.
+
+**Sidebar.** Bento tiles on the frame, one per group, each caption inside its tile; labels 13.5px
+(15px in the drawer) in `--text-body`; view icons in 28px tiles that invert to a snow disc when
+active; mono count pills; the active Space washed in its own colour; Windows moved below
+Collections. Responsive: compact rows when the window is ≤760px tall, 44px touch rows in the ≤880
+drawer (now with a close button, focus management and everything behind it `inert`), and an icon
+**rail** (`#side-collapse`, `data-side='rail'`, remembered in localStorage) that keeps every view
+one click away with count badges and folds Collections/Windows behind the expand button.
+
+**Second verification round** (four lenses: fixes landed · sidebar features · accessibility +
+responsive · cascade) found 25 more items, all fixed: a pre-paint `js/boot.js` (classic script in
+<head>) applies the remembered sidebar mode *and theme*, so neither flashes on a new tab; New space
+from the rail expands the sidebar first, and in the drawer the board waits until the name is in;
+rail Spaces carry their initial in a ring of their colour (not colour alone) and the active row has
+`aria-current`; very short windows (≤640px tall, e.g. a tiled laptop window) scroll the whole
+sidebar as one column; Linen's active-Space marker is deepened to clear 3:1; rail badges use the
+caption size; captions keep every letter beside an aside; the collections scope wraps instead of
+truncating; the search keeps one width on every view (a 154px title slot); crumbs align with the
+head text; the Tags strip only takes the wheel while it can still move, and its nudges convert
+zoomed px; graph labels grow at ≤520; Settings' sticky index strip gets scroll padding.
+
+**Verified.** Rendered-element contrast audit: zero AA failures across 8 views × 3 themes × 2
+tab-bar modes × 2 sidebar modes; search width constant across views (1440 and 1280); no overflow at
+1440, 1280, 1024 (with the vertical rail), 683×384 and 375; drawer inert/focus checks; New space
+from the rail and the drawer. Flagged, unchanged: search-Enter still falls back to a board card
+from other views (a behaviour change needing the owner's yes).
+
+## "Precision" redesign from reference images (2026-10-06)
+
+The owner supplied four references and asked for a redesign with every feature and function
+unchanged: a framed bento card ("Impact." — lava block with a hatched header, a big light "72",
+a mono `client: NOVA` caption between circular arrow buttons); a palette sheet (Dark Void
+#151419, Liquid Lava #F56E0F, Gluon #1B1B1E, Slate #262626, Dusty #878787, Snow #FBFBFB); an
+orange studio wall behind frosted glass; and a Swiss technical poster ("Craft & Precision") set
+in monospace with small orange annotations and hairline rules.
+
+**What changed (CSS-first; behaviour untouched).**
+- *Shell.* `body` is `--frame`; `.app` pads the frame around rounded panels (`--panel-r` 18px,
+  `--frame-gap` 8px). The sidebar sits on the frame and re-declares the ink tokens for that
+  surface (`:root:not([data-theme='linen']) .side { … }`), so every row, count, rename field and
+  drop line inside it works unchanged. `.main` and the vertical tab rail (`data-tabsbar='side'`)
+  are panels; `.main` clips to its radius.
+- *Palette.* Light: paper #ECECE9, columns #F6F6F4, Snow cards, ink #151419, accent #E8590C
+  (lava one step deeper so it clears 3:1 on paper), `--accent-text` #A33E08, crimson danger
+  #B3243A. Dark: Dark Void panels in a #0C0B0E frame, Gluon columns, lava #F56E0F as-is.
+  Linen: unchanged tokens, frame is paper (#ECE5D9) — the all-light option. New tokens:
+  `--frame`, `--hatch`, `--pill`, `--panel-r`, `--frame-gap`, `--red-contrast` (the dark danger
+  is light, so its label is ink — fixes white-on-#ff6b6b at 2.8:1 in the danger confirm).
+- *Shape.* Containers are rounded rectangles; buttons, fields, segments and chips are pills;
+  single-glyph `.icb` buttons are circles (`.armed` grows into a pill). Segments show the chosen
+  option as a solid ink disc.
+- *Type.* Captions (`.side-label`, `.side-nav-label`, `.tray-label`, `.seg-label`, `.view-kicker`,
+  popover headers…) are one rule: mono, lowercase, 0.06em. Sidebar captions carry a hairline
+  out to their actions. `--t7` is now 24px and sets the view title, which ends in a lava full
+  stop (`.view-title::after`), as does the wordmark. The kicker is lava ink led by a short rule.
+- *Numerals.* The tray count is a large light numeral beside "live / open tabs" — `tabs.js`
+  now renders `.tray-num` + `.tray-unit` spans instead of one text node (same words, same
+  element). Each collection's count is a large light numeral in its header.
+- *Hatching* only on space-to-fill: `.newcol`, `.addtab:hover`, `.drop-target` (lava hatch),
+  `.empty-ic`.
+- *Settings* cards are numbered 01, 02… with a CSS counter on `.set-h::before`.
+- *Vault / My Space* states now use the shared `emptyState()` (the old `.lib-empty` blocks had
+  their buttons left-aligned under centred text); dead `.lib-empty` / `.vault-shut` CSS removed.
+  Bookmark folder tiles are ink, not accent — a folder is a kind, not a state.
+- *Responsive.* `.main` is a size container (`container: main / inline-size`), so the header
+  folds by panel width — which the vertical tab rail changes — not window width: captions →
+  Stash label (icon-only; `font-size: 0` keeps the accessible name) → theme segment folds into
+  the existing cycle button → search takes its own row. The ≤880px drawer + two-row grid header
+  is kept. The previous "2026 workspace refresh" override layer was folded into the base rules.
+
+**Verified** in the mock preview: an automated rendered-element contrast audit (alpha-composited
+backgrounds) found zero AA failures across all eight views × both tab-bar modes × all three
+themes; header fit checked at 1440, 1024 (top and side rail) and 375 (drawer).
+
+**Review fixes.** An independent diff review found no broken features and five small CSS issues,
+all fixed: (1) the lava ring was 2.76:1 on the grey wells — focus now has its own token,
+`--focus` (#C84D0A in light: 3.6 inset / 3.9 paper; plain accent elsewhere); (2) in Linen a
+hovered nav row's count fell to 4.15:1 — hovered counts lift to `--text-soft` like active ones;
+(3) the large count numerals follow the **Small text** dial (`calc(24px|30px * var(--fs-small))`),
+as Settings promises, not the Headings dial; (4) at ≤580px panel width the header wrapped to three
+rows — the title now shrinks (ellipsis) before anything wraps; (5) the icon-only Stash button is a
+38px circle, not an oval. Also: the Undo button's ring on the inverted snackbar uses `--bg`
+(was 2.85:1 in dark — pre-existing).
+
+## Calm structure + Linen theme (2026-09-07)
+
+The owner: "a little boring — keep it minimal but add some professional and ADHD-friendly vibes,
+and one more theme that's a little colourful." Four independent design proposals were judged by
+three judges (product-design polish · ADHD/cognitive-load evidence · codebase feasibility);
+"Calm structure & wayfinding" won and the best of the others was grafted in.
+
+**Direction.** Keep the ink-on-paper skeleton; spend colour on two jobs only. (1) The user's own
+Space/collection colours become fixed-position wayfinding marks — a rail on the active Space row,
+a swatch beside the board title, a 3px inset top edge on each collection column. (2) One accent
+family carries every "you are here / do this" state — the active-nav rail, focus ring, selection,
+current tab chip, checked boxes, drop targets, checklist progress. Nothing important is hover-only
+any more. The colour contract is a comment at the top of `:root`.
+
+**Custom properties set by JS:** `--ws-color` on each `.ws-row` (spaces.js), `--space-color` on
+`<html>` for the active Space (spaces.js `render`), `--col-color` on each `.colcard`, and `--done`
+(0–1) on `.check-prog` (notes.js). A checklist whose rows are all ticked now counts as a done card
+(`cardDone`), matching `sw.js isFinished`.
+
+**Tokens.** Light `--text-mut` #656c79 / `--text-faint` #80868f (AA on every light surface, ≥3:1
+for icons at rest); dark `--text-ghost` #707788 (chevrons 4.36:1); `--accent-soft` two steps from
+`--bg-inset` in both; `--accent-ring` alphas raised so the focus halo is visible on the dot grid;
+dark tray joins the canvas colour with a `--line-strong` bottom rule; dark `--shadow-tile` is a 1px
+inset top highlight; `--tint-a` is one intensity dial for the six note-card tints (.13 light, .16
+dark and Linen).
+
+**Linen** (`:root[data-theme='linen']`): linen paper #faf7f2, walnut ink #2a2420, pine accent
+#0d6b64 (5.95:1 on paper; 6.36:1 for white on it), plum #7c4a69 only as the logo/foot gradient
+tail. Every one of the 38 tokens is defined; contrast recomputed: body/labels ≥4.5:1, domains
+4.79:1, icons at rest ≥4.2:1. Pine was chosen over terracotta because terracotta is 1.03:1 in
+luminance and 14° in hue from `--red` — primary and delete would have been one colour. Section
+labels render sentence-case in Hanken under Linen only; light/dark keep the tracked-caps mono
+signature. `color-scheme: light` so native pickers match. Theme buttons are discovered from
+`[data-theme-choice]`, so the theme was one HTML button + one CSS block.
+
+**Components (in order):** section labels `--text-soft` + uppercase via CSS (HTML text is now
+sentence case); hairline chunking between scrolling sidebar groups, 34px rows, tabular counts in
+`--text-faint`; active rail (`.navx.is-active::before`, `var(--ws-color)` on Space rows) and the
+`--space-color` title swatch; `.colcard` inset top edge in `--col-color`; column header count stays
+visible and its actions rest at .55; `.acts`/`.icb` visible at rest app-wide (`.icb` colour
+`--text-faint`); `:focus-visible` no longer forces `border-radius: 4px` — cards and chips keep
+their radius and get a halo ring; current tray chip has a soft fill + bold title and `Save all` is
+an outline so `Stash window` is the only solid button on the board; `.searchbox.has-query` keeps
+the accent border after blur; checklist progress track/fill with a green fill when done, done
+cards settle (full opacity, tint off, struck title) instead of ghosting; checkbox borders in
+`--text-faint`; tinted empty-state icon; danger shadow follows `--red`; landing ring animation on
+`.colcard.highlight`; ticker slowed to 40s; dot grid at 26px; a real reduced-motion block.
+
+**Review pass (26 confirmed findings from a 5-lens × 3-skeptic adversarial review).** Actions now
+dim by COLOUR (`--text-faint` at rest, `--text-soft` on hover) instead of group opacity — .55 opacity
+had sunk every rest-state icon below 3:1, and the `hover: none` fallback lost its specificity fights.
+Card/chip focus ring is a solid 2px accent + 4px halo that survives `.chip-tab.is-active` and hover;
+`.tray-chips`/`.colbody` gained the padding to not clip it; window rows draw the ring inside the
+scroll box. The reduced-motion block moved to the END of the stylesheet (a media query adds no
+specificity, so mid-file it lost to every later transition). Chevrons, tag-remove and the duplicates
+source icon/kind left `--text-ghost`; domains, counts, ghost buttons and placeholders left
+`--text-faint` for `--text-mut` (AA). Light `--red` #b03a49 / `--green` #2b7f52 and Linen `--red`
+#a63a31 (danger text ≥4.5:1 on its 10% wash). Theme and layout chips carry `aria-pressed`. Linen's
+notes toolbar hovers neutral (pine means state). `.drop-target` no longer forces a 12px radius; the
+column title no longer advertises editing. The checklist bar carries its previous `--done` across a
+rebuild so it eases; a reminder set on a fully ticked list says it only notifies once an item is
+re-opened.
+
+**Formatting bar (owner request):** docked at the bottom of the card being edited — notes.js appends
+the one shared bar into the focused card and removes it on blur — instead of floating over the page. It
+also carries **bullet / numbered / checklist** buttons (`toggleList` in format.js): they toggle the
+marker on the current or selected lines, renumber numbered blocks, keep a ticked box ticked when
+converting, and go through the same undoable `replaceRange`. Enter in a list line continues it
+(`listContinuation`); Enter on an empty item removes the marker. The three are disabled on
+single-line fields, where block syntax would render literally.
+
+**Mosaic board layout (owner request):** a third layout beside columns and tiles — `.board.mosaic`
+is the same `column-width: 300px` masonry the Notes view uses; each `.colcard` is `break-inside:
+avoid` with its body capped at 64vh (internal scroll) so one long collection can't dwarf the rest;
+the New-collection ghost and the empty state `column-span: all`. `app.js` keeps the three modes in
+one `modeBtns` map (persisted under `stacknest:boardmode`, unknown values fall back to columns) and
+stamps `aria-pressed`. No JS in spaces.js changed — the DOM is identical, so drag/drop, collapse and
+rename work unchanged.
+
+**Reconciled onto main (2026-09-07).** This folder turned out to be a snapshot from commit 6e509a6,
+while the GitHub `main` had moved on (My Space + Vault, the vertical tabs rail, the graphite dark
+theme and type scale, the Drive sign-out). Today's work was re-parented onto 6e509a6 and rebased onto
+main so nothing on main was lost: JS/HTML conflicts resolved by hand (four-choice theme segment kept;
+`data-view` on `<html>`, the tabs-bar modes, the non-primary Stash button and the no-caption nav
+taken from main; the `mini-nav` dropped for the drawer), and the stylesheet rebuilt by two
+independent merge agents plus a judge on top of main's token system (--t scale, `--edge`, graphite
+dark) with Linen added as a complete third token block. Verified in the preview: all three themes,
+My Space, the Vault (set PIN → move a bookmark out of Chrome → unlock), the vertical rail, the docked
+formatting bar, mosaic, drawer, Library/Tags/Duplicates.
+
+**Text sizes per role + Comfortable default (owner request, 2026-09-07).** The seven scale tokens
+are now computed from four role multipliers set on `:root` by `applySettings` (`--fs-heading` →
+t5/t6/t7, `--fs-title` → t4, `--fs-body` → t3, `--fs-small` → t1/t2). Settings › Appearance gets one
+stepper per role (seven steps, 85%–135%, with the sample set in the role's own token) and a Reset
+row that appears when anything is off 100%; values are sanitised to the ladder on read. Line
+heights are unitless so they follow. `DEFAULT_SETTINGS.scale` is now `comfortable` for profiles that never chose a size (a stored
+choice still wins — earlier saves baked `default` into storage), the zoom-1 option is labelled
+**Standard** (id unchanged), and the mock no longer seeds a scale so the preview shows the default.
+Review fixes: the settings view no longer rebuilds on its own writes (a stepper is a repeat-press
+control — the rebuild destroyed the pressed button and dropped focus to `<body>`); external
+rebuilds re-focus the same control by aria-label; one `normalize()` sanitises on read AND write so
+a bad `typeSizes` from a backup cannot take effect on a later unrelated save; the ticker only
+re-fetches when a ticker field changed; checkboxes scale with `--fs-body` like their text; samples
+never truncate; the explanation + Reset live in an always-visible row (Reset disabled at 100%).
+
+**Backup completeness + single Drive file (owner request, 2026-09-07).** `buildBackup` is
+version 2: besides spaces/collections/settings/notes it now carries `tags`, `dupForgotten`,
+`myspace` (the My Space + Vault store) and `lock` (the Vault's salt + PBKDF2 hash and the
+security-answer hash — never the PIN). `applyBackup` restores each only when present, so older
+files leave current values alone, and calls `relock()` after restoring a PIN record so a restored
+Vault starts locked; the import confirm lists what the file carries. `drive.js` replaced
+`findFileId` (first match only) with `listBackupFiles` (newest first, `trashed=false`): upload
+PATCHes the newest in place, deletes every other copy, and re-prunes after a create so two racing
+first backups leave one file; restore reads the newest.
+
+**Rejected:** terracotta accent (collides with danger), Space-tinted canvas/tray washes, a
+three-level elevation system and rest shadows on every card, a global type-scale bump, the search
+box growing on focus, solid accent borders on selected chips, always-visible actions on sidebar
+collection rows, green "done" text (3.36:1 on paper), editing the identity palette.
+
+## Audit + design refresh (2026-09-07)
+
+A full read of every module, then a pass that fixed what the read found and tightened the
+design without touching the feature set.
+
+**Bugs fixed**
+- Clicking the **reminder chip** on a card threw (`el()` passes only the event to `onclick`, but
+  the handler expected `(e, btn)` the way `actionBtn` does) — the reminder editor never opened
+  from the chip. Now anchors on `e.currentTarget`.
+- **New folder** in the Library could commit twice (Enter removes the input, which can fire blur);
+  guarded like the other inline editors.
+- **New collection / new space** tried to `.focus()` a display-only `<span>`, so neither opened its
+  rename field. A `renameOnRender` marker now starts the rename on the render that paints the new
+  row, and stays armed until that rename commits — creation triggers two renders (add, then
+  activate) and the second would otherwise replace the input the first had opened.
+- `js/grammar.js` was dead code (never imported) that would have posted search text to
+  api.languagetool.org — undeclared in `host_permissions` and contradicting the README's "only
+  Drive and the ticker touch the network". Deleted, with its orphaned `grammarEnabled` setting.
+- The narrow-screen `mini-nav` was `aria-hidden` yet held the only focusable navigation; it is gone
+  (see drawer below). Duplicate `ui.js` import in settings.js merged; unused `jumpToUrl` dropped.
+
+**Performance**
+- Hidden views no longer rebuild their DOM on every storage/bookmark event. `viewHidden()` (ui.js)
+  lets Library, Tags, Duplicates and Notes compute their nav badge and return; `app.js` already
+  re-renders a view when it opens. Duplicates + Tags bookmark listeners are debounced (a bulk clean
+  fires one event per removal).
+
+**Design**
+- **Contrast**: dark-mode card surfaces/lines lifted so cards read as cards on ink
+  (`--bg-card` .024 → .05, `--card-line-2` .075 → .11); `--text-mut` now clears 4.5:1 in both
+  themes (light #868c98 → #6f7683, dark #767c88 → #8b919d); `--text-faint` lifted likewise.
+- **Theme**: three-state segment — **auto** (follows `prefers-color-scheme` live via a
+  `matchMedia` change listener) · light · dark. Stored under the same `stacknest:theme` key;
+  an unknown/missing value means auto.
+- **Search** gains a clear (×) button once there is a query (the ⌘K hint hides then), and Enter
+  only prefers an open-tab chip while on the board.
+- **Empty states** unified into one `emptyState()` component (icon tile · title · one-sentence
+  hint · actions) used by the board, Library, Tags, Duplicates and Notes, each with the action
+  that fills it (New collection / New folder / New note + New to-do list).
+- **Board**: the "New collection" ghost is a short tile (`align-self: flex-start`) instead of a
+  full-height dashed cage beside the columns.
+- **Narrow screens (≤880px)**: the sidebar becomes an off-canvas **drawer** (menu button in the
+  topbar, scrim, Esc closes, closes on view switch) so Spaces / Windows / Collections stay
+  reachable — the old chip row only switched views.
+- The tray and layout toggle are now shown/hidden by `body[data-view]` in CSS rather than inline
+  styles. Views are deep-linkable by hash (`#notes` …); the reminder notification opens
+  `newtab.html#notes`. The view entrance animation is 0.28s (it replays on every switch).
+
+Verified in preview, light + dark, 1440px and 700px: reminder chip opens its editor; new space
+opens in rename and lands on the board's empty state; search clear; drawer open/close/scrim;
+hash deep-link; hidden views stay empty until opened while badges stay live; no console errors.
+*Preview note:* the pane freezes CSS transitions/animations while unfocused — inject
+`* { transition: none !important; animation: none !important }` before measuring or screenshotting.
 
 ## Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10)
 

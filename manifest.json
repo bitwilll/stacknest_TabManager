@@ -2,8 +2,24 @@
   "manifest_version": 3,
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuqcNwEJYyzqB12jxbFy3mGISSToUHK/lyC/wCJnHLemuTyedm+bJzLdvqlwWXYKZOm9uQlr+vMHx6xsZEbxc96WL5VJQm7hB71WF6ZGM9h/i1Wih2LIMlpIt8EAXaMJE8ZL5ff/oY18x/lEg0fcRcLDdJ2CwqISthgGrk4N32xlUGvp4TXHcKE1/GxGCoEmGOk7/TG3oyTbpGIZnk4GOdtdKBMLXn3kGY1kCx6zF3Nm+6D0W/Keo2zhKkjHiPEMLlHvIrXDdE0DW+eselwMEizpj9cQmL7K13ZkPVZclgHBNtRloIfP0YFWfY7cuBM/QMxbgIhCF4n0zLoFtlqx3owIDAQAB",
   "name": "StackNest — Tab Manager",
+  "short_name": "StackNest",
   "version": "1.0.0",
-  "description": "A calm command center for your tabs and bookmarks, on every new tab. Group open tabs, stash them into folders, and curate your library without clutter.",
+  "description": "A calm new tab for your tabs and bookmarks. Save windows as collections, tidy your library, clear duplicates and keep notes.",
+  "homepage_url": "https://github.com/bitwilll/stacknest_TabManager",
+  "minimum_chrome_version": "128",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Open StackNest",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
@@ -12,12 +28,14 @@
     "type": "module"
   },
   "incognito": "spanning",
-  "permissions": ["tabs", "bookmarks", "favicon", "storage", "identity", "notifications", "alarms"],
-  "host_permissions": [
-    "https://www.googleapis.com/*",
-    "https://oauth2.googleapis.com/*",
-    "https://api.coingecko.com/*",
-    "https://open.er-api.com/*"
+  "permissions": [
+    "tabs",
+    "bookmarks",
+    "favicon",
+    "storage",
+    "identity",
+    "notifications",
+    "alarms"
   ],
   "oauth2": {
     "client_id": "599136003782-49rr17vnbjhf2a8acgd3ftlmi17oqtb0.apps.googleusercontent.com",
@@ -26,10 +44,7 @@
       "https://www.googleapis.com/auth/userinfo.email"
     ]
   },
-  "icons": {
-    "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://api.coingecko.com https://open.er-api.com; img-src 'self' data:"
   }
 }

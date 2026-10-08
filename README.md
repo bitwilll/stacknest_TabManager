@@ -6,6 +6,8 @@ with proper light and dark themes. No build step, no dependencies, no data leave
 
 ## Install (load unpacked)
 
+Requires **Chrome 128 or later**.
+
 1. Open `chrome://extensions` in Chrome.
 2. Turn on **Developer mode** (top-right toggle).
 3. Click **Load unpacked** and select this folder (`StackNest - Tab Manager`).
@@ -36,15 +38,31 @@ normal-profile window.
 
 ## The layout
 
-- **Sidebar** — switch views (**Collections**, **My Space**, **Vault**, **Library**, **Settings**), pick your active
-  **Space** (environment), and
-  see every open **window** and every collection with live counts. Click a window to
+- **Sidebar** — a column of tiles on the dark frame: **views** (Collections, My Space, Vault,
+  Library, Tags, Duplicates, Notes — each with its live count), **spaces**, the active space's
+  **collections**, open **windows**, and **Settings**. Pick your active **Space** (its row takes a
+  wash of the Space's own colour), and
+  see every open **window** and every collection with live counts. The button beside the
+  wordmark **folds the sidebar to a 72px icon rail** — every view stays one click away with its
+  count as a badge, spaces become their colour marks — and the choice is remembered; it is
+  handy next to the vertical tab rail or on a smaller screen. Click a window to
   expand it into a tab list — click a tab to jump to it, hover to close it, or **drag it**
   into any collection (column or sidebar row) or the Library. Hovering another window's row
   also reveals **open** (switch to that window) next to save and stash. Searching
   auto-expands windows that contain matches. Hovering a collection row reveals **rename**
   and **delete**.
-- **Topbar** — search (`⌘K` or `/`), the light/dark theme toggle, and **Stash window**.
+- **Topbar** — search (`⌘K` or `/`, with a clear button once you've typed; the box stays
+  tinted while a filter is active), the theme segment (**auto** follows your OS and switches
+  live, or pin **light** / **dark** / **linen**), and this window's two verbs: **Save window**
+  (save its tabs to a new collection, keep them open) and **Stash & close**. On narrow windows the
+  sidebar tucks away behind a **menu** button and slides in as a drawer with touch-sized rows and a
+  close button, so every section (Spaces, Collections, Windows) stays reachable.
+- **Every view has the same head** — under the top bar: what you are looking at (a scope such
+  as "space · Personal" or "folder · Reading list"), its counts as large numerals (the first one
+  is the same number as the sidebar badge), a "matching “…”" chip while you search, one plain
+  sentence, and the view's own buttons with at most one lava button — the main thing to do
+  there. Below it, content sits in captioned groups; empty, no-match and locked states live in
+  the body, so the head never disappears.
 - **Open tabs bar** — the current window's live tabs. Click to jump, hover to close,
   **drag one anywhere** — onto a collection, the board, or the Library — to save it.
   Settings → Appearance chooses where it lives:
@@ -58,7 +76,8 @@ normal-profile window.
   is the same tabs twice and 64px of the board spent on the copy. Whichever you pick, the
   per-window rows — switch to it, save it, stash it — stay in the sidebar; those are
   window actions, not a tab list.
-- **Board** — your collections as columns on a dotted canvas.
+- **Board** — your collections as columns on a dotted canvas. Its head carries the layout
+  switch (columns · tiles · mosaic), export, and **New collection**.
 - **Library** — Chrome's bookmarks, browsed folder by folder. The breadcrumb starts at
   **All bookmarks**, which lists Chrome's permanent roots (Bookmarks Bar, Other Bookmarks,
   Mobile Bookmarks). Chrome refuses to rename, move or delete those, so on them the Library
@@ -107,8 +126,9 @@ hand back a fresh five. Getting back in then needs one of two proofs of ownershi
   in the active space. Existing data migrates into a default "Personal" space on first run.
 
 **Collections** (saved tab sets, stored locally):
-- **Stash window** saves this window's tabs to a new collection **and closes them** — frees
-  memory; the dashboard survives. **Save all →** does the same but keeps tabs open. Both
+- **Stash & close** saves this window's tabs to a new collection **and closes them** — frees
+  memory; the dashboard survives. **Save window** (beside it in the top bar) does the same but
+  keeps the tabs open. Both
   also exist per-window in the sidebar (hover a window row).
 - **Open all** on a collection revives it in a **new window**; if it holds **more than 10
   links** it asks for confirmation first.
@@ -128,9 +148,10 @@ hand back a fresh five. Getting back in then needs one of two proofs of ownershi
 - Drag bookmarks onto folders or breadcrumbs to move them. Drag a tray chip into the
   Library (or onto the sidebar Library item) to bookmark it in the open folder.
 
-**Two board layouts** — the topbar has a **columns / tiles** toggle. *Columns* is the kanban
-board; *Tiles* lays every collection out as a full-width gallery of uniform cards. Your choice
-persists.
+**Three board layouts** — the topbar has a **columns / tiles / mosaic** toggle. *Columns* is the
+kanban board; *Tiles* lays every collection out as a full-width gallery of uniform cards; *Mosaic*
+flows collections into a masonry of cards that size to their content (a very long collection
+scrolls inside its card), the same layout the Notes view uses. Your choice persists.
 
 **Tags & mind-graph** — the **tag** action on any saved link or bookmark opens a small editor:
 add as many tags as you like (they're shared by URL, so the same page is tagged once whether it's
@@ -179,8 +200,10 @@ never strands a blank row. Every card can be:
 - **Undone** — deleting a card is reversible: a snackbar offers **Undo**, and **⌘Z / Ctrl+Z** puts
   it back where it was with its items, tags, colour and reminder intact (**⌘⇧Z / Ctrl+Y** to redo).
 
-**Formatting.** Click into any text field and a formatting bar appears beneath it: **B / I / U / S**
-and **A+ / A−**. With nothing selected, B/I/U/S formats the word the caret is in; press again to
+**Formatting.** Click into any text field and a formatting bar docks at the bottom of that card —
+only while you're writing in it: **B / I / U / S**, **bullet / numbered / checklist** lines, and
+**A+ / A−**. The list buttons work in a note body (they mark the current line, or every selected
+line; press again to remove); Enter continues a list and Enter on an empty item ends it. With nothing selected, B/I/U/S formats the word the caret is in; press again to
 remove it. **⌘B / ⌘I / ⌘U** do the same from the keyboard. Formatting is written as Markdown into the
 text itself — so it survives export, import and Drive sync — and each field **renders** that
 formatting when you click away, showing the source again the moment you edit it. **A+ / A−** scales
@@ -207,7 +230,10 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
 
 **Settings** (in the sidebar):
 - **Appearance** — pick the **interface font** and **monospace font**, an **interface size**
-  (Compact · Default · Comfortable · Large), and where the **open tabs bar** lives
+  (Compact · Standard · **Comfortable**, the default for new installs · Large), **text sizes per role** —
+  Headings, Titles, Body text and Small text each get a −/+ stepper from 85% to 135% with a
+  live sample, so you can grow just the small print or calm down just the headings; one
+  **Reset** puts them back — and where the **open tabs bar** lives
   (Horizontal · Vertical · Hidden). Applied instantly to the whole app and saved. Each
   entry in the menu is **rendered in its own typeface**, so the list is the preview.
 
@@ -217,15 +243,20 @@ read Apple Notes directly, so you paste exported text, optionally splitting on b
   one anyway, the row tells you exactly what you'll get instead. Only *Hanken Grotesk* and
   *JetBrains Mono* ship with the extension and are guaranteed everywhere; the rest are system
   fonts, so availability depends on your OS.
-- **Backup & restore** — **Export** everything (spaces, collections, settings) to a JSON file,
-  optionally **including your Chrome bookmarks**. **Import** restores from that file (replaces
+- **Backup & sync** (one Settings section: a file on this device, or your Google Drive)
+  — **Export** everything — spaces, collections, notes, tags, forgotten
+  duplicates, **My Space and the Vault** (contents plus the PIN record; the PIN itself is never
+  stored, only its salted hash), and settings — to a JSON file, optionally **including your
+  Chrome bookmarks**. **Import** restores from that file (replaces
   your spaces/collections/settings after a confirm; bookmarks, if present, are added under a new
   "StackNest Import" folder — nothing is overwritten).
-- **Cloud sync** — back up and restore the same data to your own **Google Drive**, so you can move
+- **Google Drive** — back up and restore the same data to your own **Google Drive**, so you can move
   between machines. The backup lives in a private *app folder* only StackNest can read — it never
-  appears in your Drive. See [Cloud sync setup](#cloud-sync-setup) below (needs a one-time Google
-  OAuth client). *StackNest Cloud (Pro)*, a managed subscription tier on stacknest.com, is marked
-  **coming soon** — it needs a hosted backend that isn't built yet.
+  appears in your Drive. It is **one file, overwritten in place** on every backup: the upload
+  patches the existing file rather than creating another, and if stray copies ever exist (two
+  machines' first-ever backups can race) it keeps the newest and deletes the rest, so no extra
+  Drive space is ever taken. Restore reads the newest copy. A restored Vault starts locked. See [Cloud sync setup](#cloud-sync-setup) below (needs a one-time Google
+  OAuth client).
 - **Market ticker** — an optional live **crypto + forex** marquee beside the search bar (**off by
   default**). Pick a **reference currency** and which coins (BTC, ETH, SOL, …) and FX pairs to
   show. Prices come from **CoinGecko** and **open.er-api.com** — enabling it makes network requests
@@ -239,7 +270,21 @@ that item — deleting a space brings back its collections too — without rever
 focuses it, `Enter` opens the first match, `Esc` clears.
 
 Clicking a saved card navigates in place (it's your new tab); `Cmd/Ctrl`-click opens a
-background tab. Theme follows your system until you pick one with the sun/moon toggle.
+background tab. Theme follows your system until you pin one with the sun / moon / leaf buttons in
+the topbar theme segment; the auto button hands it back to the OS. **Linen** is the third, warmer theme: the
+all-paper one — linen paper inside a paper frame, walnut ink and one pine accent.
+
+**Wayfinding.** Colour marks where you are and what you own: the active view carries a short
+rail; the active **Space** row's rail is that Space's own colour and the board title shows the
+same swatch; every collection column wears its colour as a 3px top edge. Counts and actions are
+visible at rest and brighten on hover — nothing important is hover-only — and a checklist card
+shows a progress bar that fills as you tick, turning green when the list is done.
+
+Views can be deep-linked with a hash — `newtab.html#notes`, `#library`, `#tags`, `#duplicates`,
+`#settings` — which is how clicking a reminder notification lands you on the Notes view.
+
+Every view shares one empty-state pattern: an icon, a plain sentence about what goes there, and
+the one or two actions that fill it (new collection, new folder, new note or list).
 
 ## Permissions
 
@@ -249,16 +294,26 @@ background tab. Theme follows your system until you pick one with the sun/moon t
 | `bookmarks` | the Library view |
 | `storage` | saving your collections locally (`chrome.storage.local`) |
 | `favicon` | Chrome's local favicon cache (no network requests) |
-| `identity` | Google sign-in for **Cloud sync** (Drive backup) |
-| `host_permissions` | `googleapis.com` (Drive backup), `api.coingecko.com` + `open.er-api.com` (market ticker) |
+| `identity` | Google sign-in for **Google Drive backup** (Settings › Backup & sync) |
+| `alarms` | scheduling Notes reminders, so they fire with no StackNest tab open |
+| `notifications` | showing a reminder when it is due |
 
-Cloud sync and the ticker are the only features that reach the network, and both are opt-in.
+There are **no host permissions**: the four services StackNest can talk to — Google Drive and its
+sign-in (`www.googleapis.com`, `oauth2.googleapis.com`) and the market ticker's price sources
+(`api.coingecko.com`, `open.er-api.com`) — all answer cross-origin requests, and the manifest's
+content security policy (`connect-src`) allows exactly those four and nothing else.
+
+Drive backup and the ticker are the only features that reach the network, and both are opt-in.
+The ticker credits both price sources on screen, as their terms ask, fetches exchange rates at
+most once an hour, and pauses while the tab is hidden. See [PRIVACY.md](PRIVACY.md).
+(An unused grammar-check module that would have sent search text to a third-party service was
+removed so that statement stays true.)
 
 ## Cloud sync setup
 
 Google Drive backup uses `chrome.identity` OAuth, which needs a one-time client that's tied to
 *your* extension's ID. The code is ready — it just needs the client ID. Until you add it, Settings
-shows Cloud sync as **"Set up required"** (in the dev preview it's simulated, so you can try the
+shows Google Drive (Settings › Backup & sync) as **"Set up required"** (in the dev preview it's simulated, so you can try the
 whole flow without Google).
 
 1. **Load the extension unpacked** (`chrome://extensions` → Developer mode → *Load unpacked*) and
@@ -272,12 +327,15 @@ whole flow without Google).
 3. **Create the OAuth client.** In the [Google Cloud Console](https://console.cloud.google.com/):
    - **APIs & Services → Enable APIs → Google Drive API** → Enable.
    - **OAuth consent screen** → External → add scopes `.../auth/drive.appdata` and
-     `.../auth/userinfo.email`, and add your Google account under **Test users** (while unpublished).
+     `.../auth/userinfo.email` (both non-sensitive). While the app is in **Testing**, only the
+     **Test users** you list can sign in, and their grants expire after 7 days — fine for your own
+     machine. For a public release, fill in Branding (name, support email, home page, privacy
+     policy URL) and **publish the app to In production**; see `docs/store/launch-checklist.md`.
    - **Credentials → Create credentials → OAuth client ID → Application type: Chrome Extension**,
      and paste the extension **ID** from step 1/2.
 4. **Wire it in.** Put the generated client ID into `manifest.json` → `oauth2.client_id` (replacing
    the `REPLACE_WITH_…` placeholder). It must end in `.apps.googleusercontent.com`.
-5. **Reload the extension.** Settings → Cloud sync now shows **Connect** → sign in →
+5. **Reload the extension.** Settings → Backup & sync now shows **Connect** → sign in →
    **Back up now / Restore latest**. The backup lives in Drive's private `appDataFolder`
    (invisible in your Drive UI). **Disconnect** revokes the grant, not just the local token cache.
 
@@ -312,69 +370,93 @@ token for the extension.
 
 ## Design
 
-The interface follows **Nothing's design psychology** — the London phone maker's argument that
-technology should ask for less of your attention, not more. Four rules, and everything in
-`css/newtab.css` follows from them:
+**"Precision"** (2026-10-06) — an instrument panel, not a dashboard. The direction comes from
+four references the owner chose: a framed bento card with a lava-orange block and a hatched
+header, a Dark Void / Liquid Lava / Snow palette, an orange studio wall seen through frosted
+glass, and a Swiss technical poster set in monospace with orange annotations. Five rules, and
+everything in `css/newtab.css` follows from them:
 
-1. **Monochrome, so attention is a budget.** The chrome is pure greyscale. Colour belongs to
-   *your* data — space and collection dots, tag dots, note tints — and to exactly one signal:
-   **red**. Red is permitted on the live-tabs pulse, destructive actions, an overdue reminder,
-   the duplicate count, and ticker-down. Nowhere else. If red appears twice on one screen, one
-   of them is a bug.
-2. **Flat.** No gradients, no glows, no coloured shadows anywhere. Depth is a hairline and one
-   honest step of background value. The only real elevation is the floating layer (modals,
-   popovers), and it uses a single neutral shadow token shared by both themes.
-3. **Structure is visible.** Hairline rules between sections and a **dot-matrix ground** on the
-   board, the tag graph and every empty state — the grid the layout sits on, left exposed
-   rather than painted over. It is Nothing's transparent back panel, applied to software.
-4. **Neutral greys on graphite.** The greys carry no blue cast, and dark mode is **#171717**,
-   not #000. True black was the original call, on the OLED-phone argument — but this is a
-   desktop surface stared at for hours in a lit room, and #fff on #000 is 21:1. That much
-   contrast makes stems shimmer and reads as glare rather than crispness. The canvas sits at
-   #171717 and the brightest text at #e9e9e9, landing the top end at **14.8:1** — far above
-   AA's 4.5, comfortably below the point where it fights the eye.
+1. **A frame and its panels.** The app is a Dark Void shell (`--frame`, #151419). The sidebar
+   lives on the frame; the main view — and the vertical tab rail, when it's on — are rounded
+   paper panels set into it. Where you are and where your work is are two different materials,
+   readable at a glance.
+2. **One lava accent.** Liquid Lava (#F56E0F; one step deeper, #E8590C, on light paper so it
+   clears 3:1) is the only chrome colour. It marks state — the active row's rail, the current
+   tab, the primary action, focus, checked boxes, drop targets, finished-progress fills, the
+   live pulse — and the full stop at the end of every view title and the wordmark
+   ("Collections."). Everything else is ink, paper and four greys. Your own colours (Spaces,
+   collections, tags, note tints) stay as wayfinding. Danger is a separate crimson, 50° away
+   from the lava, so "this deletes" never reads as "this is selected".
+3. **Rectangles hold, pills act.** Containers — panels, columns, cards, popovers — are rounded
+   rectangles. Anything you press or type into — buttons, fields, segments, chips — is a pill.
+   Single-glyph buttons are circles. A chosen segment is a solid ink disc (snow in dark).
+4. **Mono annotates.** JetBrains Mono is the drafting hand: counts, domains, dates, section
+   captions (lowercase, lightly tracked, each with a hairline running out to its actions) and
+   the lava kicker above each view title. Counts that matter read as large light numerals —
+   the live-tab readout ("7 live / open tabs") and each collection's tab count. Settings is
+   four numbered plates — 01 Appearance, 02 Backup & sync, 03 Vault, 04 Market ticker — with an
+   index beside them that follows your scroll, like the plates of a drawing set.
+5. **Hatching means "space to fill".** Diagonal hatch appears only where something is waiting:
+   the New collection tile, an Add tab slot under the pointer, drop targets, the empty-state
+   mark. Never on content.
+6. **One section anatomy.** The top bar names the view. Under it every view has the same head —
+   what is here now, one sentence, its tools quiet → loud with at most one lava primary last —
+   then captioned groups, then margin notes. States never remove the head; a locked or empty
+   state lives in the body and owns its one button.
 
-Selection **inverts** to solid ink rather than tinting, so a chosen chip is unmistakable; the
-active nav row adds a hard marker on its leading edge. Micro-labels are mono, uppercase and
-widely tracked — the app's signature piece of type.
+**Themes.** *Light* is ink on paper inside the void frame. *Dark* is snow on Dark Void inside a
+deeper void (#0C0B0E), with Gluon #1B1B1E columns and cards between Gluon and Slate. *Linen* is
+the all-paper theme — the frame is warm paper too, walnut ink, one pine accent — for anyone who
+wants no dark surface on screen.
 
-**Type scale — 1.125 (major second), 13px base.** The sheet previously used fifteen unrelated
-sizes (9, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 16, 17, 18, 19px). Seven steps on
-one ratio replace them, exposed as custom properties:
+**Type scale — 13px base**, exposed as custom properties and multiplied by the per-role text-size
+dials in Settings › Appearance:
 
 | Token | Size | Role |
 |---|---|---|
-| `--t1` | 10.5px | micro — mono uppercase section labels |
+| `--t1` | 11px | caption — mono, lowercase: section labels, kicker, units, counts in pills |
 | `--t2` | 11.5px | meta — counts, timestamps, domains |
 | `--t3` | 13px | base — body, nav, buttons, inputs |
 | `--t4` | 14.5px | title — card and collection titles |
 | `--t5` | 16.5px | section headings |
-| `--t6` | 18.5px | view titles |
-| `--t7` | 21px | display numerals |
+| `--t6` | 18.5px | in-view headings |
+| `--t7` | 24px | view titles and large numerals |
 
-1.125 is deliberately tight — an editorial 1.25 makes a dense tool shout. Where two roles
-converged on 13px (a settings label and its description, say) the hierarchy moved to **weight
-and colour** instead of size, which keeps the smaller text fully readable. Steps are rounded to
-half-pixels so stems stay crisp.
+**Contrast.** Every text token clears WCAG AA on the lightest surface it can land on, in every
+theme — verified on rendered elements across all eight views, both tab-bar modes and all three
+themes with proper alpha compositing. Lava text uses its own deeper token (`--accent-text`);
+the label on a lava fill is ink (5.1:1), never white (3.6:1). Two rules keep it that way:
 
-**Contrast.** Every text token clears WCAG AA on every surface it is used on, in both themes —
-worst case **4.8:1** against a 4.5 requirement, measured with proper alpha compositing. Every
-non-text element that has to be seen clears the 3:1 bar — worst case **3.0:1**. Idle icons
-(`--text-ghost`) are never used for text, and placeholders use `--text-faint`, since a
-placeholder *is* text.
+- **Fade with colour, never with `opacity`.** `opacity` is reserved for genuinely hidden things
+  and WCAG-exempt states (`[disabled]`, `.dragging`).
+- **A border that *is* the control uses `--edge`** (≥3:1), not the decorative hairlines.
 
-Two rules keep it that way:
-
-- **Fade with colour, never with `opacity`.** A half-transparent icon composites to whatever the
-  backdrop makes of it — `opacity: .58` on a card action measured 1.95:1. `opacity` is now
-  reserved for genuinely hidden things (hover-revealed actions) and WCAG-exempt states
-  (`[disabled]`, `.dragging`).
-- **A border that *is* the control uses `--edge`** (3:1), not the decorative `--line` /
-  `--line-strong` hairlines. Outlined buttons, selects, unchecked boxes and dashed drop targets
-  have no other visual definition, so their outline has to carry it.
+**Responsive.** The header answers to its *panel*, not the window: `.main` is a size container,
+so turning on the vertical tab rail folds the header just as a narrower window would — segment
+captions go first, then the Stash label (icon-only, still named), then the theme segment folds
+into one cycling button, and only then does search drop to its own row. Below 881px the sidebar
+becomes a drawer and the header a two-row grid.
 
 Hanken Grotesk + JetBrains Mono, bundled in `fonts/` — no webfont requests. The `new design/`
 folder is earlier reference material — delete it before packaging for the Web Store.
+
+## Release (Chrome Web Store)
+
+```
+sh scripts/package.sh
+```
+
+builds `dist/stacknest-<version>.zip` from an allowlist — the manifest without its dev `"key"`,
+`newtab.html`, `css/`, `js/` (minus the dev-only `js/mock.js`), `fonts/` (with `OFL.txt`) and the
+icon PNGs — and checks the store limits (description ≤ 132 characters, version format, every file
+the manifest names). `node scripts/smoke-test.mjs` then loads that build into a throwaway headless
+Chrome as the real extension and walks every view in every theme — it exits non-zero on any
+exception, console error, CSP violation or failed load. Upload **only** that zip.
+`node scripts/store-assets.mjs` re-captures the
+1280×800 store screenshots and the promo tile; `node scripts/render-icons.mjs` re-renders the
+icons from `icons/icon.svg`. The listing copy, permission justifications and the owner's launch
+steps are in `docs/store/`; the privacy policy is [PRIVACY.md](PRIVACY.md). Bump `version` in
+`manifest.json` for every upload.
 
 ## Development
 
@@ -383,8 +465,9 @@ The page runs outside Chrome too: serve the folder (`python3 -m http.server`) an
 with demo data. The mock never activates inside Chrome.
 
 ```
-manifest.json      MV3 manifest (new-tab override)
+manifest.json      MV3 manifest (new-tab override, toolbar action, CSP)
 newtab.html        app shell (sidebar · topbar · tray · board · library)
+js/boot.js         pre-paint: applies the remembered theme and sidebar mode (no flash)
 css/newtab.css     all styling; light (1a) + dark (1c) theme tokens at the top
 js/app.js          boot, theme, view switching, unified search
 js/tabs.js         open-tabs tray + WINDOWS sidebar + save/stash

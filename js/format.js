@@ -151,6 +151,80 @@ function enclosingPair(v, pos, open, close) {
   return { from, to: to + close.length };
 }
 
+/* ————— line markers: bullet · numbered · checklist ————— */
+
+// An existing list marker at the start of a line: indent, then "- " / "* " / "+ " (optionally
+// followed by a task box) or "1. " / "1) ". Group 4 is the number when it is a numbered line.
+const LIST_RE = /^(\s*)(?:([-*+])\s+(\[[ xX]\]\s+)?|(\d+)[.)]\s+)/;
+
+function lineKind(line) {
+  const m = line.match(LIST_RE);
+  if (!m) return null;
+  if (m[4] != null) return 'number';
+  return m[3] ? 'task' : 'bullet';
+}
+
+// Toggle a list marker on every line the selection touches. If every non-blank line already
+// carries `kind`, the markers come off; otherwise every line gets `kind`, replacing any other
+// marker and keeping its indent (a checklist line keeps its tick). Numbered lines renumber
+// from 1 across the block. Goes through replaceRange, so the edit is in the native undo stack.
+export function toggleList(field, kind) {
+  if (!field || !['bullet', 'number', 'task'].includes(kind)) return null;
+  const v = field.value;
+  const s0 = field.selectionStart ?? 0, e0 = field.selectionEnd ?? s0;
+  const start = v.lastIndexOf('\n', s0 - 1) + 1;
+  let end = v.indexOf('\n', e0);
+  if (end === -1) end = v.length;
+  const lines = v.slice(start, end).split('\n');
+  const nonBlank = lines.filter((l) => l.trim());
+  const allKind = nonBlank.length > 0 && nonBlank.every((l) => lineKind(l) === kind);
+  let n = 0;
+  const out = lines.map((line) => {
+    const m = line.match(LIST_RE);
+    const indent = m ? m[1] : line.match(/^\s*/)[0];
+    const rest = m ? line.slice(m[0].length) : line.slice(indent.length);
+    if (allKind) return indent + rest;                            // toggle off
+    if (!line.trim() && lines.length > 1) return line;            // blank lines inside a selection stay blank
+    const ticked = !!(m && m[3] && /x/i.test(m[3]));
+    const marker = kind === 'bullet' ? '- ' : kind === 'task' ? `- [${ticked ? 'x' : ' '}] ` : `${++n}. `;
+    return indent + marker + rest;
+  });
+  const next = out.join('\n');
+  if (next === lines.join('\n')) return null;
+  replaceRange(field, start, end, next);
+  if (s0 !== e0 || lines.length > 1) {
+    select(field, start, start + next.length);                    // keep the whole block selected
+  } else {
+    // a collapsed caret stays where it was in the line, but never inside the marker
+    const prefix = (out[0].match(LIST_RE)?.[0] || out[0].match(/^\s*/)[0]).length;
+    const off = Math.max(prefix, Math.min(out[0].length, (s0 - start) + (out[0].length - lines[0].length)));
+    select(field, start + off, start + off);
+  }
+  return allKind ? 'off' : 'on';
+}
+
+// What Enter should do inside a list line: { insert } continues the list (numbers count up,
+// task boxes come back empty), { clear, start, end } means the item was empty — end the list
+// by removing its marker — and null means it isn't a list line, so Enter behaves normally.
+export function listContinuation(field) {
+  const v = field.value, pos = field.selectionStart ?? 0;
+  if (pos !== (field.selectionEnd ?? pos)) return null;
+  const start = v.lastIndexOf('\n', pos - 1) + 1;
+  let end = v.indexOf('\n', pos);
+  if (end === -1) end = v.length;
+  const line = v.slice(start, end);
+  const m = line.match(LIST_RE);
+  if (!m || pos < start + m[0].length) return null;              // caret inside the marker → plain Enter
+  if (!line.slice(m[0].length).trim() && pos === end) return { clear: true, start, end };
+  const marker = m[4] != null ? `${Number(m[4]) + 1}${line[m[1].length + m[4].length]} `
+    : m[3] ? `${m[2]} [ ] `
+    : `${m[2]} `;
+  return { insert: '\n' + m[1] + marker };
+}
+
+// Undoable replacement for callers outside this module (list continuation on Enter).
+export function replaceText(field, start, end, text) { return replaceRange(field, start, end, text); }
+
 /* ————— per-card text scale ————— */
 
 // Deliberately narrow: the floor keeps 13px body text at ~11px, which stays legible and
