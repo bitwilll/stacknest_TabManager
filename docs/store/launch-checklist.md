@@ -106,25 +106,29 @@ the zip and screenshots match the submitted build.
 
 ### C. Google sign-in for store users
 
-The OAuth client `599136003782-49rr…` (type *Chrome Extension*) is registered to the dev ID
-`jcmh…`. Store installs get the store's Item ID, so until this step Drive sign-in would fail for
-every user. Keep one ID for both dev and store:
+StackNest has its own Google Cloud project, **StackNest** (`stacknest-511618`), separate from
+LifeManager's. Its Chrome Extension client `1020230466744-gi8j…` ("StackNest extension") is in
+`manifest.json` › `oauth2.client_id` and is registered to the dev ID `jcmh…`. Store installs get
+the store's Item ID, so until the first two steps Drive sign-in would fail for store users. Keep
+one ID for both dev and store:
 
 - [ ] Replace the `"key"` in `manifest.json` with the store's public key. Unpacked dev builds
       then load with the store's ID. (`package.sh` still strips it from uploads, so the package
       doesn't change.)
-- [ ] Google Cloud Console › APIs & Services › Credentials › the Chrome Extension client: set
-      **Item ID** to the store's Item ID. The client ID string doesn't change, so
-      `oauth2.client_id` stays as it is and nothing needs re-uploading.
-- [ ] Google Auth Platform › **Branding:** app name *StackNest*, a support email, the app home
-      page and the privacy policy URL from step A, and that site's domain under authorized
-      domains.
-- [ ] **Data access:** confirm the only scopes are `…/auth/drive.appdata` and
-      `…/auth/userinfo.email`. Google classes both as non-sensitive, so no scope verification
-      review should be needed. If you add a logo, Google may ask for brand verification.
-- [ ] **Audience › Publish app** (move from *Testing* to *In production*). In Testing, only
-      listed test users (at most 100) can sign in, and their grants expire after 7 days.
-- [ ] Make sure the Google Drive API is enabled in the same project.
+- [ ] Google Auth Platform › **Clients** › *StackNest extension*: set **Item ID** to the store's
+      Item ID. The client ID string doesn't change, so `oauth2.client_id` stays as it is and
+      nothing needs re-uploading.
+- [x] **Branding** (2026-10-15): app name *StackNest*, support and developer email, home page
+      `https://github.com/bitwilll/stacknest_TabManager`, privacy policy `…/blob/design-refresh/PRIVACY.md`,
+      authorized domain `github.com`. **After merging to `main`, change the privacy policy link to
+      `…/blob/main/PRIVACY.md`** (and use the same URL in the store listing).
+- [x] **Data access:** no scopes declared on the consent screen; the extension asks only for
+      `…/auth/drive.appdata` and `…/auth/userinfo.email`, which Google classes as non-sensitive, so
+      no verification is needed. Adding a logo would trigger brand verification — leave it off.
+- [x] **Audience › Publish app** — *In production* since 2026-10-15, so any Google account can
+      connect. (While it was in Testing, accounts not on the test-user list saw *"Access blocked:
+      … has not completed the Google verification process … Error 403: access_denied"*.)
+- [x] Google Drive API enabled in `stacknest-511618`.
 
 ### D. Listing and submission
 

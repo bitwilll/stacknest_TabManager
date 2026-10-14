@@ -79,7 +79,14 @@ async function getToken(interactive, { chooseAccount = false } = {}) {
 // turn Chrome's raw OAuth lastError into a message a person can act on
 function authError(raw, interactive) {
   const m = (raw || '').toLowerCase();
-  if (m.includes('did not approve') || m.includes('cancel')) return new Error('Google sign-in was cancelled.');
+  // Google reports a blocked account ("Access blocked: … has not completed the Google
+  // verification process", Error 403 access_denied) the same way as a closed window:
+  // getAuthToken says "did not approve", the web flow says access_denied. Say both, so a
+  // blocked person isn't told they cancelled.
+  if (m.includes('access_denied') || m.includes('did not approve')) {
+    return new Error('Google didn’t grant access. If you closed the sign-in window, press Connect again. If Google said “Access blocked”, this Google account can’t connect to StackNest yet.');
+  }
+  if (m.includes('cancel')) return new Error('Google sign-in was cancelled.');
   if (m.includes('invalid_client') || m.includes('bad client') || m.includes('not granted') || m.includes('revoked')) {
     return new Error("Google Drive sign-in isn't available right now. Please try again later.");
   }

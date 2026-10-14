@@ -38,7 +38,7 @@
     "alarms"
   ],
   "oauth2": {
-    "client_id": "599136003782-49rr17vnbjhf2a8acgd3ftlmi17oqtb0.apps.googleusercontent.com",
+    "client_id": "1020230466744-gi8j4vs8oepdj8v5f3htof64ltgap2m3.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.appdata",
       "https://www.googleapis.com/auth/userinfo.email"
