@@ -1,7 +1,17 @@
-# macOS
-.DS_Store
-
 # Personal data exports — never publish these (they hold your real tabs/bookmarks)
 full backup.json
 stacknest-backup-*.json
 *-backup-*.json
+*.backup.json
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# packaged builds
+*.crx
+*.pem
+*.zip
+
+# Web Store build output (scripts/package.sh)
+dist/
