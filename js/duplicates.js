@@ -1,8 +1,8 @@
 // Duplicates view — finds the same URL saved more than once across your collections
 // and Chrome bookmarks, groups the copies, and lets you prune the redundant ones.
 
-import { el, icon, actionBtn, tile, domainOf, toast, matches, normalizeUrl, confirmDialog } from './ui.js';
-import { loadSpaces, loadWorkspaces, mutateSpace, insertTabAt } from './spacesStore.js';
+import { el, icon, actionBtn, tile, domainOf, toast, matches, normalizeUrl, confirmDialog, debounce, viewHidden, emptyState, sectionHead, secGroup, noMatch, plural, badgeText } from './ui.js';
+import { SPACES_KEY, loadSpaces, loadWorkspaces, mutateSpace, insertTabAt } from './spacesStore.js';
 import { getKey, update } from './store.js';
 import { pushHistory, flashDeleted } from './history.js';
 
@@ -16,12 +16,15 @@ const forgetLink = (o) => update(FORGET_KEY, {}, (m) => { m[o.key] = { url: o.ur
 const restoreLink = (key) => update(FORGET_KEY, {}, (m) => { delete m[key]; return m; });
 
 let root, getQuery, countEl;
+let dupSeq = 0; // ids for each card's h3, so the card section is labelled by its link
 
 export function initDuplicates(options) {
   ({ root, getQuery, countEl } = options);
   // collections live in chrome.storage.local; bookmarks in the bookmarks tree — watch both
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c['stacknest:spaces'] || c[FORGET_KEY])) render(); });
-  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(render);
+  // a bulk clean fires one bookmark event per removal — coalesce them into a single scan
+  const rerender = debounce(render, 150);
+  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[SPACES_KEY] || c[FORGET_KEY])) rerender(); });
+  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(rerender);
   render();
   return { render };
 }
@@ -71,30 +74,33 @@ export async function render() {
   const shown = q ? groups.filter((g) => g.some((o) => matches(q, o.title, o.url))) : groups;
 
   const totalRedundant = groups.reduce((n, g) => n + (g.length - 1), 0);
-  if (countEl) countEl.textContent = totalRedundant ? String(totalRedundant) : '';
+  if (countEl) countEl.textContent = badgeText(totalRedundant);
+  if (viewHidden(root)) return; // badge stays live; the DOM is rebuilt when the view opens
 
-  const frag = document.createDocumentFragment();
-  frag.append(el('div', { class: 'dup-head' },
-    el('div', { class: 'dup-h-text' },
-      el('h2', { class: 'dup-title', text: groups.length ? `${groups.length} duplicated link${groups.length === 1 ? '' : 's'}` : 'No duplicates' }),
-      el('p', { class: 'dup-sub', text: groups.length
-        ? `${totalRedundant} redundant cop${totalRedundant === 1 ? 'y' : 'ies'} across your collections and bookmarks. Tick the copy — or several — to keep in each group, then “Keep selected” removes the rest. You can also delete copies one at a time.`
-        : 'Every saved link is unique. Nothing to clean up.' }),
-    ),
-    groups.length ? el('button', {
-      class: 'btnx primary dup-clean',
+  // the head stays in every state — empty and no-match live inside the "duplicated links" group
+  const head = sectionHead({
+    stats: [{ n: totalRedundant, unit: `redundant ${plural(totalRedundant, 'copy', 'copies')}` }, { n: groups.length, unit: plural(groups.length, 'link') }],
+    match: q ? { q, shown: shown.length, total: groups.length, unit: plural(groups.length, 'link') } : null,
+    note: groups.length
+      ? 'Collections and Chrome bookmarks, re-scanned on their own. Collection removals can be undone; bookmark removals can’t.'
+      : 'Every link across your collections and Chrome bookmarks is saved exactly once.',
+    primary: groups.length ? el('button', { class: 'btnx primary dup-clean', type: 'button',
       title: 'For every duplicated link: keep one copy, remove all the others',
-      onclick: () => autoClean(groups, totalRedundant),
-    }, el('span', { text: 'Keep one of each' })) : null,
-  ));
-
-  if (!shown.length && groups.length) {
-    frag.append(el('div', { class: 'lib-empty' }, 'No duplicates match ', el('strong', {}, q), '.'));
-  }
-  for (const g of shown) frag.append(groupCard(g));
-
-  frag.append(forgottenSection(forgotten, allGroups));
-  root.replaceChildren(frag);
+      onclick: () => autoClean(groups, totalRedundant) }, icon('merge', 15), el('span', { text: 'Keep one of each' })) : null,
+    // the truth about the existing scope, next to the button: it ignores search and ticks
+    // only worth saying "not just the n shown" when the search actually hides some of them
+    primaryNote: groups.length
+      ? (q && shown.length && shown.length < groups.length
+        ? `all ${groups.length} ${plural(groups.length, 'link')}, not just the ${shown.length} shown`
+        : `all ${groups.length} ${plural(groups.length, 'link')} · keeps the first copy listed`)
+      : null,
+  });
+  const list = secGroup({ caption: 'duplicated links', count: q ? `${shown.length} of ${groups.length}` : groups.length, className: 'dup-list' },
+    groups.length && shown.length ? el('p', { class: 'sec-help', text: 'Tick the copies to keep · Keep selected removes the rest · × removes one copy.' }) : null,
+    ...(!groups.length ? [emptyState({ icon: 'check', title: 'No duplicates', hint: 'This view re-scans on its own whenever something changes.' })]
+      : !shown.length ? [noMatch(q, 'Matches any copy’s title or address.')]
+      : shown.map(groupCard)));
+  root.replaceChildren(head, el('div', { class: 'sec-body' }, el('div', { class: 'sec-split' }, list, forgottenSection(forgotten, allGroups))));
 }
 
 // One click, zero redundancy: keep the first copy of every group, remove the rest.
@@ -110,44 +116,43 @@ async function autoClean(groups, totalRedundant) {
   toast(`Removed ${totalRedundant} redundant cop${totalRedundant === 1 ? 'y' : 'ies'} — one copy of each link kept`);
 }
 
-// The parking lot for links the user chose to stop flagging.
+// The parking lot for links the user chose to stop flagging — an aside group, never filtered by search.
 function forgottenSection(forgotten, allGroups) {
   const keys = Object.keys(forgotten).sort((a, b) => (forgotten[b].at || 0) - (forgotten[a].at || 0));
   if (!keys.length) return el('span', { hidden: true });
-  const sec = el('section', { class: 'dup-forgot' },
-    el('h3', { class: 'dup-forgot-h', text: `Forgotten links · ${keys.length}` }),
-    el('p', { class: 'dup-forgot-sub', text: 'Kept out of duplicate scans. Restore one to flag its copies again.' }),
-  );
-  for (const k of keys) {
+  const rows = keys.map((k) => {
     const rec = forgotten[k];
     const copies = allGroups.find((g) => g[0].key === k)?.length || 1;
-    sec.append(el('div', { class: 'dup-forgot-row' },
+    return el('div', { class: 'dup-forgot-row' },
       tile(rec.url, 26),
       el('span', { class: 'dup-forgot-meta' },
         el('span', { class: 'dup-forgot-title', text: rec.title || rec.url }),
-        el('span', { class: 'dup-forgot-url', text: domainOf(rec.url) || rec.url }),
-      ),
-      el('span', { class: 'dup-src-kind', text: `${copies}× saved` }),
-      el('button', { class: 'btnx soft dup-restore', title: 'Flag this link’s duplicates again', onclick: () => restoreLink(k) },
-        el('span', { text: 'Restore' })),
-    ));
-  }
-  return sec;
+        el('span', { class: 'dup-forgot-url', text: domainOf(rec.url) || rec.url })),
+      el('span', { class: 'dup-saved', text: `${copies}× saved` }),
+      el('button', { class: 'btnx soft sm dup-restore', type: 'button', title: 'Flag this link’s duplicates again', onclick: () => restoreLink(k) }, el('span', { text: 'Restore' })));
+  });
+  return secGroup({ caption: 'forgotten links', count: keys.length, className: 'dup-forgot' },
+    el('p', { class: 'sec-help', text: 'Kept out of duplicate scans. Restore one to flag its copies again.' }),
+    el('div', { class: 'dup-forgot-list' }, ...rows));
 }
 
 function groupCard(group) {
   const head = group[0];
-  const card = el('section', { class: 'dup-card' });
+  const titleId = `dup-${++dupSeq}`;
+  const card = el('section', { class: 'dup-card', 'aria-labelledby': titleId });
   const keep = new Set([0]); // indices of the copies to keep — one or several; first by default
 
-  const resolveBtn = el('button', { class: 'btnx soft dup-resolve', onclick: () => resolveGroup(group, keep) },
+  const resolveBtn = el('button', { class: 'btnx soft sm dup-resolve', type: 'button', onclick: () => resolveGroup(group, keep) },
     el('span', { text: 'Keep selected' }));
+  const footState = el('span', { class: 'dup-foot-state', 'aria-live': 'polite' });
   const syncResolve = () => {
     const removing = group.length - keep.size;
     resolveBtn.disabled = !keep.size || !removing;
-    resolveBtn.title = !keep.size ? 'Tick at least one copy to keep'
+    const msg = !keep.size ? 'Tick at least one copy to keep'
       : !removing ? 'Everything is ticked — untick the copies you want removed'
       : `Keep ${keep.size} cop${keep.size === 1 ? 'y' : 'ies'}, remove the other ${removing}`;
+    resolveBtn.title = msg;
+    footState.textContent = msg;   // visible, not hover-only; set before the card is attached, so no initial announcement
   };
 
   const list = el('div', { class: 'dup-occs' });
@@ -158,9 +163,10 @@ function groupCard(group) {
     box.addEventListener('change', () => setKept(box.checked));
     const row = el('div', { class: 'dup-occ' },
       box,
-      el('span', { class: `dup-src-ic ${o.type}` }, icon(o.type === 'bookmark' ? 'archive' : 'folder', 13)),
+      el('span', { class: `dup-src-ic ${o.type}` }, icon(o.type === 'bookmark' ? 'library' : 'columns', 13)),
       el('span', { class: 'dup-src', text: o.sourceLabel }),
-      el('span', { class: 'dup-src-kind', text: o.type }),
+      // says what × does to this copy: collection removals go through undo, bookmark removals do not
+      el('span', { class: 'dup-src-kind', text: o.type === 'collection' ? 'collection · undoable' : 'bookmark · permanent' }),
       actionBtn('close', 'Remove this copy', () => removeOccurrence(o), 'danger'),
     );
     // clicking the row toggles keeping this copy (the checkbox and buttons handle themselves)
@@ -173,20 +179,19 @@ function groupCard(group) {
   });
   syncResolve();
 
-  card.append(el('div', { class: 'dup-card-head' },
-    tile(head.url, 34),
-    el('a', { class: 'dup-link', href: head.url, title: head.url },
-      el('span', { class: 'dup-link-title', text: head.title }),
-      el('span', { class: 'dup-link-url', text: domainOf(head.url) || head.url }),
-    ),
-    el('span', { class: 'dup-badge', text: `${group.length}×` }),
-    el('button', {
-      class: 'btnx ghosty dup-forget',
-      title: 'Stop flagging this link as a duplicate — it moves to “Forgotten links” below, where you can restore it',
-      onclick: () => { forgetLink(head); toast(`Forgot “${head.title}” — restore it any time`); },
-    }, el('span', { text: 'Forget' })),
-    resolveBtn,
-  ), list);
+  card.append(
+    el('div', { class: 'dup-card-head' },
+      tile(head.url, 34),
+      el('h3', { class: 'dup-h', id: titleId },
+        el('a', { class: 'dup-link', href: head.url, title: head.url },
+          el('span', { class: 'dup-link-title', text: head.title }),
+          el('span', { class: 'dup-link-url', text: domainOf(head.url) || head.url }))),
+      el('span', { class: 'dup-count', text: `${group.length} copies` }),
+      el('button', { class: 'btnx ghosty sm dup-forget', type: 'button',
+        title: 'Stop flagging this link as a duplicate — it moves to “Forgotten links”, where you can restore it',
+        onclick: () => { forgetLink(head); toast(`Forgot “${head.title}” — restore it any time`); } }, el('span', { text: 'Forget' }))),
+    list,
+    el('div', { class: 'dup-card-foot' }, footState, resolveBtn));
   return card;
 }
 

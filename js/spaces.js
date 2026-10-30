@@ -4,7 +4,8 @@
 
 import {
   el, icon, actionBtn, toast, tile, domainOf, shortDate, matches,
-  addDropTarget, normalizeUrl, confirmDialog, exportDownload,
+  addDropTarget, normalizeUrl, confirmDialog, exportDownload, emptyState,
+  secState, noMatch, plural, tabSourceHint, badgeText,
 } from './ui.js';
 import {
   SPACES_KEY, WORKSPACES_KEY, ACTIVE_WS_KEY, DOT_COLORS, WS_COLORS,
@@ -22,10 +23,10 @@ const SPACE_MIME = 'text/x-stacknest-space';
 const WS_MIME = 'text/x-stacknest-workspace';
 const OPEN_ALL_CONFIRM = 10;
 
-let boardRoot, navRoot, wsRoot, navCount, getQuery, ensureBoardVisible, clearSearch;
+let boardRoot, navRoot, wsRoot, navCount, getQuery, ensureBoardVisible, clearSearch, boardState, collectionsScope;
 
 export function initSpaces(options) {
-  ({ boardRoot, navRoot, wsRoot, navCount, getQuery, ensureBoardVisible, clearSearch } = options);
+  ({ boardRoot, navRoot, wsRoot, navCount, getQuery, ensureBoardVisible, clearSearch, boardState, collectionsScope } = options);
 
   chrome.storage?.onChanged?.addListener((changes, area) => {
     if (area === 'local' && (changes[SPACES_KEY] || changes[WORKSPACES_KEY] || changes[ACTIVE_WS_KEY] || changes[TAGS_KEY])) render();
@@ -35,15 +36,29 @@ export function initSpaces(options) {
   return { render, createEmpty, exportAll, newWorkspace };
 }
 
+// A freshly created collection / space opens straight into its rename field. The names are
+// display-only spans (never focusable), so the render that paints the new row starts the
+// rename itself. The marker stays armed until that rename commits or is cancelled: the
+// creation triggers more than one render (add, then activate), and a later render would
+// otherwise replace the row — and the rename input — that an earlier one had opened.
+let renameOnRender = null; // { kind: 'collection' | 'space', id }
+const disarmRename = (id) => { if (renameOnRender?.id === id) renameOnRender = null; };
+
 async function createEmpty() {
-  await addSpace('', []);
-  setTimeout(() => boardRoot.querySelector('.colcard .col-name')?.focus(), 80);
+  ensureBoardVisible();
+  const created = await addSpace('', []);
+  renameOnRender = { kind: 'collection', id: created.id };
+  await render();
 }
 
+// A new Space is named where it was made. A folded rail opens first (its 46px rows have no room
+// for a name field), and the board waits until the name is in: switching views right away would
+// close the drawer on narrow screens and strand the field inside it.
 async function newWorkspace() {
+  if (document.documentElement.dataset.side === 'rail') document.getElementById('side-collapse')?.click();
   const ws = await addWorkspace('');
+  renameOnRender = { kind: 'space', id: ws.id, thenBoard: true };
   await setActiveWorkspace(ws.id);
-  setTimeout(() => wsRoot.querySelector('.ws-row.is-active .nav-label')?.focus?.(), 80);
 }
 
 function colorOf(space, index) {
@@ -165,11 +180,43 @@ export async function render() {
   const q = getQuery();
   const [workspaces, activeId, spaces, tagsMap] = await Promise.all([loadWorkspaces(), getActiveWorkspaceId(), loadActiveSpaces(), loadTags()]);
 
-  navCount.textContent = spaces.length ? String(spaces.length) : '';
+  navCount.textContent = badgeText(spaces.length);
+  // the active Space's colour — the board head shows it as the scope swatch
+  const activeWs = workspaces.find((w) => w.id === activeId);
+  const wsColor = activeWs?.color || WS_COLORS[0];
+  document.documentElement.style.setProperty('--space-color', wsColor);
 
   renderWorkspaces(workspaces, activeId);
-  renderBoard(spaces, q, tagsMap);
+  renderBoard(spaces, q, tagsMap, activeWs);
   renderCollectionsNav(spaces, q);
+  renderBoardHead(spaces, q, activeWs, wsColor);
+}
+
+// the same predicate column() filters with: a title match keeps the whole column
+function boardCounts(spaces, q) {
+  let totalLinks = 0, shownCols = 0, shownLinks = 0;
+  for (const s of spaces) {
+    totalLinks += s.tabs.length;
+    const titleMatch = matches(q, s.title);
+    const n = titleMatch ? s.tabs.length : s.tabs.filter((t) => matches(q, t.title, t.url)).length;
+    if (titleMatch || n) { shownCols++; shownLinks += n; }
+  }
+  return { totalLinks, shownCols, shownLinks };
+}
+
+// The board's head is static markup (newtab.html); each render refills its state part —
+// "space · ■ Personal │ 2 collections · 5 links" — and the sidebar caption's scope.
+// The first numeral is the same number as the #nav-collections-count badge.
+function renderBoardHead(spaces, q, ws, color) {
+  const name = ws?.name || 'untitled';
+  if (collectionsScope) { collectionsScope.textContent = ` · ${name}`; collectionsScope.title = name; }
+  if (!boardState) return;
+  const { totalLinks, shownLinks } = boardCounts(spaces, q);
+  secState({
+    scope: { key: 'space', value: name, swatch: color },
+    stats: [{ n: spaces.length, unit: plural(spaces.length, 'collection') }, { n: totalLinks, unit: plural(totalLinks, 'link') }],
+    match: q ? { q, shown: shownLinks, total: totalLinks, unit: plural(totalLinks, 'link') } : null,
+  }, boardState);
 }
 
 /* — SPACES (environments) sidebar — */
@@ -181,8 +228,11 @@ function renderWorkspaces(workspaces, activeId) {
     const row = el('div', {
       class: `navx ws-row${w.id === activeId ? ' is-active' : ''}`,
       role: 'button', tabindex: '0', draggable: 'true', title: w.name || 'untitled', dataset: { id: w.id },
+      'aria-current': w.id === activeId ? 'true' : null,
+      style: `--ws-color:${w.color || WS_COLORS[0]}`, // the active rail takes the Space's own colour
     },
-      el('span', { class: 'nav-dot', style: `background: ${w.color || WS_COLORS[0]}` }),
+      // the rail shows the initial on the mark, so Spaces are told apart by more than colour
+      el('span', { class: 'nav-dot', style: `background: ${w.color || WS_COLORS[0]}`, dataset: { initial: (w.name || 'untitled').trim().charAt(0).toUpperCase() } }),
       label,
       el('span', { class: 'nav-n', text: '' }),
       el('span', { class: 'nav-acts' },
@@ -205,6 +255,10 @@ function renderWorkspaces(workspaces, activeId) {
     // drop a collection onto a space to move it there
     addDropTarget(row, SPACE_MIME, async ({ id }) => { await moveSpaceToWorkspace(id, w.id); toast(`Moved to “${w.name || 'space'}”`); });
     frag.append(row);
+    if (renameOnRender?.kind === 'space' && renameOnRender.id === w.id) {
+      const afterwards = renameOnRender.thenBoard ? ensureBoardVisible : null;
+      setTimeout(() => { if (row.isConnected) startWsRename(row, label, w, afterwards); }, 0); // after the row is in the DOM
+    }
   });
   wsRoot.replaceChildren(frag);
 }
@@ -242,7 +296,7 @@ function wsReorderDrop(row, w, workspaces, index) {
   });
 }
 
-function startWsRename(row, label, w) {
+function startWsRename(row, label, w, afterwards = null) {
   const input = el('input', { class: 'inline-edit nav-edit', 'aria-label': 'Rename space' });
   input.value = w.name || '';
   label.replaceWith(input);
@@ -253,27 +307,29 @@ function startWsRename(row, label, w) {
   const commit = async () => {
     if (done) return;
     done = true;
+    disarmRename(w.id);
     const name = input.value.trim();
     input.replaceWith(label);
     if (name !== (w.name || '')) { await renameWorkspace(w.id, name); toast('Renamed'); }
+    afterwards?.();
   };
   input.addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') commit();
-    if (e.key === 'Escape') { done = true; input.replaceWith(label); }
+    if (e.key === 'Escape') { done = true; disarmRename(w.id); input.replaceWith(label); afterwards?.(); }
   });
   input.addEventListener('blur', commit);
 }
 
 function wsDeleteBtn(w, total) {
   let armed = false;
-  return actionBtn('close', 'Delete space and its collections', async (_, btn) => {
+  return actionBtn('trash', 'Delete space and its collections', async (_, btn) => {
     if (total <= 1) { toast('Keep at least one space'); return; }
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
       btn.replaceChildren('sure?');
-      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('close', 14)); }, 2600);
+      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('trash', 14)); }, 2600);
       return;
     }
     await removeWorkspace(w);
@@ -282,23 +338,39 @@ function wsDeleteBtn(w, total) {
 
 /* — board — */
 
-function renderBoard(spaces, q, tagsMap) {
-  const frag = document.createDocumentFragment();
-  for (let i = 0; i < spaces.length; i++) frag.append(column(spaces[i], i, q, tagsMap));
+// a tab dropped on the "New collection" tile (or the empty-space block) starts a collection
+const newFromTab = async ({ title, url }) => { if (url) { await addSpace('', [{ title: title || url, url }]); toast('New collection created'); } };
 
-  const ghost = el('button', { class: 'ghost newcol', title: 'New collection', onclick: createEmpty },
+function newColGhost() {
+  const ghost = el('button', { class: 'ghost newcol', title: 'New collection — or drop a tab here', onclick: createEmpty },
     el('span', { class: 'plus-tile' }, icon('plus', 18)),
-    el('span', { text: 'New collection' }),
-  );
-  addDropTarget(ghost, TAB_MIME, async ({ title, url }) => { if (url) { await addSpace('', [{ title: title || url, url }]); toast('New collection created'); } });
+    el('span', { class: 'newcol-t', text: 'New collection' }),
+    el('span', { class: 'newcol-sub', text: 'or drop a tab here' }));
+  addDropTarget(ghost, TAB_MIME, newFromTab);
   addDropTarget(ghost, SPACE_MIME, async ({ id }) => reorderSpace(id, null));
-  frag.append(ghost);
+  return ghost;
+}
 
+function renderBoard(spaces, q, tagsMap, ws) {
+  const frag = document.createDocumentFragment();
   if (!spaces.length) {
-    frag.append(el('div', { class: 'board-empty' },
-      'No collections in this space yet.', el('br'),
-      'Drag a tab from the tray above, or hit ', el('strong', {}, 'Stash window'), ' to park this window.'));
+    // one block, not tile + block: it is the drop slot (same handler as .newcol) and keeps both create routes
+    const empty = emptyState({
+      icon: 'archive',
+      title: `Nothing in ${ws?.name || 'this space'} yet`,
+      hint: ['Drop a tab here from ', tabSourceHint(), ', or press ', el('strong', {}, 'Stash & close'), ' to park this whole window.'],
+      actions: [
+        el('button', { class: 'btnx soft', type: 'button', onclick: createEmpty }, icon('plus', 14), el('span', { text: 'New collection' })),
+        el('button', { class: 'btnx soft', type: 'button', onclick: () => document.getElementById('save-all-btn')?.click() }, icon('save', 14), el('span', { text: 'Save this window' })),
+      ],
+    });
+    addDropTarget(empty, TAB_MIME, newFromTab);
+    boardRoot.replaceChildren(empty);
+    return;
   }
+  for (let i = 0; i < spaces.length; i++) frag.append(column(spaces[i], i, q, tagsMap));
+  if (q && !boardCounts(spaces, q).shownCols) frag.append(noMatch(q, 'Search covers collection names, link titles and addresses.'));
+  frag.append(newColGhost());
   boardRoot.replaceChildren(frag);
 }
 
@@ -348,7 +420,7 @@ function renderCollectionsNav(spaces, q) {
 
 function flashColumn(target) {
   if (!target) return;
-  target.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', inline: 'start', block: 'nearest' });
   target.classList.add('highlight');
   setTimeout(() => target.classList.remove('highlight'), 1200);
 }
@@ -388,6 +460,7 @@ function startColRename(nameSpan, space) {
   const commit = async () => {
     if (done) return;
     done = true;
+    disarmRename(space.id);
     const title = input.value.trim();
     nameSpan.textContent = title;
     input.replaceWith(nameSpan);
@@ -396,19 +469,19 @@ function startColRename(nameSpan, space) {
   input.addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter') commit();
-    if (e.key === 'Escape') { done = true; input.replaceWith(nameSpan); }
+    if (e.key === 'Escape') { done = true; disarmRename(space.id); input.replaceWith(nameSpan); }
   });
   input.addEventListener('blur', commit);
 }
 
 function navDeleteBtn(space) {
   let armed = false;
-  return actionBtn('close', 'Delete collection', async (_, btn) => {
+  return actionBtn('trash', 'Delete collection', async (_, btn) => {
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
       btn.replaceChildren('sure?');
-      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('close', 14)); }, 2600);
+      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('trash', 14)); }, 2600);
       return;
     }
     await removeCollection(space);
@@ -419,7 +492,8 @@ function navDeleteBtn(space) {
 
 function column(space, index, q, tagsMap) {
   const color = colorOf(space, index);
-  const col = el('section', { class: 'colcard', draggable: 'true', dataset: { id: space.id } });
+  // --col-color paints the 3px top edge (CSS) — the collection's colour as a wayfinding mark
+  const col = el('section', { class: 'colcard', draggable: 'true', dataset: { id: space.id }, style: `--col-color:${color}` });
   if (space.collapsed && !q) col.classList.add('collapsed');
 
   const titleMatch = matches(q, space.title);
@@ -432,6 +506,7 @@ function column(space, index, q, tagsMap) {
 
   const chev = el('button', {
     class: 'col-chev', title: space.collapsed ? 'Expand collection' : 'Collapse collection', 'aria-label': 'Toggle collapse',
+    'aria-expanded': String(!(space.collapsed && !q)),
     onclick: (e) => { e.stopPropagation(); setSpaceProp(space.id, 'collapsed', !space.collapsed); },
   }, icon('chevron', 15));
 
@@ -443,20 +518,31 @@ function column(space, index, q, tagsMap) {
   // display-only title — renaming is via the rename action, so a click never edits it
   const name = el('span', { class: 'col-name', title: space.title || 'untitled', text: space.title || '' });
 
+  // R7 order: the main action, quiet edits, then (6px apart, in CSS) the armed delete
   const acts = el('span', { class: 'acts' },
+    actionBtn('window', 'Open all in a new window', () => revive(space)),
     actionBtn('rename', 'Rename collection', () => startColRename(name, space)),
     actionBtn('download', 'Export this collection', () => exportCollections([space])),
-    actionBtn('external', 'Open all in a new window', () => revive(space)),
     deleteBtn(space),
   );
 
+  // while a search filters this column's cards, the count reads visible/total
+  const visible = cards.filter((c) => !c.classList.contains('filtered')).length;
+  const filteringCards = q && !titleMatch;
+  const count = el('span', { class: 'col-count' }, String(filteringCards ? visible : space.tabs.length),
+    filteringCards ? el('span', { class: 'col-of', text: `/${space.tabs.length}` }) : null);
+
+  // two rows: the name gets the full width; date + actions share the line beneath it
   const head = el('div', { class: 'colhead' },
-    el('div', { class: 'colhead-row' }, chev, dot, name, el('span', { class: 'col-count', text: String(space.tabs.length) }), acts),
-    el('div', { class: 'col-note', text: `Updated ${shortDate(space.updatedAt || space.createdAt)}` }),
+    el('div', { class: 'colhead-row' }, chev, dot, name, count),
+    el('div', { class: 'colhead-sub' }, el('div', { class: 'col-note', text: `Updated ${shortDate(space.updatedAt || space.createdAt)}` }), acts),
   );
 
   const body = el('div', { class: 'colbody' }, ...cards, addTabGhost(space));
   col.append(head, body);
+  if (renameOnRender?.kind === 'collection' && renameOnRender.id === space.id) {
+    setTimeout(() => { if (col.isConnected) { startColRename(name, space); col.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } }, 0);
+  }
 
   // the whole tile is a drag handle for reordering (works in column and tile views).
   // inner tab cards stopPropagation on their own dragstart; inputs/buttons are guarded out.
@@ -484,8 +570,8 @@ function tabCard(space, tab, index, tagsMap) {
       tagsMap ? tagChips(tagsMap, tab.url) : null,
     ),
     el('span', { class: 'acts' },
-      actionBtn('tag', 'Edit tags', (_, btn) => openTagEditor(btn, { url: tab.url, title: tab.title || tab.url })),
       actionBtn('external', 'Open in background tab', () => { chrome.tabs.create({ url: tab.url, active: false }); toast('Opened in background'); }),
+      actionBtn('tag', 'Edit tags', (_, btn) => openTagEditor(btn, { url: tab.url, title: tab.title || tab.url })),
       actionBtn('close', 'Remove from collection', () => removeTab(space, tab, index), 'danger'),
     ),
   );
@@ -531,12 +617,12 @@ function addTabGhost(space) {
 
 function deleteBtn(space) {
   let armed = false;
-  return actionBtn('close', 'Delete collection', async (_, btn) => {
+  return actionBtn('trash', 'Delete collection', async (_, btn) => {
     if (!armed) {
       armed = true;
       btn.classList.add('armed');
       btn.replaceChildren('sure?');
-      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('close', 14)); }, 2600);
+      setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.replaceChildren(icon('trash', 14)); }, 2600);
       return;
     }
     await removeCollection(space);

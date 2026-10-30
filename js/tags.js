@@ -3,9 +3,10 @@
 // URL shares tags whether it lives in a collection or the Library. The Tags view shows
 // a mind-graph (tags as hubs, items linked to them) plus a per-tag sorting grid.
 
-import { el, icon, tile, domainOf, toast, hueOf, matches, normalizeUrl } from './ui.js';
+import { el, icon, tile, domainOf, toast, hueOf, matches, normalizeUrl, debounce, viewHidden, emptyState,
+  sectionHead, secGroup, noMatch, goTo, plural, badgeText } from './ui.js';
 import { getKey, update } from './store.js';
-import { loadSpaces, loadWorkspaces } from './spacesStore.js';
+import { SPACES_KEY, loadSpaces } from './spacesStore.js';
 
 export const TAGS_KEY = 'stacknest:tags';
 
@@ -89,7 +90,7 @@ export async function openTagEditor(anchor, { url, title }) {
   });
 
   const pop = el('div', { class: 'tagpop', role: 'dialog', 'aria-label': 'Edit tags' },
-    el('div', { class: 'tagpop-h', text: 'Tags' }), chips,
+    el('div', { class: 'tagpop-h' }, icon('tag', 13), el('span', { text: 'Tags' })), chips,
     el('div', { class: 'tagpop-add' }, input, datalist),
     el('div', { class: 'tagpop-hint', text: 'Enter or comma to add · Esc to close' }),
   );
@@ -143,7 +144,7 @@ export function tagChips(map, url, max = 3) {
 
 /* ————————————————————————— Tags view (graph + grid) ————————————————————————— */
 
-let root, getQuery, countEl, jumpToUrl;
+let root, getQuery, countEl;
 let activeTag = null; // null = overview across all tags
 let tagMode = 'graph'; // overview reading: 'graph' (tags as hubs) or 'list' (the cards)
 
@@ -155,9 +156,10 @@ let graphSig = ''; // hub layout the retained camera belongs to
 const Z_MIN = 0.45, Z_MAX = 5, Z_STEP = 1.25;
 
 export function initTags(options) {
-  ({ root, getQuery, countEl, jumpToUrl } = options);
-  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[TAGS_KEY] || c['stacknest:spaces'])) render(); });
-  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(render);
+  ({ root, getQuery, countEl } = options);
+  const rerender = debounce(render, 150);
+  chrome.storage?.onChanged?.addListener((c, area) => { if (area === 'local' && (c[TAGS_KEY] || c[SPACES_KEY])) rerender(); });
+  for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) chrome.bookmarks[ev]?.addListener(rerender);
   render();
   return { render };
 }
@@ -183,6 +185,40 @@ async function gatherItems(map) {
   return [...byKey.values()];
 }
 
+// the list search predicate: title, address or any of the link's tag names
+const itemMatches = (it, q) => matches(q, it.title, it.url) || it.tags.some((t) => matches(q, t));
+
+// The section head. Graph and list are two readings of ONE set of links, so they are
+// alternates (a segment) rather than a stack. While a tag filter is on, the segment is
+// not rendered; a soft "All tags" pill takes its slot and does what the All chip does.
+function tagsHead(tagList, items, q) {
+  const subset = activeTag ? items.filter((it) => it.tags.includes(activeTag)) : items;
+  const listing = activeTag !== null || tagMode === 'list';   // the graph ignores search; say so
+  const tools = [];
+  if (tagList.length && activeTag) {
+    tools.push(el('button', { class: 'btnx soft', type: 'button', title: 'Show all tags', onclick: () => { activeTag = null; render(); } }, icon('close', 14), el('span', { text: 'All tags' })));
+  } else if (tagList.length) {
+    const seg = el('div', { class: 'set-seg tag-modeseg', role: 'group', 'aria-label': 'Tag view' });
+    for (const m of [{ id: 'graph', label: 'Graph' }, { id: 'list', label: 'List' }]) {
+      const btn = el('button', { class: `set-seg-btn${m.id === tagMode ? ' is-active' : ''}`, type: 'button', text: m.label, 'aria-pressed': String(m.id === tagMode) });
+      btn.addEventListener('click', () => { tagMode = m.id; render(); });
+      seg.append(btn);
+    }
+    tools.push(seg);
+  }
+  return sectionHead({
+    scope: activeTag ? { key: 'tag', value: activeTag, swatch: tagColor(activeTag) } : null,
+    // stats[0] is the sidebar badge (#nav-tags-count)
+    stats: [{ n: tagList.length, unit: plural(tagList.length, 'tag') },
+      { n: subset.length, unit: activeTag ? plural(subset.length, 'link') : `tagged ${plural(items.length, 'link')}` }],
+    match: q && listing ? { q, shown: subset.filter((it) => itemMatches(it, q)).length, total: subset.length } : null,
+    // with zero tags there is no graph to explain, so no search note either
+    note: q && !listing && tagList.length ? 'Search filters the list, not the graph.'
+      : tagList.length ? 'Every tagged link from your collections and Chrome bookmarks.' : null,
+    tools,
+  });
+}
+
 export async function render() {
   const map = await loadTags();
   const items = await gatherItems(map);
@@ -190,56 +226,73 @@ export async function render() {
   const counts = new Map();
   for (const it of items) for (const t of it.tags) counts.set(t, (counts.get(t) || 0) + 1);
   const tagList = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, count]) => ({ name, count }));
-  if (countEl) countEl.textContent = tagList.length ? String(tagList.length) : '';
+  if (countEl) countEl.textContent = badgeText(tagList.length);
   if (activeTag && !counts.has(activeTag)) activeTag = null;
+  if (viewHidden(root)) return; // badge stays live; the DOM is rebuilt when the view opens
 
-  const frag = document.createDocumentFragment();
-
+  const q = getQuery();
+  const head = tagsHead(tagList, items, q);
   if (!tagList.length) {
-    frag.append(el('div', { class: 'lib-empty' },
-      'No tags yet. Open the ', el('strong', {}, 'tag'), ' action on any saved link or bookmark to start tagging.'));
-    root.replaceChildren(frag);
+    root.replaceChildren(head, el('div', { class: 'sec-body' }, emptyState({
+      icon: 'tag', title: 'No tags yet',
+      hint: ['Hover any saved link or bookmark and use its ', el('strong', {}, 'tag'), ' action. Tagged links gather here, with a graph of how they relate.'],
+      actions: [
+        el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('board') }, icon('columns', 14), el('span', { text: 'Open Collections' })),
+        el('button', { class: 'btnx soft', type: 'button', onclick: () => goTo('library') }, icon('library', 14), el('span', { text: 'Open Library' })),
+      ] })));
     return;
   }
 
-  // filter bar
-  const bar = el('div', { class: 'tag-filterbar' });
+  // the index: All + one chip per tag (rows on wide panels, a scrolling strip on narrow ones)
+  const bar = el('div', { class: 'tag-filterbar', role: 'group', 'aria-label': 'Filter by tag' });
+  // the narrow strip scrolls sideways: a plain mouse wheel moves it (Chrome only maps Shift+wheel)
+  // — and only while it can still move that way, so the view scrolls on once the strip hits an end
+  bar.addEventListener('wheel', (e) => {
+    const max = bar.scrollWidth - bar.clientWidth;
+    if (getComputedStyle(bar).flexDirection === 'row' && Math.abs(e.deltaY) > Math.abs(e.deltaX)
+      && ((e.deltaY > 0 && bar.scrollLeft < max - 1) || (e.deltaY < 0 && bar.scrollLeft > 0))) {
+      bar.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  }, { passive: false });
   bar.append(chip('All', items.length, activeTag === null, () => { activeTag = null; render(); }, null));
   for (const t of tagList) bar.append(chip(t.name, t.count, activeTag === t.name, () => { activeTag = t.name; render(); }, tagColor(t.name)));
-  frag.append(bar);
+  const index = secGroup({ caption: 'tags', count: tagList.length, className: 'tags-index' }, bar);
 
+  // the reading: one graph OR one list, never both — showing both drew every tagged
+  // link twice on one screen and pushed the cards below the fold
+  let reading;
   if (activeTag === null) {
-    // Graph and list are two readings of ONE set of links, so they are alternates rather
-    // than a stack. Showing both meant every tagged link was drawn twice on one screen —
-    // once as a dot, once as a card — and the graph pushed the cards below the fold.
-    const seg = el('div', { class: 'set-seg tag-modeseg', role: 'group', 'aria-label': 'Tag view' });
-    for (const m of [{ id: 'graph', label: 'Graph' }, { id: 'list', label: 'List' }]) {
-      const btn = el('button', {
-        class: `set-seg-btn${m.id === tagMode ? ' is-active' : ''}`,
-        text: m.label,
-        'aria-pressed': String(m.id === tagMode),
-      });
-      btn.addEventListener('click', () => { tagMode = m.id; render(); });
-      seg.append(btn);
-    }
-    frag.append(el('div', { class: 'tag-sectionrow' },
-      el('h3', { class: 'tag-section-h', text: `All tagged links · ${items.length}` }),
-      seg,
-    ));
-    frag.append(tagMode === 'graph' ? buildGraph(tagList, items) : itemGrid(items, getQuery()));
+    const graph = tagMode === 'graph';
+    reading = secGroup({ caption: graph ? 'relationship graph' : 'all links', count: items.length, className: 'tags-main',
+      aside: graph && tagList.length > 14 ? `14 of ${tagList.length} tags drawn` : null },
+    graph ? buildGraph(tagList, items) : itemGrid(items, q));
   } else {
     const subset = items.filter((it) => it.tags.includes(activeTag));
-    frag.append(el('h3', { class: 'tag-section-h' },
-      el('span', { class: 'tag-dot lg', style: `background:${tagColor(activeTag)}` }),
-      `${activeTag} · ${subset.length} link${subset.length === 1 ? '' : 's'}`));
-    frag.append(itemGrid(subset, getQuery()));
+    reading = secGroup({ caption: activeTag, data: true, swatch: tagColor(activeTag), count: subset.length, aside: 'tagged', className: 'tags-main' },
+      itemGrid(subset, q));
   }
-
-  root.replaceChildren(frag);
+  // the index scrolls on its own, so a rebuild must not throw away where it was — or hide the active chip
+  const prev = root.querySelector('.tag-filterbar');
+  const keep = prev && { l: prev.scrollLeft, t: prev.scrollTop, focused: prev.contains(document.activeElement) };
+  root.replaceChildren(head, el('div', { class: 'sec-body' }, el('div', { class: 'tags-layout' }, index, reading)));
+  if (keep) { bar.scrollLeft = keep.l; bar.scrollTop = keep.t; }
+  const on = bar.querySelector('.tag-chip.is-active');
+  if (on) {
+    // nudge the strip/column only — scrollIntoView would also scroll the view
+    // rects are zoomed px (interface size), scroll offsets are CSS px: convert before nudging
+    const b = bar.getBoundingClientRect(), r = on.getBoundingClientRect();
+    const z = bar.offsetWidth ? b.width / bar.offsetWidth : 1;
+    if (r.left < b.left) bar.scrollLeft -= (b.left - r.left) / z + 4;
+    else if (r.right > b.right) bar.scrollLeft += (r.right - b.right) / z + 4;
+    if (r.top < b.top) bar.scrollTop -= (b.top - r.top) / z;
+    else if (r.bottom > b.bottom) bar.scrollTop += (r.bottom - b.bottom) / z;
+    if (keep?.focused) on.focus({ preventScroll: true });
+  }
 }
 
 function chip(label, count, active, onClick, color) {
-  return el('button', { class: `tag-chip${active ? ' is-active' : ''}`, onclick: onClick },
+  return el('button', { class: `tag-chip${active ? ' is-active' : ''}`, type: 'button', 'aria-pressed': String(active), onclick: onClick },
     color ? el('span', { class: 'tag-dot', style: `background:${color}` }) : null,
     el('span', { text: label }),
     el('span', { class: 'tag-chip-n', text: String(count) }),
@@ -247,8 +300,8 @@ function chip(label, count, active, onClick, color) {
 }
 
 function itemGrid(items, q) {
-  const shown = q ? items.filter((it) => matches(q, it.title, it.url) || it.tags.some((t) => matches(q, t))) : items;
-  if (!shown.length) return el('div', { class: 'lib-empty' }, 'Nothing here matches your search.');
+  const shown = q ? items.filter((it) => itemMatches(it, q)) : items;
+  if (!shown.length) return noMatch(q, 'Tag search looks at titles, addresses and tag names.');
   const grid = el('div', { class: 'bm-grid' });
   for (const it of shown) {
     const card = el('div', { class: 'tcard bmcard', role: 'link', tabindex: '0', title: it.url });
@@ -361,12 +414,14 @@ function buildGraph(tagList, items) {
   // The retained camera only means anything while the hub layout is unchanged. If a
   // re-render added/removed/moved hubs, restoring the old pan could strand the user
   // on empty canvas looking at content that isn't there any more — re-frame instead.
-  const layoutSig = `${W}x${H}|${tags.map((t) => t.name).join(' ')}`;
+  const layoutSig = `${W}x${H}|${tags.map((t) => t.name).join('\u0000')}`;
   if (layoutSig !== graphSig) { graphSig = layoutSig; graphView = { tx: 0, ty: 0, s: 1 }; }
   applyView();
 
+  // the zoom half is its own span so touch (no wheel, no ⌘) can hide it
   const hint = el('div', { class: 'tg-hint', 'aria-hidden': 'true' },
-    el('span', { text: 'Drag to pan · ' }), el('kbd', { text: '⌘/Ctrl' }), el('span', { text: ' + scroll to zoom' }));
+    el('span', { text: 'Drag to pan' }),
+    el('span', { class: 'tg-hint-zoom' }, ' · ', el('kbd', { text: '⌘/Ctrl' }), ' + scroll to zoom'));
 
   // map a client (screen) point into SVG user units, accounting for the viewBox
   // fit and any interface-size zoom — both live in the SVG's screen CTM
