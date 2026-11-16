@@ -29,6 +29,30 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 });
 
+/* ————— The reminder chime —————
+   A worker has no audio, so a short-lived offscreen document plays it (js/offscreen.js, a
+   synthesised bell from js/chime.js). Settings → Zen → "Chime with reminders" turns it off.
+   The document is closed a few seconds after the last chime. */
+let closeTimer = null;
+async function chime() {
+  try {
+    const settings = (await chrome.storage.local.get('stacknest:settings'))['stacknest:settings'];
+    if (settings?.reminderChime === false || !chrome.offscreen) return false;
+    const url = chrome.runtime.getURL('offscreen.html');
+    const open = await chrome.runtime.getContexts?.({ contextTypes: ['OFFSCREEN_DOCUMENT'], documentUrls: [url] });
+    if (!open?.length) {
+      await chrome.offscreen.createDocument({ url: 'offscreen.html', reasons: ['AUDIO_PLAYBACK'], justification: 'Play a short chime when a reminder is due.' });
+    }
+    const res = await chrome.runtime.sendMessage({ target: 'offscreen', type: 'chime' });
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => { chrome.offscreen.closeDocument().catch(() => {}); }, 4000);
+    return !!res?.ok;
+  } catch (e) {
+    console.warn('reminder chime failed:', e);
+    return false;
+  }
+}
+
 /* ————— Task reminders ————— */
 // The notes page schedules a chrome.alarms entry ("reminder:<todoId>") for each
 // task reminder; this worker fires the OS/browser notification when the alarm
@@ -67,6 +91,9 @@ chrome.alarms?.onAlarm.addListener(async (alarm) => {
     if (Array.isArray(item.list) && item.list.length) {
       ctx += ` · ${item.list.filter((r) => !r.done).length} of ${item.list.length} left`;
     }
+    // the chime plays first; when it does, the notification itself stays silent so the two
+    // never sound together (the OS sound is the fallback when the chime is off or fails)
+    const chimed = await chime();
     chrome.notifications.create(alarm.name, {
       type: 'basic',
       iconUrl: chrome.runtime.getURL('icons/icon128.png'),
@@ -74,6 +101,8 @@ chrome.alarms?.onAlarm.addListener(async (alarm) => {
       message: ctx,
       contextMessage: 'StackNest',
       priority: 2,
+      requireInteraction: true,   // a reminder waits on screen until it is seen
+      silent: chimed,
     });
   } catch (e) { console.error('reminder alarm failed:', e); }
 });

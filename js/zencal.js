@@ -1,6 +1,7 @@
 // Zen's calendar: a month under the clock, folded or open (remembered in the Zen layout).
-// Days with a reminder due carry a dot; picking a day lists what is due on it. Week start
-// follows the browser's locale where it can be read (Monday in most of the world).
+// Days with a reminder due carry a dot; picking a day lists what is due on it, and today or any
+// later day takes a quick reminder at a time (it notifies, with the chime, via the notes store's
+// alarm). Week start follows the browser's locale where it can be read (Monday in most places).
 
 import { el, icon } from './ui.js';
 
@@ -15,7 +16,7 @@ function firstDayOfWeek() {
   return 0;
 }
 
-export function createCalendar({ onToggle }) {
+export function createCalendar({ onToggle, onAdd }) {
   const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   let view = today(); view.setDate(1);
   let selected = today();
@@ -29,7 +30,47 @@ export function createCalendar({ onToggle }) {
   const next = el('button', { class: 'zen-cal-nav', type: 'button', 'aria-label': 'Next month', title: 'Next month' }, icon('chevron', 13));
   const todayBtn = el('button', { class: 'zen-cal-today', type: 'button', text: 'Today' });
   const grid = el('div', { class: 'zen-cal-grid', role: 'grid', 'aria-label': 'Month' });
-  const agenda = el('div', { class: 'zen-cal-agenda', 'aria-live': 'polite' });
+  const agendaList = el('div', { class: 'zen-cal-list', 'aria-live': 'polite' });
+
+  // quick reminder for the picked day — built once, so a re-render never wipes what is typed
+  const addText = el('input', { class: 'zen-cal-in', type: 'text', placeholder: 'Remind me to…', 'aria-label': 'Reminder', autocomplete: 'off', maxlength: '300' });
+  const addTime = el('input', { class: 'zen-cal-tin', type: 'time', 'aria-label': 'Reminder time', step: '300' });
+  const addBtn = el('button', { class: 'zen-cal-add', type: 'submit' }, icon('bell', 13), el('span', { text: 'Remind me' }));
+  const addHint = el('p', { class: 'zen-cal-hint', 'aria-live': 'polite' });
+  const form = el('form', { class: 'zen-cal-form' }, addText, el('div', { class: 'zen-cal-form-row' }, addTime, addBtn), addHint);
+  let defaultsFor = '';
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmtAt = (d) => `${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  function setDefaults() {
+    const k = dayKey(selected);
+    if (defaultsFor === k) return;
+    defaultsFor = k;
+    addHint.textContent = '';
+    addHint.classList.remove('is-error');
+    if (selected.getTime() === today().getTime()) {
+      const n = new Date(Date.now() + 30 * 60_000);          // half an hour from now, on a 5-minute step
+      n.setMinutes(Math.ceil(n.getMinutes() / 5) * 5, 0, 0);
+      addTime.value = n.getDate() === selected.getDate() ? `${pad(n.getHours())}:${pad(n.getMinutes())}` : '23:55';
+    } else addTime.value = '09:00';
+  }
+  const hint = (text, error = false) => { addHint.textContent = text; addHint.classList.toggle('is-error', error); };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = addText.value.trim();
+    if (!text) { hint('Write what to be reminded of.', true); addText.focus(); return; }
+    const [h, m] = (addTime.value || '').split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) { hint('Pick a time.', true); addTime.focus(); return; }
+    const at = new Date(selected); at.setHours(h, m, 0, 0);
+    if (at.getTime() <= Date.now()) { hint('Pick a time later than now.', true); addTime.focus(); return; }
+    addBtn.disabled = true;
+    try {
+      await onAdd?.(text, at);
+      addText.value = '';
+      hint(`Set for ${fmtAt(at)}: a notification and a chime.`);
+    } catch { hint('Could not save that reminder.', true); }
+    finally { addBtn.disabled = false; }
+  });
+  const agenda = el('div', { class: 'zen-cal-agenda' }, agendaList, form);
   const body = el('div', { class: 'zen-cal-body', id: 'zen-cal-body' }, grid, agenda);
   const node = el('section', { class: 'zen-cal', 'aria-label': 'Calendar' },
     el('header', { class: 'zen-cal-head' }, toggle, el('span', { class: 'zen-cal-navs' }, todayBtn, prev, next)), body);
@@ -82,13 +123,16 @@ export function createCalendar({ onToggle }) {
 
     const due = dueByDay.get(dayKey(selected)) || [];
     const when = selected.getTime() === t.getTime() ? 'Today' : selected.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-    agenda.replaceChildren(
+    const past = selected.getTime() < t.getTime();
+    form.hidden = past;
+    if (!past) setDefaults();
+    agendaList.replaceChildren(
       el('div', { class: 'zen-cal-agenda-h', text: when }),
       ...(due.length
         ? due.map((x) => el('div', { class: `zen-cal-item${x.done ? ' is-done' : ''}` },
           el('span', { class: 'zen-cal-time', text: x.at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }),
           el('span', { class: 'zen-cal-what', text: x.text })))
-        : [el('div', { class: 'zen-cal-none', text: 'Nothing due.' })]));
+        : [el('div', { class: 'zen-cal-none', text: past ? 'Nothing was due.' : 'Nothing due.' })]));
   }
 
   // items: the notes store's cards; anything with a reminder time lands on its day

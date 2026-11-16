@@ -4,6 +4,7 @@
 
 import { el, icon, toast, confirmDialog, secGroup, sectionHead, pickFile } from './ui.js';
 import { getKey, setKey, update } from './store.js';
+import { playChime } from './chime.js';
 import { WALLPAPERS, WALLPAPER_IDS, WALLPAPER_KEY, DEFAULT_WALLPAPER, prepareWallpaper, wallpaperFor } from './wallpapers.js';
 import { exportBackup, importFlow } from './backup.js';
 import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
@@ -80,6 +81,7 @@ export const DEFAULT_SETTINGS = {
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
   zenWallpaper: DEFAULT_WALLPAPER, zenCollection: '',   // Zen mode (js/zen.js)
   zenEyeRest: true,                                      // a 30-second pause every 30 min in Zen (js/zenrest.js)
+  reminderChime: true,                                   // a soft chime with reminder notifications (js/chime.js)
   newTab: true,                                          // StackNest replaces Chrome's new tab page (boot.js)
 };
 
@@ -148,6 +150,7 @@ function normalize(raw) {
     zenWallpaper: WALLPAPER_IDS.includes(m.zenWallpaper) ? m.zenWallpaper : DEFAULT_WALLPAPER,
     zenCollection: typeof m.zenCollection === 'string' ? m.zenCollection.slice(0, 200) : '',
     zenEyeRest: m.zenEyeRest !== false,
+    reminderChime: m.reminderChime !== false,
     newTab: m.newTab !== false,
   };
 }
@@ -701,11 +704,17 @@ async function zenPlate(s, st) {
   const eye = switchCtl('set-zen-eye', 'Rest your eyes', s.zenEyeRest, 'zen-eye', (on) => saveSettings({ zenEyeRest: on })
     .then(() => toast(on ? 'Eye rest on' : 'Eye rest off')));
   onSettingsChange(eye, (next) => { eye.checked = next.zenEyeRest; });
+  const chimeSw = switchCtl('set-chime', 'Chime with reminders', s.reminderChime, 'chime-on', (on) => saveSettings({ reminderChime: on })
+    .then(() => toast(on ? 'Reminders chime' : 'Reminders are silent')));
+  onSettingsChange(chimeSw, (next) => { chimeSw.checked = next.reminderChime; });
+  const hear = el('button', { class: 'btnx ghosty sm', type: 'button', dataset: { key: 'chime-play' }, onclick: () => playChime() }, icon('bell', 13), el('span', { text: 'Play' }));
 
   return plate(PLATES[4], { desc: 'An uncluttered page: one collection, your to-dos, what you have pinned and a calendar, on a wallpaper. Switch it on with the zen button beside the theme; Esc leaves.', status: st }, [
     group('enter', setRow({ label: 'Zen mode', help: 'Pick the collection inside Zen itself. Pin links, folders and Notes cards with the pin on their card. Drag panes and items to arrange them.', control: openBtn })),
     group('breaks', setRow({ label: 'Rest your eyes', forId: 'set-zen-eye', control: eye,
-      help: 'After every 30 minutes of screen time in Zen, a 30-second pause to look into the distance. Five minutes away from the screen starts the count again.' })),
+      help: 'After every 30 minutes of screen time in Zen, a 30-second pause to look into the distance. Five minutes away from the screen starts the count again.' }),
+      setRow({ label: 'Chime with reminders', forId: 'set-chime', control: [hear, chimeSw],
+        help: 'A soft bell when a reminder’s notification appears, and when an eye-rest pause ends. Add a timed reminder from the calendar in Zen.' })),
     secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn, removeBtn) }, grid),
   ], [callout('Your own image is resized and kept on this device only — it is not part of a backup file or a Drive sync. Plain uses the current theme’s background.')]);
 }

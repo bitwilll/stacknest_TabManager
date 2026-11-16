@@ -267,10 +267,18 @@ export async function toggleNoteDone(cardId, rowId = null) {
     else if (item.reminder) armAlarm(item.id, fireTime(item.reminder));
   }
 }
-export async function addQuickReminder(text) {
+// at: an optional Date — the reminder notifies (with the chime) at that moment
+export async function addQuickReminder(text, at = null) {
   const t = String(text || '').trim();
-  if (!t) return;
-  await mutate((d) => { d.items.unshift(normalize({ kind: 'reminder', text: t })); });
+  if (!t) return null;
+  const when = at instanceof Date && !Number.isNaN(at.getTime()) && at.getTime() > Date.now() ? at : null;
+  let made = null;
+  await mutate((d) => {
+    made = normalize({ kind: 'reminder', text: t, ...(when ? { reminder: { at: when.toISOString(), lead: 0 } } : {}) });
+    d.items.unshift(made);
+  });
+  if (made && when) armAlarm(made.id, when.getTime());
+  return made;
 }
 export async function setNotePinned(id, pinned) {
   await mutate((d) => { const x = findItem(d, id); if (x) x.pinned = !!pinned; });

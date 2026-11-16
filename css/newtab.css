@@ -2813,7 +2813,9 @@ kbd {
 }
 .zen-side { display: flex; flex-direction: column; gap: clamp(16px, 2.6vh, 26px); min-width: 0; position: sticky; top: 16px; }
 .zen-clock { color: var(--zen-ink); padding-top: 4px; }
-.zen-time { font: 300 clamp(52px, 5.6vw, 92px)/0.95 var(--grot); letter-spacing: -0.045em; font-variant-numeric: tabular-nums; }
+.zen-side { container-type: inline-size; }
+.zen-time { display: flex; align-items: baseline; gap: .14em; white-space: nowrap; font: 300 clamp(44px, 28cqi, 96px)/0.95 var(--grot); letter-spacing: -0.045em; font-variant-numeric: tabular-nums; }
+.zen-ampm { font-size: .34em; font-weight: 500; letter-spacing: 0.02em; opacity: .8; }
 .zen-sub { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 12px; font: 500 var(--t4) var(--grot); color: var(--zen-ink-soft); }
 @media (max-width: 900px) {
   .zen-stage { grid-template-columns: minmax(0, 1fr); }
@@ -2858,6 +2860,8 @@ kbd {
 .zen-cal-day:hover { background: var(--hov); }
 .zen-cal-day.is-out { color: var(--text-faint); }
 .zen-cal-day.is-today { color: var(--accent-text); font-weight: 800; }
+/* today keeps a ghost ring while another day is picked, as a point of reference */
+.zen-cal-day.is-today:not(.is-sel) { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
 .zen-cal-day.is-sel { background: var(--text-strong); color: var(--bg-card); font-weight: 700; }
 .zen-cal-day.has-due::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
 .zen-cal-day.is-sel.has-due::after { background: var(--bg-card); }
@@ -2869,6 +2873,29 @@ kbd {
 .zen-cal-time { flex: none; font: 500 var(--t2) var(--mono); color: var(--text-mut); min-width: 58px; }
 .zen-cal-what { min-width: 0; overflow-wrap: anywhere; }
 .zen-cal-none { font: 500 var(--t3) var(--grot); color: var(--text-mut); }
+.zen-cal-list { display: flex; flex-direction: column; gap: 6px; }
+/* quick reminder for the picked day */
+.zen-cal-form { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.zen-cal-form[hidden] { display: none; }
+.zen-cal-form-row { display: flex; gap: 6px; }
+.zen-cal-in, .zen-cal-tin {
+  min-width: 0; height: 34px; padding: 0 12px; border-radius: var(--pill);
+  border: 1px solid var(--card-line-2); background: var(--bg-card); color: var(--text);
+  font: 500 var(--t3) var(--grot); outline: 0;
+}
+.zen-cal-in { width: 100%; }
+.zen-cal-tin { flex: 1; font-variant-numeric: tabular-nums; color-scheme: light dark; }
+.zen-cal-in:focus, .zen-cal-tin:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.zen-cal-in::placeholder { color: var(--text-faint); }
+.zen-cal-add {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: var(--pill);
+  background: var(--text-strong); color: var(--bg-card); font: 600 var(--t2) var(--grot);
+}
+.zen-cal-add:hover { background: var(--accent); color: var(--accent-contrast); }
+.zen-cal-add:disabled { opacity: .6; }
+.zen-cal-hint { margin: 0; font: 500 var(--t2)/1.4 var(--grot); color: var(--text-mut); }
+.zen-cal-hint:empty { display: none; }
+.zen-cal-hint.is-error { color: var(--red); }
 .zen-dot { opacity: .6; }
 .zen-tools { display: flex; align-items: center; gap: 8px; flex: none; }
 .zen-icb, .zen-btn-pill {
@@ -2881,9 +2908,31 @@ kbd {
 .zen-icb { width: 38px; }
 .zen-btn-pill { padding: 0 16px 0 13px; }
 .zen-icb:hover, .zen-btn-pill:hover { background: var(--text-strong); color: var(--bg-card); }
-.zen-eye[aria-pressed='true'] { color: var(--accent-text); }
-.zen-eye[aria-pressed='false'] { color: var(--text-faint); }
-.zen-eye[aria-pressed='false'] svg { opacity: .7; }
+/* eye rest: the pill is a switch. Off: muted, eye struck through, knob left.
+   On: accent ring and eye, knob slides right on an accent track, label counts down. */
+.zen-eye { gap: 8px; padding: 0 8px 0 12px; font-variant-numeric: tabular-nums; color: var(--text-mut); }
+.zen-eye-ic { position: relative; display: inline-flex; }
+.zen-eye-ic::after {   /* the strike through the eye while it is off */
+  content: ''; position: absolute; left: -1px; top: 50%; width: 17px; height: 1.8px; border-radius: 2px;
+  background: currentColor; transform: rotate(-40deg); transition: transform .2s ease, opacity .2s ease;
+}
+.zen-eye.is-on .zen-eye-ic::after { transform: rotate(-40deg) scaleX(0); opacity: 0; }
+.zen-eye-track {
+  position: relative; width: 30px; height: 18px; flex: none; border-radius: 999px;
+  background: color-mix(in srgb, var(--text-mut) 30%, transparent); transition: background .2s ease;
+}
+.zen-eye-knob {
+  position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--bg-card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform .22s cubic-bezier(.3, 1.4, .5, 1);
+}
+.zen-eye.is-on { color: var(--text-strong); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.zen-eye.is-on .zen-eye-ic { color: var(--accent-text); }
+.zen-eye.is-on .zen-eye-track { background: var(--accent); }
+.zen-eye.is-on .zen-eye-knob { transform: translateX(12px); }
+.zen-eye:hover { background: var(--zen-glass); color: var(--text-strong); }
+.zen-eye:hover .zen-eye-track { filter: brightness(1.08); }
+.zen-eye:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 520px) { .zen-eye-label { display: none; } }
 .zen-icb svg, .zen-btn-pill svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
 .zen-grid {
@@ -3065,7 +3114,7 @@ kbd {
 .wall-sw:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .zen-link, .zen-check, .zen-icb, .zen-btn-pill, .zen-toggle, .zen-grip, .zen-rowpin, .zen-thought-next, .zen-cal-chev, .zen-rest-prog { transition: none; }
+  .zen-link, .zen-check, .zen-icb, .zen-btn-pill, .zen-toggle, .zen-grip, .zen-rowpin, .zen-thought-next, .zen-cal-chev, .zen-rest-prog, .zen-eye-ic::after, .zen-eye-track, .zen-eye-knob { transition: none; }
   .zen-rest { animation: none; }
 }
 

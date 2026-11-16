@@ -26,6 +26,7 @@ import { ZENPINS_KEY, ZENLAYOUT_KEY, loadZenPins, unpinZenItem, zenPinBtn } from
 import { createCalendar } from './zencal.js';
 import { createEyeRest } from './zenrest.js';
 import { thoughtFor } from './thoughts.js';
+import { playChime } from './chime.js';
 import { renderMarkdown, renderInline } from './markdown.js';
 
 export const ZEN_KEY = 'stacknest:zen';
@@ -35,6 +36,7 @@ const ZEN_MIME = 'text/x-stacknest-zen';
 let root, shell = null, clockTimer = null, renderTimer = null, lastFocus = null;
 let layout = { panes: [...PANES], order: {}, cal: true };
 let thoughtOffset = 0;
+let chimeOn = true;
 
 const isOn = () => document.documentElement.dataset.zen === 'on';
 
@@ -118,8 +120,26 @@ function buildShell(openSettings) {
     icon('close', 14), el('span', { text: 'Leave zen' }));
   const wallBtn = el('button', { class: 'zen-icb', type: 'button', title: 'Choose wallpaper', 'aria-label': 'Choose wallpaper',
     onclick: () => { setZen(false); openSettings('set-zen'); } }, icon('image', 16));
-  const eyeBtn = el('button', { class: 'zen-icb zen-eye', type: 'button', 'aria-pressed': 'false', 'aria-label': 'Eye rest breaks',
-    onclick: () => saveSettings({ zenEyeRest: eyeBtn.getAttribute('aria-pressed') !== 'true' }) }, icon('eye', 16));
+  // eye rest: the pill is itself the switch: eye icon, what it is doing (minutes to the next
+  // pause, or off) and a little track whose knob slides over when it is on
+  const eyeLabel = el('span', { class: 'zen-eye-label', text: 'Eye rest' });
+  const eyeBtn = el('button', { class: 'zen-btn-pill zen-eye', type: 'button', role: 'switch', 'aria-checked': 'false',
+    onclick: () => {
+      const on = eyeBtn.getAttribute('aria-checked') !== 'true';
+      paintEye(on, null);   // flip at once; the saved setting confirms it on the next render
+      saveSettings({ zenEyeRest: on });
+    } },
+  el('span', { class: 'zen-eye-ic', 'aria-hidden': 'true' }, icon('eye', 15)), eyeLabel,
+  el('span', { class: 'zen-eye-track', 'aria-hidden': 'true' }, el('span', { class: 'zen-eye-knob' })));
+  let eyeMins = null;
+  function paintEye(on, mins) {
+    if (mins != null) eyeMins = mins;
+    eyeBtn.setAttribute('aria-checked', String(on));
+    eyeBtn.classList.toggle('is-on', on);
+    eyeLabel.textContent = on ? (eyeMins != null ? `Eye rest · ${eyeMins} min` : 'Eye rest on') : 'Eye rest off';
+    eyeBtn.title = on ? `Eye rest is on: a 30-second pause after ${eyeMins ?? 30} more min in Zen. Click to turn off.` : 'Eye rest is off. Click for a 30-second pause every 30 minutes in Zen.';
+    eyeBtn.setAttribute('aria-label', on ? `Eye rest, on, next pause in ${eyeMins ?? 30} minutes` : 'Eye rest, off');
+  }
 
   // collection pane — the picker is the pane's title
   const pick = el('select', { class: 'zen-pick', 'aria-label': 'Collection shown in Zen' });
@@ -158,12 +178,12 @@ function buildShell(openSettings) {
   };
   const grid = el('main', { class: 'zen-grid' }, ...layout.panes.map((p) => panes[p]));
 
-  const cal = createCalendar({ onToggle: (open) => saveLayout({ cal: open }) });
+  const cal = createCalendar({ onToggle: (open) => saveLayout({ cal: open }), onAdd: async (text, at) => { await addQuickReminder(text, at); render(); } });
   const rest = createEyeRest({
     isActive: isOn,
+    onDone: () => { if (chimeOn) playChime(); },   // a soft bell when the pause is over
     onStatus: (on, mins) => {
-      eyeBtn.setAttribute('aria-pressed', String(on));
-      eyeBtn.title = on ? `Eye rest is on: a 30-second pause after ${mins} more min in Zen. Click to turn off.` : 'Eye rest is off. Click for a 30-second pause every 30 minutes.';
+      paintEye(on, mins);
     },
   });
 
@@ -193,7 +213,12 @@ function paintThought() { shell.thoughtText.textContent = thoughtFor(thoughtOffs
 
 function tick() {
   const d = new Date();
-  shell.time.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  // the numerals large and AM/PM small beside them, so the time always fits on one line
+  const parts = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' }).formatToParts(d);
+  const period = parts.filter((p) => p.type === 'dayPeriod').map((p) => p.value).join('');
+  const digits = parts.filter((p) => p.type !== 'dayPeriod').map((p) => p.value).join('').trim();
+  shell.time.replaceChildren(el('span', { class: 'zen-hm', text: digits }), period ? el('span', { class: 'zen-ampm', text: period }) : null);
+  shell.time.setAttribute('aria-label', d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
   shell.date.textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const h = d.getHours();
   shell.greet.textContent = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 22 ? 'Good evening' : 'Good night';
@@ -291,6 +316,7 @@ export async function render() {
   root.style.setProperty('--zen-wall', wp.css);
   root.dataset.tone = wp.tone;
   shell.rest.setEnabled(settings.zenEyeRest);
+  chimeOn = settings.reminderChime;
 
   // panes in the saved order (moved only when they are not, so a focused field keeps focus)
   const want = layout.panes.map((p) => shell.panes[p]);

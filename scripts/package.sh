@@ -28,7 +28,7 @@ rm -rf "$OUT" "$ZIP"
 mkdir -p "$OUT/js" "$OUT/icons"
 
 # ——— 1. the allowlist ———
-cp newtab.html "$OUT/"
+cp newtab.html offscreen.html "$OUT/"
 cp -R css fonts "$OUT/"
 cp icons/*.png "$OUT/icons/"
 for f in js/*.js; do

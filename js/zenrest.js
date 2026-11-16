@@ -20,7 +20,7 @@ const read = () => {
 };
 const write = (v) => { try { localStorage.setItem(SCREEN_KEY, JSON.stringify(v)); } catch { /* counted in memory only */ } };
 
-export function createEyeRest({ isActive, onStatus }) {
+export function createEyeRest({ isActive, onStatus, onDone }) {
   let enabled = false;
   let timer = null;
   let countdown = null;
@@ -74,6 +74,7 @@ export function createEyeRest({ isActive, onStatus }) {
     write({ acc: 0, last: Date.now() });
     status();
     if (!completed) { close(); return; }
+    onDone?.();
     title.textContent = 'Welcome back';
     msg.textContent = 'Nicely done. The next pause comes after another 30 minutes in Zen.';
     skip.textContent = 'Back to it';
