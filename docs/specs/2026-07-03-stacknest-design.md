@@ -380,6 +380,31 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+
+## Zen mode + wallpapers (2026-11-16)
+
+The owner: a zen button by the theme that shows an uncluttered page — one collection, the to-dos
+and other pinned items side by side — on a zen wallpaper, or one chosen in Settings.
+
+- **The switch.** `#zen-btn` sits right after the theme segment (a labelled pill; icon-only below
+  1000px of panel and on phones, where the theme segment itself folds away). On/off is
+  `stacknest:zen` in localStorage; `boot.js` writes `data-zen` on `<html>` before first paint so a
+  new tab opened in Zen never flashes the board. Esc leaves (the first Esc only blurs a field);
+  ⌘K / `/` are inert in Zen. While on, `.app` is `inert` and `display:none`.
+- **The page** (`js/zen.js`, `#zen`): clock + greeting + date set straight on the wallpaper, then
+  three frosted panes — **Collection** (a picker in the pane title, remembered as
+  `settings.zenCollection`; plain click goes, ⌘/Ctrl-click opens behind; "Open all"), **To-do**
+  (open reminders and unfinished checklists, tick in place, an add box that creates a reminder),
+  **Pinned** (any note / list / reminder pinned from Notes). 3 → 2 → 1 columns at 1100 / 700px.
+- **Pinning.** Notes cards gained a pin action (lit in lava when on). `pinned` is in the notes
+  `normalize()` base, so all three kinds keep it. A pinned card moves from To-do to Pinned.
+- **Wallpapers** (`js/wallpapers.js`) are drawn SVG data URIs — Mist, Garden (karesansui), Ensō,
+  Bamboo, Dusk, Night — so they ship with no new files and no network. Each carries a `tone`, which
+  sets the clock's ink. "Plain" uses the theme ground; "Your image" is downscaled (2400px, JPEG,
+  ≤3MB) and stored under `stacknest:wallpaper` on this device only — deliberately not in backups.
+  Picked in **Settings → 05 Zen**. The panes stay theme surfaces, so their text keeps the theme's
+  contrast whatever is behind them. CSP already allows `img-src data:`.
+
 ## Design-chief polish + launch readiness (2026-10-09)
 
 The owner: "fix minor indentation and placement, also font size issues, and make this app launch

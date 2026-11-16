@@ -18,6 +18,7 @@ async function main() {
   const { initNotes } = await import('./notes.js');
   const { initMySpace } = await import('./myspace.js');
   const { initTicker } = await import('./ticker.js');
+  const { initZen } = await import('./zen.js');
 
   // apply saved typography before first paint; guarantee a default space exists
   applySettings(await loadSettings());
@@ -232,6 +233,18 @@ async function main() {
     getQuery,
   });
   const ticker = initTicker({ root: document.getElementById('ticker') });
+  // Zen last: it reads collections and notes, and its wallpaper button opens a Settings plate
+  initZen({
+    root: document.getElementById('zen'),
+    openSettings: (plateId) => {
+      showView('settings');
+      setTimeout(() => {
+        const t = document.getElementById(plateId);
+        t?.scrollIntoView({ block: 'start' });
+        t?.querySelector('.set-h')?.focus({ preventScroll: true });
+      }, 60);
+    },
+  });
 
   // re-render whichever view is being opened, so it reflects the latest data
   function refreshView(name) {
@@ -329,6 +342,7 @@ async function main() {
   document.addEventListener('keydown', (e) => {
     const typing = /^(input|textarea)$/i.test(document.activeElement?.tagName || '')
       || document.activeElement?.isContentEditable;
+    if (document.documentElement.dataset.zen === 'on') return;   // search is out of reach in Zen by design
     if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) {
       e.preventDefault();
       search.focus();

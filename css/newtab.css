@@ -2745,6 +2745,186 @@ kbd {
   .app.drawer-open .side { visibility: visible; transition: transform .22s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s; }
 }
 
+/* ————— Zen —————
+   One switch (the zen button beside the theme segment) swaps the whole workspace for a quiet
+   page on a wallpaper: a clock, one collection, the to-dos, the pinned cards. The panes are
+   frosted theme surfaces, so the text inside them keeps the theme's contrast whatever picture
+   is behind; only the clock sits on the picture itself, and data-tone picks its ink. */
+.icb.zen-toggle {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  width: auto; height: var(--ctl-h); padding: 0 13px 0 11px;
+  border: 1px solid var(--card-line-2); border-radius: var(--pill);
+  background: var(--bg-card); color: var(--text-mut);
+  font: 600 var(--t3) var(--grot);
+  transition: background .13s, color .13s, border-color .13s;
+}
+.icb.zen-toggle:hover { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-card); }
+.zen-toggle svg { flex: none; }
+@media (min-width: 881px) { @container main (max-width: 1000px) { .icb.zen-toggle { width: var(--ctl-h); padding: 0; justify-content: center; } .zen-toggle-label { display: none; } } }
+@media (max-width: 880px) { .icb.zen-toggle { width: 36px; height: 36px; padding: 0; justify-content: center; } .zen-toggle-label { display: none; } }
+
+.zen { display: none; --zen-ink: var(--text-strong); --zen-ink-soft: var(--text-soft); }   /* data-tone overrides these below */
+:root[data-zen='on'] .app,
+:root[data-zen='on'] .drawer-scrim { display: none; }
+:root[data-zen='on'] .zen {
+  --zen-glass: color-mix(in srgb, var(--bg-card) 78%, transparent);
+  --zen-glass-line: color-mix(in srgb, var(--bg-card) 55%, transparent);
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; flex-direction: column;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: var(--zen-wall, none), var(--frame);
+  background-attachment: fixed;
+  color: var(--text);
+}
+.zen[data-tone='theme'] { background: var(--bg); }
+.zen[data-tone='dark'] { --zen-ink: #fbfbf8; --zen-ink-soft: rgba(251, 251, 248, 0.82); }
+.zen[data-tone='light'] { --zen-ink: #16151a; --zen-ink-soft: rgba(22, 21, 26, 0.72); }
+.zen-veil { position: fixed; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--frame) 22%, transparent)); }
+.zen[data-tone='theme'] .zen-veil { display: none; }
+
+.zen-bar {
+  position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s5);
+  padding: clamp(24px, 5vh, 56px) clamp(16px, 4vw, 56px) clamp(16px, 3vh, 32px);
+}
+.zen-clock { color: var(--zen-ink); }
+.zen[data-tone='dark'] .zen-clock { text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35); }
+.zen[data-tone='light'] .zen-clock { text-shadow: 0 1px 14px rgba(255, 255, 255, 0.5); }
+.zen-time { font: 300 clamp(56px, 9vw, 108px)/0.95 var(--grot); letter-spacing: -0.045em; font-variant-numeric: tabular-nums; }
+.zen-sub { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; font: 500 var(--t4) var(--grot); color: var(--zen-ink-soft); }
+.zen-dot { opacity: .6; }
+.zen-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.zen-icb, .zen-btn-pill {
+  height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border-radius: var(--pill); background: var(--zen-glass); color: var(--text-strong);
+  border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+  font: 600 var(--t3) var(--grot); transition: background .13s, color .13s;
+}
+.zen-icb { width: 38px; }
+.zen-btn-pill { padding: 0 16px 0 13px; }
+.zen-icb:hover, .zen-btn-pill:hover { background: var(--text-strong); color: var(--bg-card); }
+.zen-icb svg, .zen-btn-pill svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+.zen-grid {
+  position: relative; flex: 1 0 auto;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(12px, 1.6vw, 20px); align-items: start;
+  width: 100%; max-width: 1480px; margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 56px) clamp(24px, 5vh, 56px);
+}
+@media (max-width: 1100px) { .zen-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .zen-pinned { grid-column: 1 / -1; } }
+@media (max-width: 700px)  { .zen-grid { grid-template-columns: minmax(0, 1fr); } .zen-bar { flex-direction: column-reverse; } .zen-tools { align-self: flex-end; } }
+
+.zen-pane {
+  display: flex; flex-direction: column; min-width: 0;
+  max-height: calc(100vh / var(--app-zoom) - 230px); min-height: 220px;
+  border-radius: 22px; background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow: 0 30px 60px -36px rgba(0, 0, 0, 0.45);
+}
+@media (max-width: 1100px) { .zen-pane { max-height: none; } }
+.zen[data-tone='theme'] .zen-pane { background: var(--bg-col); border-color: var(--card-line); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.zen-pane-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 16px 18px 12px; border-bottom: 1px solid var(--line);
+}
+.zen-cap { flex-basis: 100%; font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); }
+.zen-h { margin: 0; font: 700 var(--t6)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
+.zen-count { font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.zen-pick {
+  min-width: 0; max-width: 100%; flex: 0 1 auto; appearance: none; cursor: pointer;
+  margin: 0; padding: 0 22px 0 0; border: 0; background: transparent;
+  font: 700 var(--t6)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 9px) 55%, calc(100% - 4px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
+  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+.zen-pick option { font: 500 var(--t3) var(--grot); color: var(--text); background: var(--bg-side); }
+.zen-pick:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+.zen-mini {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px;
+  border-radius: var(--pill); border: 1px solid var(--edge); font: 600 var(--t2) var(--grot); color: var(--text-strong);
+}
+.zen-mini:hover { background: var(--text-strong); color: var(--bg-card); border-color: var(--text-strong); }
+.zen-mini svg, .zen-row svg, .zen-unpin svg, .zen-due svg, .zen-addrow svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.zen-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 10px 14px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; }
+.zen-quiet { margin: 8px 8px 4px; font: 500 var(--t3)/var(--lh-body) var(--grot); color: var(--text-mut); }
+
+.zen-links { gap: 2px; }
+.zen-link {
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--r5);
+  color: inherit; text-decoration: none; transition: background .12s;
+}
+.zen-link:hover { background: var(--hov); }
+.zen-link:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.zen-link-meta { display: flex; flex-direction: column; min-width: 0; }
+.zen-link-title { font: 600 var(--t3)/1.3 var(--grot); color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zen-link-dom { font: 500 var(--t2) var(--mono); color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.zen-addrow {
+  display: flex; align-items: center; gap: 8px; margin: 12px 14px 0; padding: 0 14px; height: 40px;
+  border-radius: var(--pill); background: var(--bg-card); border: 1px solid var(--card-line-2); color: var(--text-mut);
+}
+.zen-addrow:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.zen-add { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 500 var(--t3) var(--grot); color: var(--text); }
+.zen-add::placeholder { color: var(--text-faint); }
+
+.zen-rems { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; }
+.zen-row { display: flex; align-items: flex-start; gap: 10px; padding: 5px 4px; border-radius: var(--r3); }
+.zen-row-text { flex: 1; min-width: 0; font: 500 var(--t3)/1.45 var(--grot); color: var(--text-body); overflow-wrap: anywhere; }
+.zen-row.is-done .zen-row-text { color: var(--text-faint); text-decoration: line-through; text-decoration-color: var(--text-ghost); }
+.zen-check {
+  width: 18px; height: 18px; flex: none; margin-top: 1px; border: 1.6px solid var(--edge); border-radius: var(--r2);
+  display: flex; align-items: center; justify-content: center; color: var(--accent-contrast); transition: background .12s, border-color .12s;
+}
+.zen-check:hover { border-color: var(--accent); background: var(--accent-soft); }
+.zen-check.is-done { background: var(--accent); border-color: var(--accent); }
+.zen-check svg { stroke-width: 3 !important; }
+.zen-due { display: inline-flex; align-items: center; gap: 4px; flex: none; margin-top: 2px; font: 500 var(--t1) var(--mono); color: var(--text-mut); }
+.zen-due.past { color: var(--red); }
+
+.zen-list {
+  padding: 10px 10px 8px; border-radius: 16px;
+  background: linear-gradient(var(--tint, transparent), var(--tint, transparent)), var(--bg-card);
+  border: 1px solid var(--card-line);
+}
+.zen-list-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 6px; }
+.zen-list-title { flex: 1; min-width: 0; font: 700 var(--t4)/1.3 var(--grot); color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zen-list-n { font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.zen-unpin { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--accent-text); flex: none; }
+.zen-unpin:hover { background: var(--hov); color: var(--text-strong); }
+.zen-unpin svg { fill: currentColor; fill-opacity: .25; }
+.zen-note-md { padding: 0 4px 4px; font: 500 var(--t3)/var(--lh-body) var(--grot); color: var(--text-body); overflow-wrap: anywhere; }
+.zen-note-md > :first-child { margin-top: 0; }
+.zen-note-md > :last-child { margin-bottom: 0; }
+.zen-note-md a { color: var(--accent-text); }
+
+/* the pin on a Notes card: lit when the card is pinned to Zen */
+.mos-acts .pin-btn.on { color: var(--accent-text); }
+.mos-acts .pin-btn.on svg { fill: currentColor; fill-opacity: .25; }
+
+/* Settings → Zen: the wallpaper swatches */
+.wall-acts { display: inline-flex; gap: 6px; }
+.wall-acts [hidden] { display: none; }
+.wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; padding: 4px 0 2px; }
+.wall-sw { display: flex; flex-direction: column; gap: 7px; border-radius: 14px; padding: 4px; }
+.wall-thumb {
+  aspect-ratio: 16 / 10; border-radius: 10px; border: 1px solid var(--card-line-2);
+  background-size: cover !important; background-position: center !important;
+  display: flex; align-items: center; justify-content: center; color: var(--text-mut);
+}
+.wall-thumb.is-theme { background: linear-gradient(135deg, var(--bg) 50%, var(--bg-col) 50%); }
+.wall-thumb:empty:not(.is-theme) { background: var(--bg-inset); }
+.wall-thumb svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.wall-name { font: 600 var(--t2) var(--grot); color: var(--text-soft); padding: 0 2px; }
+.wall-sw:hover .wall-thumb { border-color: var(--hovbr); }
+.wall-sw.is-active .wall-thumb { box-shadow: 0 0 0 2px var(--bg-col), 0 0 0 4px var(--accent); border-color: transparent; }
+.wall-sw.is-active .wall-name { color: var(--text-strong); }
+.wall-sw:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .zen-link, .zen-check, .zen-icb, .zen-btn-pill, .zen-toggle { transition: none; } }
+
 /* ————— reduced motion — kept LAST on purpose: a media query adds no specificity, so this block
    only wins against the transition/animation rules above by coming after them ————— */
 @media (prefers-reduced-motion: reduce) {

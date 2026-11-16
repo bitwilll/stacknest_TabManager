@@ -147,6 +147,7 @@ function normalize(x, seen = new Set(), mark = () => {}) {
     tags: Array.isArray(x.tags) ? x.tags.filter(Boolean).map(String) : [],
     color: CARD_COLORS.some((c) => c.id === x.color) ? x.color : 'none',
     scale: clampScale(x.scale),
+    pinned: !!x.pinned,          // pinned to Zen mode (js/zen.js) — any kind of card
     createdAt: x.createdAt || now(),
   };
   // `at` must be a STRING: `'tomorrow'.at` resolves to String.prototype.at, which is truthy,
@@ -246,6 +247,34 @@ async function mutate(fn, { rerender = true } = {}) {
   if (rerender) await render();
 }
 const findItem = (d, id) => d.items.find((x) => x.id === id);
+
+/* ————— a small API for Zen mode (js/zen.js) —————
+   Zen shows the same cards, read-mostly: tick a row or a reminder, add a reminder, pin or
+   unpin. Every write goes through mutate(), so queued keystrokes flush first and the Notes
+   view repaints itself the next time it is opened. */
+export async function loadNotes() { return (await load()).items; }
+export async function toggleNoteDone(cardId, rowId = null) {
+  let item = null;
+  await mutate((d) => {
+    const x = findItem(d, cardId);
+    if (!x) return;
+    if (rowId) { const r = x.list?.find((y) => y.id === rowId); if (r) r.done = !r.done; x.updatedAt = now(); }
+    else if (x.kind === 'reminder') x.done = !x.done;
+    item = { ...x };
+  });
+  if (item?.kind === 'reminder') {
+    if (item.done) clearAlarm(item.id);
+    else if (item.reminder) armAlarm(item.id, fireTime(item.reminder));
+  }
+}
+export async function addQuickReminder(text) {
+  const t = String(text || '').trim();
+  if (!t) return;
+  await mutate((d) => { d.items.unshift(normalize({ kind: 'reminder', text: t })); });
+}
+export async function setNotePinned(id, pinned) {
+  await mutate((d) => { const x = findItem(d, id); if (x) x.pinned = !!pinned; });
+}
 
 /* ————— debounced text saves —————
    Keystrokes accumulate in `pending` and flush as one write. Paths address either a
@@ -564,6 +593,7 @@ function itemCard(it) {
     el('span', { class: 'mos-grip', title: 'Drag to reorder' }, icon('grip', 13)),
     el('span', { class: 'mos-when', text: it.kind === 'reminder' ? '' : shortDate(it.updatedAt || it.createdAt) }),
     el('div', { class: 'mos-acts' },
+      actionBtn('pin', it.pinned ? 'Unpin from Zen' : 'Pin to Zen', () => setNotePinned(it.id, !it.pinned).then(() => toast(it.pinned ? 'Unpinned from Zen' : 'Pinned to Zen')), it.pinned ? 'pin-btn on' : 'pin-btn'),
       actionBtn('bell', it.reminder ? 'Edit reminder' : 'Set reminder', (_, b) => openReminderEditor(b, it), it.reminder ? 'rem-bell on' : 'rem-bell'),
       actionBtn('tag', 'Tags', (_, b) => openTagPicker(b, it)),
       actionBtn('palette', 'Card colour', (_, b) => openColorPicker(b, it)),

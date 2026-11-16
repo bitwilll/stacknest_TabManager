@@ -1,6 +1,6 @@
 // Runs before first paint (a classic script in <head>, ahead of the stylesheet's first render):
 // the remembered sidebar mode and theme go on <html> now, so a new tab never paints the full
-// sidebar or the light theme and then snaps. app.js owns both settings after this; it re-applies
+// sidebar or the light theme and then snaps — and a tab opened in Zen never flashes the board. app.js owns both settings after this; it re-applies
 // them and wires their buttons. Ids must match app.js (THEME_KEY, SIDE_KEY).
 try {
   const root = document.documentElement;
@@ -9,4 +9,5 @@ try {
   root.dataset.theme = t === 'light' || t === 'dark' || t === 'linen'
     ? t
     : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  root.dataset.zen = localStorage.getItem('stacknest:zen') === 'on' ? 'on' : 'off';   // ZEN_KEY in zen.js
 } catch { /* storage blocked: app.js applies the defaults */ }

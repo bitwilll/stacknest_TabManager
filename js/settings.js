@@ -2,8 +2,9 @@
 // sync (file + Google Drive), the Vault's PIN, and the market ticker — with an index beside them.
 // Fonts are offline-safe stacks (bundled + system) so nothing hits the network.
 
-import { el, icon, toast, confirmDialog, secGroup, sectionHead } from './ui.js';
-import { getKey, update } from './store.js';
+import { el, icon, toast, confirmDialog, secGroup, sectionHead, pickFile } from './ui.js';
+import { getKey, setKey, update } from './store.js';
+import { WALLPAPERS, WALLPAPER_IDS, WALLPAPER_KEY, DEFAULT_WALLPAPER, prepareWallpaper, wallpaperFor } from './wallpapers.js';
 import { exportBackup, importFlow } from './backup.js';
 import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
 import { LOCK_KEY, loadLock, hasPin, setPin, clearPin, verifyPin, validatePin,
@@ -77,6 +78,7 @@ export const DEFAULT_SETTINGS = {
   tabsBar: 'top',
   tickerEnabled: false, tickerBase: 'USD',
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
+  zenWallpaper: DEFAULT_WALLPAPER, zenCollection: '',   // Zen mode (js/zen.js)
 };
 
 const pick = (list, id) => list.find((x) => x.id === id) || list[0];
@@ -137,6 +139,8 @@ function normalize(raw) {
     tickerBase: TICKER_BASES.includes(m.tickerBase) ? m.tickerBase : DEFAULT_SETTINGS.tickerBase,
     tickerCrypto: validArr(TICKER_CRYPTOS.map((c) => c.id), m.tickerCrypto, DEFAULT_SETTINGS.tickerCrypto),
     tickerFx: validArr(TICKER_FX, m.tickerFx, DEFAULT_SETTINGS.tickerFx),
+    zenWallpaper: WALLPAPER_IDS.includes(m.zenWallpaper) ? m.zenWallpaper : DEFAULT_WALLPAPER,
+    zenCollection: typeof m.zenCollection === 'string' ? m.zenCollection.slice(0, 200) : '',
   };
 }
 
@@ -369,7 +373,9 @@ const PLATES = [
   { id: 'set-backup',     num: '02', name: 'Backup & sync' },
   { id: 'set-vault',      num: '03', name: 'Vault' },
   { id: 'set-ticker',     num: '04', name: 'Market ticker' },
+  { id: 'set-zen',        num: '05', name: 'Zen' },
 ];
+const zenStatus = (s) => (s.zenWallpaper === 'theme' ? 'no wallpaper' : s.zenWallpaper === 'custom' ? 'your image' : (WALLPAPERS.find((w) => w.id === s.zenWallpaper)?.label || '').toLowerCase());
 const appearanceStatus = (s) => `${pick(SCALES, s.scale).label} · ${pick(FONT_UI, s.fontUi).label}`;
 const tickerStatus = (s) => (s.tickerEnabled ? `on · ${s.tickerCrypto.length + s.tickerFx.length} symbols` : 'off');
 let plateObserver = null;
@@ -448,6 +454,7 @@ async function render() {
     'set-backup': { text: needsSetup ? 'setup required' : connected ? `drive · last backup ${shortWhen(cloud.lastBackupAt)}` : !live ? 'preview' : 'drive not connected' },
     'set-vault': { text: lockedOut ? 'locked out' : pinSet ? 'pin set' : 'no pin', tone: lockedOut ? 'danger' : null },
     'set-ticker': { text: tickerStatus(s) },
+    'set-zen': { text: zenStatus(s) },
   };
   const index = setIndex(status);
   const frag = [
@@ -456,7 +463,8 @@ async function render() {
       appearancePlate(s, status['set-appearance']),
       backupPlate({ cloud, live, needsSetup, connected }, status['set-backup']),
       await vaultPlate(status['set-vault']),
-      tickerPlate(s, status['set-ticker'])))),
+      tickerPlate(s, status['set-ticker']),
+      await zenPlate(s, status['set-zen'])))),
   ];
   // an external rebuild must not strand keyboard focus: data-key first, aria-label
   // second (the existing fallback); a control the rebuild replaced (Connect) hands focus to
@@ -476,6 +484,7 @@ async function render() {
   onSettingsChange(index, (next) => {
     setStatus('set-appearance', appearanceStatus(next));
     setStatus('set-ticker', tickerStatus(next));
+    setStatus('set-zen', zenStatus(next));
   });
 }
 
@@ -621,6 +630,64 @@ function tickerPlate(s, st) {
       checkGroup('Crypto', TICKER_CRYPTOS.map((c) => ({ value: c.id, label: c.sym })), s.tickerCrypto, (vals) => saveSettings({ tickerCrypto: vals })),
       checkGroup('Forex', TICKER_FX.map((c) => ({ value: c, label: c })), s.tickerFx, (vals) => saveSettings({ tickerFx: vals }))),
   ], [callout('Prices come from CoinGecko and open.er-api.com — turning the ticker on makes network requests to those services.')]);
+}
+
+/* ——— 05 Zen: the wallpaper behind the uncluttered page ——— */
+async function zenPlate(s, st) {
+  let custom = await getKey(WALLPAPER_KEY, null);
+  let current = s.zenWallpaper;
+  const grid = el('div', { class: 'wall-grid', role: 'radiogroup', 'aria-label': 'Zen wallpaper' });
+  const removeBtn = el('button', { class: 'btnx ghosty sm', type: 'button', dataset: { key: 'wall-remove' } }, icon('trash', 13), el('span', { text: 'Remove image' }));
+
+  const choose = (id) => {
+    current = id;
+    for (const b of grid.children) { const on = b.dataset.wall === id; b.classList.toggle('is-active', on); b.setAttribute('aria-checked', String(on)); }
+    saveSettings({ zenWallpaper: id });
+  };
+  const upload = withBusy(async () => {
+    const file = await pickFile('image/*');
+    if (!file) return;
+    const img = await prepareWallpaper(file);
+    await setKey(WALLPAPER_KEY, img);
+    custom = img;
+    draw();
+    choose('custom');
+    toast('Wallpaper set');
+  });
+  removeBtn.addEventListener('click', withBusy(async () => {
+    await setKey(WALLPAPER_KEY, null);
+    custom = null;
+    if (current === 'custom') choose(DEFAULT_WALLPAPER);
+    draw();
+    toast('Image removed');
+  }));
+
+  const swatch = (id, label, css, extra = null) => {
+    const b = el('button', { class: `wall-sw${id === current ? ' is-active' : ''}`, type: 'button', role: 'radio', 'aria-checked': String(id === current),
+      dataset: { wall: id, key: `wall-${id}` } },
+      el('span', { class: `wall-thumb${id === 'theme' ? ' is-theme' : ''}`, style: css ? `background:${css}` : null }, extra),
+      el('span', { class: 'wall-name', text: label }));
+    b.addEventListener('click', () => (id === 'custom' && !custom ? upload(null, b) : choose(id)));
+    return b;
+  };
+  function draw() {
+    grid.replaceChildren(
+      ...WALLPAPERS.map((w) => swatch(w.id, w.label, wallpaperFor(w.id).css)),
+      swatch('theme', 'Plain', null),
+      swatch('custom', custom ? 'Your image' : 'Upload…', custom ? wallpaperFor('custom', custom).css : null, custom ? null : icon('upload', 18)),
+    );
+    removeBtn.hidden = !custom;
+  }
+  draw();
+
+  const replaceBtn = el('button', { class: 'btnx soft sm', type: 'button', dataset: { key: 'wall-upload' }, onclick: upload }, icon('image', 13), el('span', { text: 'Use my own image…' }));
+  const openBtn = el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'zen-open' },
+    onclick: () => document.getElementById('zen-btn')?.click() }, icon('zen', 14), el('span', { text: 'Enter zen' }));
+
+  return plate(PLATES[4], { desc: 'An uncluttered page: one collection, your to-dos and what you have pinned, on a wallpaper. Switch it on with the zen button beside the theme; Esc leaves.', status: st }, [
+    group('enter', setRow({ label: 'Zen mode', help: 'Pick the collection inside Zen itself. Pin cards to it from Notes.', control: openBtn })),
+    secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn, removeBtn) }, grid),
+  ], [callout('Your own image is resized and kept on this device only — it is not part of a backup file or a Drive sync. Plain uses the current theme’s background.')]);
 }
 
 function checkGroup(label, options, selected, onChange) {
