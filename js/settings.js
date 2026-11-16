@@ -1,5 +1,5 @@
-// Settings: four numbered plates — Appearance (fonts, size, text sizes, tabs bar), Backup &
-// sync (file + Google Drive), the Vault's PIN, and the market ticker — with an index beside them.
+// Settings: six numbered plates — Appearance (fonts, size, text sizes, tabs bar), Backup &
+// sync (file + Google Drive), the Vault's PIN, the market ticker, Zen, and the new tab page — with an index beside them.
 // Fonts are offline-safe stacks (bundled + system) so nothing hits the network.
 
 import { el, icon, toast, confirmDialog, secGroup, sectionHead, pickFile } from './ui.js';
@@ -79,7 +79,13 @@ export const DEFAULT_SETTINGS = {
   tickerEnabled: false, tickerBase: 'USD',
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
   zenWallpaper: DEFAULT_WALLPAPER, zenCollection: '',   // Zen mode (js/zen.js)
+  zenEyeRest: true,                                      // a 30-second pause every 30 min in Zen (js/zenrest.js)
+  newTab: true,                                          // StackNest replaces Chrome's new tab page (boot.js)
 };
+
+// boot.js runs before any module and cannot wait for chrome.storage, so the new-tab choice is
+// mirrored into localStorage whenever settings are applied (NTP_KEY must match boot.js)
+const NTP_KEY = 'stacknest:ntp';
 
 const pick = (list, id) => list.find((x) => x.id === id) || list[0];
 
@@ -141,6 +147,8 @@ function normalize(raw) {
     tickerFx: validArr(TICKER_FX, m.tickerFx, DEFAULT_SETTINGS.tickerFx),
     zenWallpaper: WALLPAPER_IDS.includes(m.zenWallpaper) ? m.zenWallpaper : DEFAULT_WALLPAPER,
     zenCollection: typeof m.zenCollection === 'string' ? m.zenCollection.slice(0, 200) : '',
+    zenEyeRest: m.zenEyeRest !== false,
+    newTab: m.newTab !== false,
   };
 }
 
@@ -191,6 +199,7 @@ export function applySettings(s) {
   // layout switches ride on the root element so the stylesheet owns what is shown —
   // no inline display juggling, and nothing to re-apply on every view change
   root.dataset.tabsbar = pick(TAB_BARS, s.tabsBar).id;
+  try { localStorage.setItem(NTP_KEY, s.newTab === false ? 'off' : 'on'); } catch { /* boot.js then keeps StackNest */ }
   document.dispatchEvent(new CustomEvent('stacknest:tabsbar', { detail: pick(TAB_BARS, s.tabsBar).id }));
 }
 
@@ -374,8 +383,10 @@ const PLATES = [
   { id: 'set-vault',      num: '03', name: 'Vault' },
   { id: 'set-ticker',     num: '04', name: 'Market ticker' },
   { id: 'set-zen',        num: '05', name: 'Zen' },
+  { id: 'set-newtab',     num: '06', name: 'New tab' },
 ];
-const zenStatus = (s) => (s.zenWallpaper === 'theme' ? 'no wallpaper' : s.zenWallpaper === 'custom' ? 'your image' : (WALLPAPERS.find((w) => w.id === s.zenWallpaper)?.label || '').toLowerCase());
+const newTabStatus = (s) => (s.newTab ? 'stacknest' : 'chrome’s page');
+const zenStatus = (s) => `${s.zenWallpaper === 'theme' ? 'no wallpaper' : s.zenWallpaper === 'custom' ? 'your image' : (WALLPAPERS.find((w) => w.id === s.zenWallpaper)?.label || '').toLowerCase()}${s.zenEyeRest ? ' · eye rest' : ''}`;
 const appearanceStatus = (s) => `${pick(SCALES, s.scale).label} · ${pick(FONT_UI, s.fontUi).label}`;
 const tickerStatus = (s) => (s.tickerEnabled ? `on · ${s.tickerCrypto.length + s.tickerFx.length} symbols` : 'off');
 let plateObserver = null;
@@ -455,6 +466,7 @@ async function render() {
     'set-vault': { text: lockedOut ? 'locked out' : pinSet ? 'pin set' : 'no pin', tone: lockedOut ? 'danger' : null },
     'set-ticker': { text: tickerStatus(s) },
     'set-zen': { text: zenStatus(s) },
+    'set-newtab': { text: newTabStatus(s) },
   };
   const index = setIndex(status);
   const frag = [
@@ -464,7 +476,8 @@ async function render() {
       backupPlate({ cloud, live, needsSetup, connected }, status['set-backup']),
       await vaultPlate(status['set-vault']),
       tickerPlate(s, status['set-ticker']),
-      await zenPlate(s, status['set-zen'])))),
+      await zenPlate(s, status['set-zen']),
+      newTabPlate(s, status['set-newtab'])))),
   ];
   // an external rebuild must not strand keyboard focus: data-key first, aria-label
   // second (the existing fallback); a control the rebuild replaced (Connect) hands focus to
@@ -485,6 +498,7 @@ async function render() {
     setStatus('set-appearance', appearanceStatus(next));
     setStatus('set-ticker', tickerStatus(next));
     setStatus('set-zen', zenStatus(next));
+    setStatus('set-newtab', newTabStatus(next));
   });
 }
 
@@ -684,10 +698,36 @@ async function zenPlate(s, st) {
   const openBtn = el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'zen-open' },
     onclick: () => document.getElementById('zen-btn')?.click() }, icon('zen', 14), el('span', { text: 'Enter zen' }));
 
-  return plate(PLATES[4], { desc: 'An uncluttered page: one collection, your to-dos and what you have pinned, on a wallpaper. Switch it on with the zen button beside the theme; Esc leaves.', status: st }, [
-    group('enter', setRow({ label: 'Zen mode', help: 'Pick the collection inside Zen itself. Pin cards to it from Notes.', control: openBtn })),
+  const eye = switchCtl('set-zen-eye', 'Rest your eyes', s.zenEyeRest, 'zen-eye', (on) => saveSettings({ zenEyeRest: on })
+    .then(() => toast(on ? 'Eye rest on' : 'Eye rest off')));
+  onSettingsChange(eye, (next) => { eye.checked = next.zenEyeRest; });
+
+  return plate(PLATES[4], { desc: 'An uncluttered page: one collection, your to-dos, what you have pinned and a calendar, on a wallpaper. Switch it on with the zen button beside the theme; Esc leaves.', status: st }, [
+    group('enter', setRow({ label: 'Zen mode', help: 'Pick the collection inside Zen itself. Pin links, folders and Notes cards with the pin on their card. Drag panes and items to arrange them.', control: openBtn })),
+    group('breaks', setRow({ label: 'Rest your eyes', forId: 'set-zen-eye', control: eye,
+      help: 'After every 30 minutes of screen time in Zen, a 30-second pause to look into the distance. Five minutes away from the screen starts the count again.' })),
     secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn, removeBtn) }, grid),
   ], [callout('Your own image is resized and kept on this device only — it is not part of a backup file or a Drive sync. Plain uses the current theme’s background.')]);
+}
+
+/* ——— 06 New tab: whether StackNest takes over Chrome's new tab page ——— */
+function newTabPlate(s, st) {
+  const sw = switchCtl('set-newtab-on', 'Open StackNest in new tabs', s.newTab, 'newtab-on', (on) => saveSettings({ newTab: on })
+    .then(() => toast(on ? 'New tabs open StackNest' : 'New tabs open Chrome’s page — use the toolbar button for StackNest')));
+  onSettingsChange(sw, (next) => { sw.checked = next.newTab; });
+  return plate(PLATES[5], { desc: 'Show StackNest on every new tab, or keep Chrome’s own new tab page and open StackNest from the toolbar.', status: st }, [
+    group('new tab', setRow({ label: 'Open StackNest in new tabs', forId: 'set-newtab-on', control: sw,
+      help: 'Off: new tabs show Chrome’s own page, and StackNest opens from its button in the toolbar.' })),
+  ], [callout(['To keep the button handy, click the puzzle-piece icon in Chrome’s toolbar and pin StackNest. ',
+    'Chrome only lets an extension replace the new tab page as a whole, so with this off a new tab opens StackNest for a moment, then hands over to Chrome’s page (its address shows chrome://new-tab-page).'])]);
+}
+
+// an on/off switch in the house style (the same control as the ticker's)
+function switchCtl(id, label, checked, key, onChange) {
+  const sw = el('input', { type: 'checkbox', id, class: 'set-check set-switch', role: 'switch', 'aria-label': label, dataset: { key } });
+  sw.checked = !!checked;
+  sw.addEventListener('change', () => onChange(sw.checked));
+  return sw;
 }
 
 function checkGroup(label, options, selected, onChange) {

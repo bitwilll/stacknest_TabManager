@@ -19,10 +19,12 @@ async function main() {
   const { initMySpace } = await import('./myspace.js');
   const { initTicker } = await import('./ticker.js');
   const { initZen } = await import('./zen.js');
+  const { initZenPins } = await import('./zenpins.js');
 
   // apply saved typography before first paint; guarantee a default space exists
   applySettings(await loadSettings());
   await ensureWorkspaces();
+  await initZenPins();   // pin buttons on link cards read this as they render
 
   // — theme: auto (follows the OS, live) · light · dark · any extra theme the HTML declares —
   // Buttons carry data-theme-choice; a theme is a :root[data-theme='<id>'] token block in the CSS.

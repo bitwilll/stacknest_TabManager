@@ -381,6 +381,40 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Zen, round two: pins everywhere, calendar, arranging, eye rest, new tab choice (2026-11-17)
+
+The owner: let any link from a collection or the Library be pinned or unpinned for Zen, not only
+notes; a collapsible calendar on the side under the time and date; drag-and-drop arranging of
+Zen's panes and items; a good thought at the top; a 30-second eye rest every 30 minutes of screen
+time in Zen, switchable; and, last in Settings, a switch for whether StackNest is the new tab
+page at all, or opens only from the toolbar button.
+
+- **Pins** (`js/zenpins.js`, key `stacknest:zenpins`). A link pin is keyed by URL, so one page is
+  one pin wherever it is shown; a Library folder pin is keyed by bookmark id and lists the
+  folder's links live in Zen. The pin button sits on every collection link, Library bookmark and
+  folder, My Space link and on each row of Zen's collection pane. The Vault gets none: pinning
+  would show its links outside the PIN. Every pin button carries `data-zenpin` and repaints in
+  place when the store changes, so no view re-renders for it. Notes keep their own `pinned` flag.
+- **Layout** (key `stacknest:zenlayout`): pane order, per-list item order (`todo`, `pinned`,
+  `col:<collectionId>`) and whether the calendar is open. Items the saved order has not seen go
+  on top in To-do and Pinned (newest first), at the end in a collection (its own order). Both keys
+  ride in backups.
+- **Arranging**: a pane moves by the grip in its caption (so its text stays selectable), an item
+  from anywhere on it; Alt+arrow keys (or plain arrows on a grip) do the same from the keyboard.
+- **Calendar** (`js/zencal.js`): the month under the clock in a side column; dots on days with a
+  reminder due, a picked day lists them. Week start follows the locale. Folds to its header.
+- **Thought** (`js/thoughts.js`): one original line per day across the top, the same in every
+  tab; a button shows another.
+- **Eye rest** (`js/zenrest.js`, setting `zenEyeRest`, on by default): screen time counts only
+  while a Zen page is visible, through one shared `{ acc, last }` in localStorage so several tabs
+  add up to one clock. Five minutes with no visible Zen resets it. Esc skips the pause, not Zen.
+- **New tab** (setting `newTab`, plate 06, the last): Chrome has no way to switch an override off
+  at runtime, so with it off `boot.js` hands a plain new tab to `chrome://new-tab-page/` before
+  paint. It tells a plain new tab apart from StackNest opened on purpose by the URL: the toolbar
+  button then opens `newtab.html?open=1`, and notifications use `#notes`. The choice is mirrored
+  to localStorage (`stacknest:ntp`) because boot.js cannot wait for chrome.storage. If Chrome
+  refuses the hand-over, the page shows after at most 1.5 s, so a tab is never left blank.
+
 ## Zen mode + wallpapers (2026-11-16)
 
 The owner: a zen button by the theme that shows an uncluttered page — one collection, the to-dos

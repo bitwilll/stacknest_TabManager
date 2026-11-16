@@ -20,6 +20,7 @@ import { el, icon, actionBtn, toast, tile, domainOf, matches, confirmDialog, emp
 import { getKey, update, queued } from './store.js';
 import { promptUnlock, isSessionUnlocked, hasPin, isLockedOut, relock } from './lock.js';
 import { pushHistory, flashDeleted } from './history.js';
+import { zenPinBtn } from './zenpins.js';
 
 export const SPACE_KEY = 'stacknest:myspace';
 const TAB_MIME = 'text/x-stacknest-tab';
@@ -243,6 +244,7 @@ function spaceCard(item, vault) {
       el('span', { class: 'domain', text: domainOf(item.url) }),
     ),
     el('span', { class: 'acts' },
+      vault ? null : zenPinBtn({ url: item.url, title: item.title, from: 'myspace' }),   // the Vault stays behind its PIN
       vault
         ? actionBtn('box', 'Move to My Space', async () => { await setVault([item.id], false); toast('Moved to My Space'); })
         : actionBtn('lock', 'Move to the Vault (needs a PIN)', async () => {

@@ -16,6 +16,7 @@ import {
 } from './spacesStore.js';
 import { pushHistory, flashDeleted } from './history.js';
 import { TAGS_KEY, loadTags, tagChips, openTagEditor } from './tags.js';
+import { zenPinBtn } from './zenpins.js';
 
 const TAB_MIME = 'text/x-stacknest-tab';
 const SPACETAB_MIME = 'text/x-stacknest-spacetab';
@@ -572,6 +573,7 @@ function tabCard(space, tab, index, tagsMap) {
     el('span', { class: 'acts' },
       actionBtn('external', 'Open in background tab', () => { chrome.tabs.create({ url: tab.url, active: false }); toast('Opened in background'); }),
       actionBtn('tag', 'Edit tags', (_, btn) => openTagEditor(btn, { url: tab.url, title: tab.title || tab.url })),
+      zenPinBtn({ url: tab.url, title: tab.title || tab.url, from: 'collection' }),
       actionBtn('close', 'Remove from collection', () => removeTab(space, tab, index), 'danger'),
     ),
   );

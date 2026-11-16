@@ -96,8 +96,14 @@ async function rearmReminders() {
 chrome.runtime.onInstalled.addListener(rearmReminders);
 chrome.runtime.onStartup.addListener(rearmReminders);
 
-// the toolbar button opens a new tab — which is StackNest
-chrome.action?.onClicked.addListener(() => chrome.tabs.create({}));
+// The toolbar button opens StackNest. While StackNest is the new tab page that is simply a new
+// tab; with Settings → New tab off, new tabs belong to Chrome, so it opens StackNest's page by
+// its address (the ?open query tells boot.js not to hand the tab over).
+chrome.action?.onClicked.addListener(async () => {
+  let newTab = true;
+  try { newTab = (await chrome.storage.local.get('stacknest:settings'))['stacknest:settings']?.newTab !== false; } catch { /* default */ }
+  chrome.tabs.create(newTab ? {} : { url: chrome.runtime.getURL('newtab.html?open=1') });
+});
 
 // clicking the notification opens StackNest on the Notes view (app.js reads the hash)
 chrome.notifications?.onClicked.addListener((id) => {
