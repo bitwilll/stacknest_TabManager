@@ -3,8 +3,9 @@
 
 import { playChime } from './chime.js';
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.target !== 'offscreen' || msg.type !== 'chime') return;
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // only StackNest's worker asks (a web-bridge content script can send runtime messages too)
+  if (msg?.target !== 'offscreen' || msg.type !== 'chime' || sender?.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) return;
   playChime({ wait: false }).then((ok) => sendResponse({ ok }), (e) => sendResponse({ ok: false, error: String(e?.message || e) }));
   return true;
 });

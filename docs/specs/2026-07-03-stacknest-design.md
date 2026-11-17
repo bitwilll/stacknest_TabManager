@@ -381,6 +381,58 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## StackNest on the web: one connected site can show the new tab (2026-11-17)
+
+The owner wants a future StackNest website (no domain yet) to work as a home page showing
+exactly what the new tab shows, and wants the switch in place now so it can be turned on later
+without another release.
+
+- **Settings › 07 StackNest on the web.** A web address (empty; the placeholder
+  `https://stacknest.example (example only)` uses a reserved name, so it can't be a real
+  site), a **Connect** switch, and a status that only says what StackNest knows: *not
+  connected* (nothing is shared), *waiting for the site* (connected, no page has asked yet),
+  or *connected* with when a page last asked, plus "not a sign the site is up now". If Chrome's
+  own site access is removed, it reads *not connected* and says so. The address must be an
+  https origin (bare names get `https://`; paths, credentials, IPs, wildcards and http are
+  refused in words). It is read-only while connected.
+- **Mechanism.** The domain is chosen at run time, so nothing static works:
+  `externally_connectable` and web-accessible resources take fixed `matches`, and a wildcard
+  for any domain isn't allowed (or would expose the extension to every site). Instead the
+  manifest gains `scripting` and `optional_host_permissions: ["https://*/*"]`. Both add no
+  install warning: `getPermissionWarningsByManifest` gives the same four warnings with and
+  without them (Chrome 157), so existing users aren't asked to re-approve. Connect requests
+  the one origin (`chrome.permissions.request`, Chrome's prompt names the site) and registers a
+  content script for it (`chrome.scripting.registerContentScripts`, top frame,
+  `document_start`, persists across restarts). It is also injected into tabs of that site
+  already open.
+- **Trust lives in the worker.** `js/webbridge-content.js` is a relay: no storage reads, no
+  data, only protocol-1 types forwarded. `js/webbridge.js` in the service worker answers only
+  the top frame of a tab on the connected origin, while connected and while Chrome still grants
+  it. `chrome.storage.local` is set to `TRUSTED_CONTEXTS`, so a content script can't read
+  storage at all (verified refused). The worker's `auth:*` token handler and the offscreen
+  chime now answer only StackNest's own pages, since a content script can send runtime messages.
+- **Protocol 1** (`docs/specs/stacknest-web-bridge.md`): `window.postMessage` on the page's own
+  origin. `hello`, `get` (sections board, library, myspace, notes, tags, zen, settings, and
+  wallpaper by name), `subscribe` (change events carry section names, never values),
+  `todo.setDone` (the only write: tick a reminder or a list row), `open` (StackNest in a new
+  tab, only after a click). The site detects the relay by `data-stacknest-bridge="1"` on
+  `<html>`, set before its own scripts run.
+- **Privacy.** Nothing is registered, requested or sent until Connect. The Vault, its count,
+  the PIN record, the Google email, tokens and Drive state are never read into an answer, and
+  Vault URLs are filtered out of Zen pins, the Zen arrangement and tags. A change inside the
+  Vault alone sends no event. Disconnect stores `connected: false` first (the worker stops
+  answering and tells open pages), then unregisters the script and removes the permission. The
+  connection is kept under its own key `stacknest:web`, outside settings and backups: a grant
+  belongs to one browser, so a restore elsewhere must not claim to be connected.
+- **Not carried:** the colour theme (it lives in the page's `localStorage`), open tabs and
+  windows, history, the Duplicates "forgotten" list, arcade scores.
+- **Checked** headlessly against `https://localhost:8443` (self-signed): 39 checks covering
+  connect, every section, the Vault/PIN/token/email never appearing, the write, change events,
+  refusals, disconnect (unregistered, permission handed back, open page told, nothing after a
+  reload) and the "turned off in Chrome" status. The test copy grants the origin in its
+  manifest so Chrome's prompt resolves without a dialog, and records `permissions.remove`,
+  which Chrome refuses for a manifest grant. `scripts/smoke-test.mjs .` is clean.
+
 ## Zen, round three: the arcade, the lounge, reminders with a chime, more wallpapers (2026-11-17)
 
 The owner asked, over one long session, for a second Zen page with calm games, a lounge, timed

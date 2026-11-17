@@ -2128,6 +2128,21 @@ kbd {
 .cloud-meta { font: 500 var(--t2)/1.45 var(--grot); color: var(--text-mut); margin-top: 8px; }
 .cloud-provider .set-actions { margin-top: var(--s3); }
 
+/* ——— StackNest on the web (Settings › 07): an address field, a switch, an honest status ——— */
+.set-input { width: 300px; max-width: 100%; font: 600 var(--t3) var(--grot); color: var(--text); background: var(--bg-card);
+  border: 1px solid var(--edge); border-radius: var(--pill); padding: 8px 14px; outline: none; }
+.set-input::placeholder { color: var(--text-mut); font-weight: 500; opacity: 1; }
+.set-input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.set-input[readonly] { background: var(--bg-inset); color: var(--text-soft); cursor: default; }   /* connected: switch off to change it */
+.set-input[aria-invalid="true"] { border-color: var(--red); }
+.set-fieldnote { margin-top: var(--s1); font: 500 var(--t2)/1.45 var(--grot); color: var(--red); max-width: 52ch; }
+.set-fieldnote:empty { display: none; }
+.web-status { display: flex; align-items: flex-start; gap: 8px; margin: var(--s2) 0 0; max-width: 56ch; font: 500 var(--t2)/1.45 var(--grot); color: var(--text-body); }
+.web-status .cloud-dot { margin-top: 0.42em; }
+/* grey: off · a ring: connected, not yet asked · green: the site has asked (when, the text says) */
+.web-dot.is-waiting { background: transparent; box-shadow: inset 0 0 0 2px var(--text-soft); }
+.web-dot.is-seen { background: var(--green); }
+
 /* ——— ticker config chips (Settings › Market ticker) ——— */
 .tick-checks { display: flex; flex-wrap: wrap; gap: 6px; max-width: 320px; justify-content: flex-end; }
 .tick-check { font: 700 var(--t2) var(--mono); color: var(--text-soft); background: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--pill); padding: 5px 11px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
@@ -2141,6 +2156,7 @@ kbd {
   .set-seg { width: 100%; flex-wrap: wrap; }   /* four options at a large interface size still fit a phone */
   .set-seg-btn { flex: 1 1 auto; padding-inline: 6px; text-align: center; }
   .set-select { width: 100%; }
+  .set-input { width: 100%; }
   .tick-checks { justify-content: flex-start; max-width: none; }
   .cloud-row { flex-wrap: wrap; }
   .cloud-btns { justify-content: flex-start; }

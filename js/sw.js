@@ -1,7 +1,8 @@
 // Background service worker.
 //
-// Three jobs: OAuth delegation for incognito pages, task reminders (alarms → notifications),
-// and the toolbar button. The first exists because chrome.identity's OAuth flows can't run from an
+// Four jobs: OAuth delegation for incognito pages, task reminders (alarms → notifications),
+// the toolbar button, and answering the one website connected in Settings → StackNest on the
+// web (js/webbridge.js). The first exists because chrome.identity's OAuth flows can't run from an
 // incognito page, so incognito newtabs delegate token mint/evict here via
 // runtime messages (see getToken in drive.js). With "incognito": "spanning"
 // there is a single extension instance — this worker always runs in the
@@ -11,9 +12,18 @@
 // apart — whichever sign-in path is configured, incognito gets the same one.
 
 import { mintToken, forgetToken, forgetAllTokens } from './auth.js';
+import { initBridgeWorker } from './webbridge.js';
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type === 'auth:getToken') {
+initBridgeWorker();
+
+// Only StackNest's own pages may ask for a Google token. Since the web bridge, a content script
+// can send runtime messages too; it never sends these, but a compromised page process could try.
+const fromExtensionPage = (sender) => sender?.id === chrome.runtime.id
+  && typeof sender.url === 'string' && sender.url.startsWith(chrome.runtime.getURL(''));
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (typeof msg?.type !== 'string' || !msg.type.startsWith('auth:') || !fromExtensionPage(sender)) return;
+  if (msg.type === 'auth:getToken') {
     mintToken({ interactive: !!msg.interactive, chooseAccount: !!msg.chooseAccount, loginHint: msg.loginHint || null })
       .then((token) => sendResponse({ token }))
       .catch((e) => sendResponse({ error: e?.message || 'No token returned.' }));

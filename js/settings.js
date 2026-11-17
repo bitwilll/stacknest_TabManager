@@ -1,5 +1,6 @@
-// Settings: six numbered plates — Appearance (fonts, size, text sizes, tabs bar), Backup &
-// sync (file + Google Drive), the Vault's PIN, the market ticker, Zen, and the new tab page — with an index beside them.
+// Settings: seven numbered plates — Appearance (fonts, size, text sizes, tabs bar), Backup &
+// sync (file + Google Drive), the Vault's PIN, the market ticker, Zen, the new tab page, and
+// StackNest on the web (one connected website) — with an index beside them.
 // Fonts are offline-safe stacks (bundled + system) so nothing hits the network.
 
 import { el, icon, toast, confirmDialog, secGroup, sectionHead, pickFile } from './ui.js';
@@ -11,6 +12,7 @@ import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, 
 import { LOCK_KEY, loadLock, hasPin, setPin, clearPin, verifyPin, validatePin,
          isLockedOut, hasSecurityQuestion, promptSecurityAnswer,
          SECURITY_QUESTIONS, MAX_FAILS } from './lock.js';
+import { WEB_KEY, PLACEHOLDER_ORIGIN, parseOrigin, webStatus, connectWeb, disconnectWeb } from './webbridge.js';
 
 export const SETTINGS_KEY = 'stacknest:settings';
 
@@ -218,7 +220,7 @@ export function initSettings(options) {
   ({ root } = options);
   chrome.storage?.onChanged?.addListener((c, area) => {
     if (area !== 'local') return;
-    let external = !!(c[CLOUD_KEY] || c[LOCK_KEY]);
+    let external = !!(c[CLOUD_KEY] || c[LOCK_KEY] || c[WEB_KEY]);
     if (c[SETTINGS_KEY]) {
       const i = ownWrites.indexOf(JSON.stringify(c[SETTINGS_KEY].newValue));
       if (i !== -1) ownWrites.splice(i, 1);   // our own echo — the view is already right
@@ -377,8 +379,8 @@ async function signOutFlow() {
   toast(revoke.checked ? 'Signed out and access removed' : 'Signed out of Google Drive');
 }
 
-/* ————————————————————————— the four plates —————————————————————————
-   One static head ("applies to · This device"), then an index beside four numbered plates.
+/* ————————————————————————— the plates —————————————————————————
+   One static head ("applies to · This device"), then an index beside the numbered plates.
    Every plate stays in the scroll, so ⌘F still finds any setting; the index only jumps.
    Its items are buttons, not anchors, so the #view hash router never sees them. */
 
@@ -389,6 +391,7 @@ const PLATES = [
   { id: 'set-ticker',     num: '04', name: 'Market ticker' },
   { id: 'set-zen',        num: '05', name: 'Zen' },
   { id: 'set-newtab',     num: '06', name: 'New tab' },
+  { id: 'set-web',        num: '07', name: 'StackNest on the web' },
 ];
 const newTabStatus = (s) => (s.newTab ? 'stacknest' : 'chrome’s page');
 const zenStatus = (s) => `${s.zenWallpaper === 'theme' ? 'no wallpaper' : s.zenWallpaper === 'custom' ? 'your image' : (WALLPAPERS.find((w) => w.id === s.zenWallpaper)?.label || '').toLowerCase()}${s.zenEyeRest ? ' · eye rest' : ''}`;
@@ -464,7 +467,7 @@ async function render() {
   const live = isLive();
   const needsSetup = live && !isConfigured(); // real extension, but no OAuth client ID yet
   const connected = !!(cloud.connected || cloud.email);
-  const [pinSet, lockedOut] = await Promise.all([hasPin(), isLockedOut()]);
+  const [pinSet, lockedOut, web] = await Promise.all([hasPin(), isLockedOut(), webStatus()]);
   const status = {
     'set-appearance': { text: appearanceStatus(s) },
     'set-backup': { text: needsSetup ? 'setup required' : connected ? `drive · last backup ${shortWhen(cloud.lastBackupAt)}` : !live ? 'preview' : 'drive not connected' },
@@ -472,6 +475,7 @@ async function render() {
     'set-ticker': { text: tickerStatus(s) },
     'set-zen': { text: zenStatus(s) },
     'set-newtab': { text: newTabStatus(s) },
+    'set-web': { text: WEB_CHIP[web.state] },
   };
   const index = setIndex(status);
   const frag = [
@@ -482,7 +486,8 @@ async function render() {
       await vaultPlate(status['set-vault']),
       tickerPlate(s, status['set-ticker']),
       await zenPlate(s, status['set-zen']),
-      newTabPlate(s, status['set-newtab'])))),
+      newTabPlate(s, status['set-newtab']),
+      webPlate(web, status['set-web'])))),
   ];
   // an external rebuild must not strand keyboard focus: data-key first, aria-label
   // second (the existing fallback); a control the rebuild replaced (Connect) hands focus to
@@ -736,6 +741,76 @@ function newTabPlate(s, st) {
       help: 'Off: new tabs show Chrome’s own page, and StackNest opens from its button in the toolbar.' })),
   ], [callout(['To keep the button handy, click the puzzle-piece icon in Chrome’s toolbar and pin StackNest. ',
     'Chrome only lets an extension replace the new tab page as a whole, so with this off a new tab opens StackNest for a moment, then hands over to Chrome’s page (its address shows chrome://new-tab-page).'])]);
+}
+
+/* ——— 07 StackNest on the web: one website, chosen here, that shows the new tab's content ———
+   There is no StackNest website yet. This is the switch for when there is: the address is
+   typed here, Connect asks Chrome for that one site, and the bridge in js/webbridge.js answers
+   its pages. The status never claims the site is up — only whether it has asked, and when.
+   The connection is this device's alone: it is kept under its own key, never in a backup. */
+const WEB_CHIP = { off: 'not connected', waiting: 'waiting for the site', seen: 'connected' };
+let webDraft = null;   // the address being typed; survives a re-render until it is connected
+
+function webStatusText(web) {
+  if (web.state === 'seen') return `Connected. ${web.origin} last asked for your StackNest ${shortWhen(new Date(web.lastSeenAt).toISOString())}. That is when it last asked — not a sign the site is up now.`;
+  if (web.state === 'waiting') return `Waiting for the site. StackNest will answer pages on ${web.origin} when they ask; none has asked yet, so nothing has been sent.`;
+  if (web.endedBy === 'chrome' && web.origin) return `Not connected. Site access for ${web.origin} was turned off in Chrome, so StackNest stopped answering it. Nothing is shared.`;
+  return 'Not connected. Nothing is shared with any website.';
+}
+
+function webPlate(web, st) {
+  const on = web.state !== 'off';
+  const input = el('input', { type: 'url', id: 'set-web-origin', class: 'set-input', inputmode: 'url', autocomplete: 'off',
+    placeholder: `${PLACEHOLDER_ORIGIN} (example only)`, 'aria-describedby': 'set-web-error', dataset: { key: 'web-origin' } });
+  input.value = on ? web.origin : (webDraft ?? web.origin ?? '');
+  input.readOnly = on;   // to change the address, disconnect first: the permission is for one site
+  const err = el('div', { class: 'set-fieldnote', id: 'set-web-error', role: 'alert' });
+  const showError = (msg) => { err.textContent = msg || ''; input.setAttribute('aria-invalid', msg ? 'true' : 'false'); };
+  input.addEventListener('input', () => { webDraft = input.value; showError(''); });
+  input.addEventListener('change', () => { if (input.value.trim() && !on) showError(parseOrigin(input.value).error); });
+
+  const dot = el('span', { class: `cloud-dot g web-dot is-${web.state}`, 'aria-hidden': 'true' });
+  const statusLine = el('p', { class: 'web-status', role: 'status' }, dot, el('span', { text: webStatusText(web) }));
+
+  const sw = switchCtl('set-web-on', 'Connect StackNest to this site', on, 'web-on', async (want) => {
+    sw.disabled = true;
+    try {
+      if (want) {
+        const p = parseOrigin(input.value);
+        if (p.error) { sw.checked = false; showError(p.error); input.focus(); return; }
+        input.value = p.origin;
+        const ok = await confirmDialog({
+          title: `Connect ${p.host}?`,
+          message: `Pages on ${p.origin} will be able to show, in this browser, the same things as your new tab: collections, your Chrome bookmarks (the Library), My Space, notes and to-dos, tags, Zen, and these settings — and to tick to-dos off. The Vault, your PIN and your Google account are never shared. Chrome will ask you to allow StackNest on that site; switching this off takes it all back.`,
+          confirmLabel: 'Connect',
+        });
+        if (!ok) { sw.checked = false; return; }
+        const r = await connectWeb(p.origin);   // Chrome's prompt; the click above is the gesture it needs
+        if (!r.granted) { sw.checked = false; toast('Chrome’s permission wasn’t given — nothing is shared'); return; }
+        webDraft = null;
+        toast(`Connected to ${p.host} — waiting for the site`);
+      } else {
+        const r = await disconnectWeb();
+        toast(r.removed ? 'Disconnected — the site gets nothing more' : 'Disconnected — Chrome kept its site access; remove it in Chrome’s extension settings');
+      }
+    } catch (e) {
+      sw.checked = !want;
+      toast(e?.message || 'Something went wrong');
+    } finally { sw.disabled = false; }
+    // the plate re-renders from the storage change; this covers a declined prompt, which stores nothing
+  });
+
+  return plate(PLATES[6], { desc: 'Let one website of your choosing show what your new tab shows, so it can be your home page too. There is no StackNest website yet; when there is, connect it here — no extension update needed.', status: st }, [
+    group('site', setRow({ label: 'Web address', forId: 'set-web-origin', control: input,
+      help: on ? 'Switch off below to change it.' : 'The site’s https address, like the example in the box. Leave it empty until there is a StackNest website.',
+      extra: [err] })),
+    group('connection', setRow({ label: 'Connect', forId: 'set-web-on', control: sw, extra: [statusLine],
+      help: 'Off: StackNest answers no website, and Chrome grants it no access to any site.' })),
+  ], [
+    callout([el('strong', {}, 'Nothing leaves this device until you connect. '),
+      'Then only pages on that one address can ask, only in this browser, and StackNest answers inside the page — there is no StackNest server and nothing goes into a link. What the site then does with what it shows is up to the site, so connect only one you trust.']),
+    callout(['Never shared: the Vault and anything in it, your PIN, and your Google account or its Drive backup. Switching off stops the answers at once, unregisters the bridge and gives Chrome’s site access back.']),
+  ]);
 }
 
 // an on/off switch in the house style (the same control as the ticker's)

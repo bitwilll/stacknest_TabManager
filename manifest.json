@@ -36,7 +36,11 @@
     "identity",
     "notifications",
     "alarms",
-    "offscreen"
+    "offscreen",
+    "scripting"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
   ],
   "oauth2": {
     "client_id": "1020230466744-gi8j4vs8oepdj8v5f3htof64ltgap2m3.apps.googleusercontent.com",

@@ -29,8 +29,20 @@ notifications · Read and change your bookmarks.*
 | `identity` | Optional Google Drive backup. When the user clicks Connect, StackNest uses `chrome.identity` to sign in with Google and get a token for the `drive.appdata` and `userinfo.email` scopes. Nothing happens until the user starts it. | `js/auth.js:61`, `:71`; `js/drive.js:197` |
 | `alarms` | Schedules the reminder times the user sets on notes and to-dos, so a reminder fires even when no StackNest tab is open. | `js/notes.js:81` |
 | `notifications` | Shows the reminder the user scheduled, as a browser notification. Clicking it opens StackNest on the Notes view. | `js/sw.js:69`, `:81` |
+| `scripting` | Used only by the optional "StackNest on the web" setting, after the user connects a website there: registers one content script for that single https site so it can show the user's own new-tab content, and unregisters it when they disconnect. It does nothing without a host permission, and StackNest holds none until the user grants one for that site. Adds no install warning. | `js/webbridge.js:135` (register), `:149` (connect), `:169` (disconnect) |
 
-**Host permissions:** none. The manifest asks for no host access. Google APIs, CoinGecko and
+**Host permissions:** none at install. `optional_host_permissions: ["https://*/*"]` is declared
+for Settings › StackNest on the web, which lets one website the user chooses show their
+new-tab content. The site's address is typed in at run time, because the StackNest website
+doesn't exist yet and the option has to work without another release; a static
+`externally_connectable` list can't take a domain chosen later. Nothing is granted until the
+user connects: then StackNest requests that one origin with `chrome.permissions.request`
+(`js/webbridge.js:152`; Chrome shows its own prompt naming the site), and Disconnect removes it
+with `chrome.permissions.remove` (`:175`). The optional permission and `scripting` add no
+install warning: `getPermissionWarningsByManifest` returns the same four warnings with and
+without them (Chrome 157).
+
+No host permission is needed for the network features. Google APIs, CoinGecko and
 ExchangeRate-API all answer cross-origin requests from the extension. This was verified in
 Chrome 155 with host permissions removed: each Drive call (list, media update, multipart create,
 delete), userinfo and token revoke returned a readable response. The manifest's
