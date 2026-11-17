@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794888911.794936,
-    "seen": 1794888916.734282,
-    "ast_hash": "c91ed7b346974fddbac0b0b7250b3f1f",
+    "mtime": 1794890454.329585,
+    "seen": 1794890459.931524,
+    "ast_hash": "cc91b8b6b60d8b5057898e89621ce619",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "js/arcade.js": {
-    "mtime": 1794888857.0482373,
-    "seen": 1794888916.734247,
-    "ast_hash": "af8bff9fde9ed9f18280684cc49dbcbe",
+    "mtime": 1794890413.1429586,
+    "seen": 1794890459.931485,
+    "ast_hash": "f8c3c0c936888efca825265426a3c5bb",
     "semantic_hash": ""
   },
   "js/chime.js": {
@@ -546,21 +546,21 @@
     "semantic_hash": ""
   },
   "js/lounge-reading.js": {
-    "mtime": 1794887857.3404782,
-    "seen": 1794888916.734261,
-    "ast_hash": "d1d04df1bf6f716b29abff190efeca7b",
+    "mtime": 1794890408.1843436,
+    "seen": 1794890459.9315,
+    "ast_hash": "04dd3814bbf8f4d6b389923d3cfdf7ae",
     "semantic_hash": ""
   },
   "js/lounge-temple.js": {
-    "mtime": 1794886892.2826786,
-    "seen": 1794888916.734262,
-    "ast_hash": "c00d54ca33b9bafaa50719ac55e5bb37",
+    "mtime": 1794890245.1789253,
+    "seen": 1794890459.9315012,
+    "ast_hash": "76f54da169fa4048ea9686f4c78ac1c7",
     "semantic_hash": ""
   },
   "js/lounge-train.js": {
-    "mtime": 1794888858.57291,
-    "seen": 1794888916.734262,
-    "ast_hash": "8e67cfe4407681bb8a08c31823117be2",
+    "mtime": 1794890314.007677,
+    "seen": 1794890459.931502,
+    "ast_hash": "ce1358eab53af121b86f978339b500ca",
     "semantic_hash": ""
   }
 }

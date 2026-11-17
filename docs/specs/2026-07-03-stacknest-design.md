@@ -438,6 +438,15 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
   chimes under the eaves are played by the scene itself: each breeze swings the clapper, and a
   rod sounds only when it is struck, so what you hear is what you see. Touch the water and the
   koi come for food; the lantern lights, the maple sheds, the spout tips, the cat stretches.
+- **Night Train** (`js/lounge-train.js`): a compartment on a rainy evening journey. Through the
+  window, rain slants with the speed and drops run back along the glass; hills, a village, a
+  river with a stone bridge, fields, pines and telegraph wires pass at their own speeds. Now and
+  then a lit halt slides by as the train slows, a tunnel darkens the glass to the carriage's own
+  reflection, or lightning glows over the hills with soft thunder after. Inside: a reading lamp,
+  tea that trembles on every rail joint, a ticket (single to Port Ellery, coach C, seat 14), a
+  paperback, a pocket watch, a luggage rack, a dripping umbrella, Mim the cat in her basket.
+  The clickety-clack is timed to the joints passing the window (two knocks, a pause, two more),
+  slowing with the train. Wide: the corridor door, a timetable, the next bay with a sleeper.
 - **Music for the new lounges** (`js/arcade-kit.js`): the Temple keeps its composed raga (the
   owner chose it over the free recordings found); the Garden plays the koto-style "Sumi"; the
   Night Train rotates all four CC0 lo-fi recordings; the Reading Room gets "Pages", a slow
