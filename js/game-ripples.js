@@ -204,25 +204,29 @@ export function start(canvas, { setScore, isPaused }) {
     if (gone) fish = fish.filter((k) => !(k.leaving && k.f <= 0));
   }
 
-  // A wide pond's light (one soft gradient, the costliest thing to fill) is painted once per width
-  // at half scale and laid over the whole pond each frame; it is cheap enough to repaint at once
-  // whenever the width changes, even through a window drag.
-  let sea = null, seaW = 0;
+  // A wide pond's light (one soft gradient over the whole screen, the costliest thing in a frame)
+  // is painted once per width into a buffer the canvas's size and copied in each frame. A jump in
+  // width (into full screen) repaints it at once; through a window drag it is painted straight
+  // onto the canvas until the width holds still.
+  let sea = null, seaKey = '', seaAt = -1e9, lastKey = '', keyAt = 0;
   function light() {
-    if (!sea || seaW !== W) {
-      seaW = W;
+    const key = `${W} ${canvas.width} ${canvas.height}`, now = performance.now();
+    if (key !== lastKey) { lastKey = key; keyAt = now; }
+    if (key !== seaKey && (now - seaAt > 400 || now - keyAt >= 150)) {
+      seaKey = key; seaAt = now;
       sea = sea || document.createElement('canvas');
-      sea.width = Math.ceil(W / 2); sea.height = SIZE / 2;
-      const c = sea.getContext('2d');
-      c.setTransform(sea.width / W, 0, 0, sea.height / SIZE, ox * (sea.width / W), 0);
+      sea.width = canvas.width; sea.height = canvas.height;
+      const c = sea.getContext('2d'), k = canvas.height / SIZE;
+      c.setTransform(k, 0, 0, k, ox * k, 0);
       shine(c, W);
     }
-    ctx.drawImage(sea, -ox, 0, W, SIZE);
+    if (key !== seaKey) { shine(ctx, W); return; }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(sea, 0, 0); ctx.restore();
   }
 
   function update(dt) {
     W = canvas._snW || SIZE; ox = (W - SIZE) / 2;
-    if (W !== padsW) { padsW = W; pads = padsFor(W); }
+    if (W !== padsW) { padsW = W; pads = padsFor(W); if (!ox) { sea = null; seaKey = lastKey = ''; } }
     t += dt;
     rainT -= dt;
     if (rainT <= 0) { drop(-ox + 40 + Math.random() * (W - 80), 40 + Math.random() * 560, true); rainT = (1.8 + Math.random() * 3) * (SIZE / W); }
@@ -262,5 +266,5 @@ export function start(canvas, { setScore, isPaused }) {
     if (ox) ctx.restore();
   }
   const stop = runLoop(update, isPaused);
-  return () => { stop(); canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('keydown', onKey); };
+  return () => { stop(); sea = null; canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('keydown', onKey); };
 }

@@ -71,26 +71,33 @@ function stone(ctx, x, y, kind, s = 1) {
 /* ——— the wider pond (full screen) ———
    Everything out here is drawn in the board's own space, under a translate that centres the
    square, so it lies at x < 0 (left) and x > SIZE (right). Each side is laid out in "edge" units,
-   e = distance in from that side's outer edge, so a layout made for one width still sits right
-   against the edges while a new one is waiting to be built (a window being dragged). */
+   e = distance in from that side's outer edge. What never moves (the water's light, the banks,
+   their stones and grass, the shallows) is painted once per width into one picture; the pads,
+   reeds, koi and rings are drawn over it every frame. */
 
-// the pond's water: at W = SIZE exactly the square's water; wider, the same light spread across
-function pondWater(ctx, t, W) {
+// the square's water (the pond as it is in the frame)
+function pondWater(ctx, t) {
   const g = ctx.createRadialGradient(SIZE * 0.4, SIZE * 0.35, 40, SIZE / 2, SIZE / 2, SIZE * 0.8);
   g.addColorStop(0, '#2f6f73'); g.addColorStop(1, '#173f48');
-  ctx.fillStyle = g;
-  if (W > SIZE) {
-    ctx.save();
-    ctx.translate(SIZE / 2, 0); ctx.scale(W / SIZE, 1); ctx.translate(-SIZE / 2, 0);
-    ctx.fillRect(0, 0, SIZE, SIZE);
-    ctx.restore();
-  } else ctx.fillRect(0, 0, SIZE, SIZE);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, SIZE, SIZE);
   // caustic light
-  const x0 = W > SIZE ? -Math.ceil((W - SIZE) / 64) * 32 : 0, x1 = SIZE - x0;
   ctx.strokeStyle = 'rgba(190,240,230,.06)'; ctx.lineWidth = 2;
   for (let i = 0; i < 9; i++) {
     ctx.beginPath();
-    for (let x = x0; x <= x1; x += 32) { const y = i * 76 + Math.sin(x * 0.02 + t * 0.6 + i) * 10; x !== x0 ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    for (let x = 0; x <= SIZE; x += 32) { const y = i * 76 + Math.sin(x * 0.02 + t * 0.6 + i) * 10; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke();
+  }
+}
+
+// the same caustic light on a wider pond, each line running from one shore to the other
+function caustics(ctx, t, span) {
+  ctx.strokeStyle = 'rgba(190,240,230,.06)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 9; i++) {
+    const [xa, xb] = span(i * 76), y = (x) => i * 76 + Math.sin(x * 0.02 + t * 0.6 + i) * 10;
+    ctx.beginPath();
+    ctx.moveTo(xa, y(xa));
+    for (let x = Math.ceil(xa / 32 + 0.01) * 32; x < xb; x += 32) ctx.lineTo(x, y(x));
+    ctx.lineTo(xb, y(xb));
     ctx.stroke();
   }
 }
@@ -148,16 +155,10 @@ function padSprite(d, scale) {
   return { cv, m, s: n / scale };
 }
 
-// one side's bank, shallows and shore stones: drawn once per width into its own canvas.
-// x in that canvas: the outer edge is 0 on the left side and cw on the right.
-function bankLayer(side, scale) {
+// one side's bank, shallows and shore stones, painted into the background (c: the board's space)
+function drawBank(c, side, off) {
   const { dir, bw, maxBw, base, reeds } = side;
-  const cw = Math.ceil(maxBw + 90);
-  const cv = document.createElement('canvas');
-  cv.width = Math.ceil(cw * scale); cv.height = Math.ceil(SIZE * scale);
-  const c = cv.getContext('2d');
-  c.setTransform(scale, 0, 0, scale, 0, 0);
-  const X = (e) => (dir < 0 ? e : cw - e);
+  const X = (e) => (dir < 0 ? -off + e : SIZE + off - e);
   const R = rng(dir < 0 ? 8821 : 4409);
   const ss = Math.max(0.55, Math.min(1.15, base / 70));
   const band = (from, to, style) => {
@@ -243,7 +244,6 @@ function bankLayer(side, scale) {
     c.fillStyle = 'rgba(255,255,255,.17)'; c.beginPath(); c.ellipse(x - rx * 0.3, y - ry * 0.4, rx * 0.38, ry * 0.22, rot, 0, TAU); c.fill();
     if (R() < 0.3) { c.fillStyle = 'rgba(96,140,84,.6)'; c.beginPath(); c.ellipse(x + (R() - 0.5) * rx * 0.5, y - ry * 0.5, rx * 0.45, ry * 0.26, rot, 0, TAU); c.fill(); }
   }
-  return { cv, cw };
 }
 
 // lay out one side of the wider pond for a width (off: how far the screen reaches past the square)
@@ -279,14 +279,27 @@ function buildSide(dir, off, base, scale) {
     d.sprite = padSprite(d, scale);
     pads.push(d);
   }
-  const side = { dir, bw, maxBw, base, reeds, pads };
-  side.bank = base ? bankLayer(side, scale) : null;
-  return side;
+  return { dir, bw, maxBw, base, reeds, pads };
 }
 
+// the whole wider pond for one width: both sides' layouts and the still picture under them
 function buildScenery(off, scale) {
-  const base = off < 70 ? 0 : Math.min(110, off * 0.3 - 5);
-  return { off, scale, sides: [buildSide(-1, off, base, scale), buildSide(1, off, base, scale)] };
+  const W = SIZE + 2 * off, base = off < 70 ? 0 : Math.min(110, off * 0.3 - 5);
+  const sides = [buildSide(-1, off, base, scale), buildSide(1, off, base, scale)];
+  const bg = document.createElement('canvas');
+  bg.width = Math.ceil(W * scale); bg.height = Math.ceil(SIZE * scale);
+  const c = bg.getContext('2d');
+  c.setTransform(scale, 0, 0, scale, off * scale, 0);
+  // the square's light on the water, spread across the width
+  const g = c.createRadialGradient(SIZE * 0.4, SIZE * 0.35, 40, SIZE / 2, SIZE / 2, SIZE * 0.8);
+  g.addColorStop(0, '#2f6f73'); g.addColorStop(1, '#173f48');
+  c.fillStyle = g;
+  c.save();
+  c.translate(SIZE / 2, 0); c.scale(W / SIZE, 1); c.translate(-SIZE / 2, 0);
+  c.fillRect(0, 0, SIZE, SIZE);
+  c.restore();
+  for (const s of sides) if (s.base) drawBank(c, s, off);
+  return { off, W, scale, sides, bg };
 }
 
 export function preview(ctx) {
@@ -310,7 +323,9 @@ export function start(canvas, { setScore, isPaused, finish: showCard }) {
   // fish rises. Its chances come from a generator of its own, so the game's moves never change.
   let off = 0, L = null, seenOff = -1, seenAt = 0, builtAt = -1e9, passers = [], rises = [], passT = 2.5, riseT = 1.2;
   const SR = rng(4242);
-  const ex = (dir, e) => (dir < 0 ? -off + e : SIZE + off - e);
+  // where a point of the layout (side dir, e in from its edge) is on screen, in the board's space.
+  // A layout made for another width (a window still being dragged) is stretched to fit meanwhile.
+  const ex = (dir, e) => (dir < 0 ? e : L.W - e) * ((SIZE + 2 * off) / L.W) - off;
 
   const finish = () => {
     result = winner(board);
@@ -371,7 +386,7 @@ export function start(canvas, { setScore, isPaused, finish: showCard }) {
   canvas.addEventListener('keydown', onKey);
 
   // the layout for this width: a jump (into full screen) is built at once; while a window is being
-  // dragged the old one stays against the edges until the width settles
+  // dragged the old one is stretched to fit until the width settles
   function scenery() {
     const now = performance.now(), scale = canvas.height / SIZE;
     if (Math.abs(off - seenOff) > 0.5) { seenOff = off; seenAt = now; }
@@ -379,27 +394,30 @@ export function start(canvas, { setScore, isPaused, finish: showCard }) {
     if (L && now - seenAt < 150 && now - builtAt < 500) return;
     L = buildScenery(off, scale); builtAt = now;
     passers = passers.filter((k) => { const s = L.sides[k.dir < 0 ? 0 : 1]; return k.e - k.amp > s.maxBw + 20 && k.e + k.amp < off + 20; });
+    rises = [];
   }
-  const rise = (dir, e, y) => { rises.push({ dir, e, y, r: 3, l: 1, delay: 0 }, { dir, e, y, r: 3, l: 0.8, delay: 0.45 }); };
+  // a fish rising: two rings, kept out on the open water (never over the bank)
+  const rise = (s, e, y) => { if (e > s.bw(y) + 50) rises.push({ dir: s.dir, e, y, r: 3, l: 1, delay: 0 }, { dir: s.dir, e, y, r: 3, l: 0.8, delay: 0.45 }); };
   function sideLife(dt) {
     // a koi now and then, swimming the length of one side
     passT -= dt;
     if (passT <= 0) {
       passT = 6 + SR() * 10;
-      const s = L.sides[SR() < 0.5 ? 0 : 1], amp = Math.min(46, Math.max(0, off - s.maxBw) * 0.14), pal = KOI[Math.floor(SR() * KOI.length)];
+      const pick = SR() < 0.5 ? 0 : 1, s = L.sides[passers.length ? (passers[0].dir < 0 ? 1 : 0) : pick];   // one to a side
+      const amp = Math.min(46, Math.max(0, off - s.maxBw) * 0.14), pal = KOI[Math.floor(SR() * KOI.length)];
       const lo = s.maxBw + 30 + amp, hi = off - amp, down = SR() < 0.5, f = 0.25 + SR() * 0.5, v = 22 + SR() * 10, ph = SR() * TAU, p = SR() * 6, r0 = 2 + SR() * 5;
       if (off >= 130 && hi > lo && passers.length < 2) passers.push({ dir: s.dir, e: lo + (hi - lo) * f, amp, ph, y: down ? -60 : SIZE + 60, vy: down ? v : -v, x: 0, a: 0, c0: pal[0], c1: pal[1], p, riseT: r0 });
     }
     for (const k of passers) {
       k.y += k.vy * dt;
-      const w = k.y * 0.011 + k.ph;
-      k.x = ex(k.dir, k.e + k.amp * Math.sin(w));
+      const w = k.y * 0.011 + k.ph, e = k.e + k.amp * Math.sin(w);
+      k.x = ex(k.dir, e);
       k.a = Math.atan2(k.vy, -k.dir * k.amp * 0.011 * Math.cos(w) * k.vy);
       k.riseT -= dt;
-      if (k.riseT <= 0) {   // up to the surface for a moment
+      if (k.riseT <= 0) {   // up to the surface for a moment, just ahead of its nose
         k.riseT = 4 + SR() * 6;
-        const hx = k.x + Math.cos(k.a) * 20, hy = k.y + Math.sin(k.a) * 20;
-        if (hy > 10 && hy < SIZE - 10) rise(k.dir, k.dir < 0 ? hx + off : SIZE + off - hx, hy);
+        const hy = k.y + Math.sin(k.a) * 20;
+        if (hy > 10 && hy < SIZE - 10) rise(L.sides[k.dir < 0 ? 0 : 1], e - k.dir * Math.cos(k.a) * 20, hy);
       }
     }
     passers = passers.filter((k) => k.y > -90 && k.y < SIZE + 90);
@@ -407,23 +425,35 @@ export function start(canvas, { setScore, isPaused, finish: showCard }) {
     riseT -= dt;
     if (riseT <= 0) {
       riseT = 1.6 + SR() * 3.4;
-      const s = L.sides[SR() < 0.5 ? 0 : 1], y = 30 + SR() * (SIZE - 60), lo = s.bw(y) + 26, hi = off - 12, f = SR();
-      if (hi > lo) rise(s.dir, lo + (hi - lo) * f, y);
+      const s = L.sides[SR() < 0.5 ? 0 : 1], y = 30 + SR() * (SIZE - 60), lo = s.bw(y) + 56, hi = off - 12, f = SR();
+      if (hi > lo) rise(s, lo + (hi - lo) * f, y);
     }
-    for (const r of rises) { if (r.delay > 0) { r.delay -= dt; continue; } r.r += 30 * dt; r.l -= dt * 0.5; }
+    for (const r of rises) { if (r.delay > 0) { r.delay -= dt; continue; } r.r += 24 * dt; r.l -= dt * 0.55; }
     rises = rises.filter((r) => r.l > 0);
   }
-  function drawSides() {
+  // the still picture (water, banks), then the light on the water from shore to shore
+  function drawPond() {
+    const k = (SIZE + 2 * off) / L.W;
+    ctx.drawImage(L.bg, -off, 0, (L.bg.width / L.scale) * k, L.bg.height / L.scale);
+    const [ls, rs] = L.sides;
+    caustics(ctx, t, (y) => [ex(-1, ls.bw(y) + (ls.base ? 4 : 0)), ex(1, rs.bw(y) + (rs.base ? 4 : 0))]);
+  }
+  function drawRises() {
     for (const r of rises) {
       if (r.delay > 0) continue;
       ctx.strokeStyle = `rgba(225,250,245,${0.45 * r.l})`; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.ellipse(ex(r.dir, r.e), r.y, r.r, r.r * 0.92, 0, 0, TAU); ctx.stroke();
     }
+  }
+  function drawPads() {
     for (const s of L.sides) {
-      if (s.bank) ctx.drawImage(s.bank.cv, s.dir < 0 ? -off : SIZE + off - s.bank.cw, 0, s.bank.cv.width / L.scale, s.bank.cv.height / L.scale);
-      // (a layout made for a wider screen, still up while the window narrows: leave out the pads
-      // that would now come too near the board)
-      for (const d of s.pads) if (d.e <= off + 30 - d.r) ctx.drawImage(d.sprite.cv, ex(s.dir, d.e) - d.sprite.m, d.y + Math.sin(t * 0.8 + d.ph) * 1.5 - d.sprite.m, d.sprite.s, d.sprite.s);
+      for (const d of s.pads) {
+        const x = ex(s.dir, d.e);
+        // (a layout made for a wider screen, stretched while the window narrows: leave out the
+        // pads that would come too near the board)
+        if (s.dir < 0 ? x + d.r > 30.5 : x - d.r < SIZE - 30.5) continue;
+        ctx.drawImage(d.sprite.cv, x - d.sprite.m, d.y + Math.sin(t * 0.8 + d.ph) * 1.5 - d.sprite.m, d.sprite.s, d.sprite.s);
+      }
     }
   }
   // reeds and cattails, stirring a little in the air
@@ -489,7 +519,7 @@ export function start(canvas, { setScore, isPaused, finish: showCard }) {
 
     ctx.save();
     ctx.translate(off, 0);
-    pondWater(ctx, t, off ? W : SIZE);
+    if (L) drawPond(); else pondWater(ctx, t);
     koi(ctx, fish, t);
     if (L) for (const k of passers) koi(ctx, k, t);
     for (const r of ripples) {
@@ -497,7 +527,7 @@ export function start(canvas, { setScore, isPaused, finish: showCard }) {
       ctx.strokeStyle = `rgba(225,250,245,${0.6 * r.l})`; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, r.r * 0.92, 0, 0, Math.PI * 2); ctx.stroke();
     }
-    if (L) drawSides();
+    if (L) { drawRises(); drawPads(); }
     for (let i = 0; i < 9; i++) {
       const [x, y] = centre(i);
       const dip = bob[i] * Math.sin(t * 9 + i);

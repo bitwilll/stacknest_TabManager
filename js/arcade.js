@@ -189,7 +189,7 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
           art = summary.artwork({ quote: cardMsg.textContent, stroke: withStroke });
           // the thumbnail from a small copy: encoding the full 1600 px sheet just to show 84 px stalls
           const small = el('canvas', { width: '168', height: '168' });
-          small.getContext('2d').drawImage(art, 0, 0, 168, 168);
+          small.getContext('2d').drawImage(art, 0, 0, art.width, art.width, 0, 0, 168, 168);   // the painting's square, not its foot
           thumb.src = small.toDataURL('image/png');
         };
         draw();
@@ -276,7 +276,10 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
     canvas.setAttribute('aria-label', `${g.meta.title}. ${g.meta.keys}.`);
     paintSound();
     score.textContent = '';
-    canvas.classList.toggle('is-wide', !!(g.meta.lounge || g.meta.wide));   // fills the screen in full screen
+    // only a lounge fills the screen's shape in full screen; a game keeps its square, as large as
+    // fits, so nothing in it stretches (setupCanvas reads the canvas's shown shape, so a square
+    // element gives a square scene)
+    canvas.classList.toggle('is-wide', !!g.meta.lounge);
     med.setAvailable(!!(g.meta.timer || g.meta.id === 'temple'));
     hideCard();
     stopGame = g.start(canvas, {

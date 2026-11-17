@@ -381,6 +381,39 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17)
+
+The owner asked for five lucky lotto numbers and a valid BIP-39 seed phrase on the saved
+painting, the quote clearly visible, centred and in black ink, the date and time off the
+artwork, a unique sigil in a corner, the with/without-stroke switch to show on the card, and
+games that do not stretch in full screen.
+
+- **A paper foot below the painting** (`artwork()` in `js/game-brush.js`): the same paper,
+  mirrored so the grain meets at a soft fold. The painting itself carries only its stroke, trace
+  and red seal. The foot holds the card's kind word centred in black Petit Formal Script (one
+  line if it fits at a large size, else two balanced lines, never a lone word), five lotto
+  numbers (1–50) in ink rings, the twelve words in a numbered 4×3 grid, a caution in plain words
+  (a BIP-39 seed is the master key of a BIP-32 wallet; this one has been on a screen and in a
+  picture, so keep it for luck and never fund it), and a bottom row: the date and time it was
+  made at the left, its own sigil in the corner. The sheet grows to fit (1600 px wide); the
+  card's thumbnail shows the painting's square.
+- **The phrase is valid BIP-39** (`js/luck.js`, `js/bip39-words.js`, the standard English list,
+  SHA-256 `2f5eed53…`). Its 128 bits are the first half of SHA-256 over 32 bytes from
+  `crypto.getRandomValues` and the round's own movement (the sub-millisecond moment and way of
+  every turn, each press and swipe's place and time), so the play adds unpredictability and can
+  never remove the system's. SHA-256 is computed synchronously in `luck.js`; it matches Node's on
+  300 inputs, the official test vectors pass, and 2,000 generated phrases all validate.
+- **The sigil** is drawn from 16 further random bytes (separate from the phrase's, so it reveals
+  nothing of the words): a double ring ticked where bits are set and a line walked through nine
+  points, begun with a small circle and ended with a bar, a red dot at its heart; its id is
+  printed beside the date.
+- **The stroke switch shows.** The card already had a "Brush stroke shown / hidden" switch, but
+  Brush Stroke never asked for it; it now does, and the hidden version keeps the faint trace.
+- **Full screen keeps proportions.** Only the lounges take the screen's shape now; games stay
+  square, as large as fits on the dark ground (`is-wide` is set for `meta.lounge` alone), so
+  nothing stretches. Measured in headless Chrome: six games 1:1 (element and drawing), the two
+  lounges 1.696 with drawing and element the same shape.
+
 ## Zen, round six: a temple to sit in, a gong to sit by, games to the edges (2026-11-17)
 
 The owner asked for a Buddhist temple lounge with incense, monks and pilgrims and slow sitar and

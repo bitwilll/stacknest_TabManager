@@ -98,7 +98,7 @@ function pines(ctx, x0, x1) {
   for (let i = Math.floor(x0 / 13) - 1; i <= Math.ceil(x1 / 13) + 1; i++) {
     const x = i * 13 + hash(i) * 9, d = beyond(x);
     if (d < 24 || Math.abs(x - PAV) < 58 || Math.abs(x - PIER) < 14) continue;
-    const dens = ease((d - 24) / 110) * (0.3 + 0.7 * (0.5 + 0.5 * Math.sin(x * 0.0093 + 0.6)));
+    const dens = ease((d - 24) / 110) * (0.3 + 0.7 * (0.5 + 0.5 * Math.sin(x * 0.00982 + 5.1)));
     if (hash(i + 9001) > dens) continue;
     pine(ctx, x, hillLine(x) + 5, 16 + hash(i + 77) * 28 * (0.6 + 0.4 * dens));
   }
