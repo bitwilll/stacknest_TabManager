@@ -381,6 +381,43 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Zen, round three: the arcade, the lounge, reminders with a chime, more wallpapers (2026-11-17)
+
+The owner asked, over one long session, for a second Zen page with calm games, a lounge, timed
+reminders from the calendar with a notification and a chime, more and animated wallpapers,
+Stoic quotes that can be starred, and a full-screen player.
+
+- **Pages.** A small switch at the bottom centre of Zen: Zen · Arcade · Lounge. The arcade page
+  keeps the clock, the calendar (a second view of the same one) and Leave zen beside a square
+  frame (`js/arcade.js`) with two shelves, Games and Lounge, each picked from a still of itself.
+- **Games** (each its own module, sharing `js/arcade-kit.js`: a 640×640 drawing space rendered
+  at the screen's real resolution, a self-pausing loop, synthesised notes and music):
+  Llama Trail (slides down a snowy slope, then hops stones; Bach's Prelude in C), Forest Drive
+  (a perspective road through dense forest across a whole day: sunrise, sunset, night with
+  headlights, and changing weather; Pachelbel's Canon), Lantern Drift, Ripple Pond, Brush
+  Stroke (the snake game as one ink stroke on old paper; laid along a path fixed to the paper
+  so it never wobbles, quarter-circle bends taken with an eased, honey-like speed, a 22% trace
+  that turns every game into a painting; original koto-style music), and Pebbles (tic-tac-toe
+  on lily pads; each landing pebble rings the next note of do-re-mi, and a win resolves on a
+  chord). Nothing ends harshly: a stumble is a rest, and any key carries on.
+- **Lounge.** Night Room (a desk by a rainy window: lava lamp, fairy lights, a sleeping cat, a
+  screen that types, a backlit keyboard; a lo-fi loop over rain and vinyl crackle) and Pixel Café
+  (a 160×160 pixel scene scaled up crisply; a gentle bossa over café murmur). Things answer a click.
+  All music is public-domain or written here, played on a synthesised voice: nothing is shipped.
+- **Full screen** on the player bar; Esc steps back (a game to its shelf, the shelf to Zen).
+- **Reminders.** The calendar takes a timed reminder for today or a later day (folded behind
+  one button). It lands in Notes and arms the usual alarm; when due, the worker opens an
+  offscreen document (`offscreen.html`, permission `offscreen`) to play a soft synthesised bell
+  (`js/chime.js`) and posts a notification that stays until seen. Settings → Zen → "Chime with
+  reminders" turns the bell off; the eye-rest pause ends on it too.
+- **Wallpapers.** Twelve drawn scenes (Lake, Sakura, Dunes, Ocean, Forest and Aurora added). Each
+  names a slow motion laid over it by CSS: mist, petals, leaves, fireflies, stars, aurora,
+  waves, or a plain drift. Off with Settings → Zen → "Animate the wallpaper", and always off
+  under reduced motion.
+- **Thoughts.** Stoic and classical lines (with their authors) joined ours. A star keeps one;
+  "starred only" narrows the daily rotation; the label shows only on hover. Kept under
+  `stacknest:thoughts` and in backups.
+
 ## Zen, round two: pins everywhere, calendar, arranging, eye rest, new tab choice (2026-11-17)
 
 The owner: let any link from a collection or the Library be pinned or unpinned for Zen, not only

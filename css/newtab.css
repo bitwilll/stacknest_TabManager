@@ -2763,7 +2763,7 @@ kbd {
 @media (min-width: 881px) { @container main (max-width: 1000px) { .icb.zen-toggle { width: var(--ctl-h); padding: 0; justify-content: center; } .zen-toggle-label { display: none; } } }
 @media (max-width: 880px) { .icb.zen-toggle { width: 36px; height: 36px; padding: 0; justify-content: center; } .zen-toggle-label { display: none; } }
 
-.zen { display: none; --zen-ink: var(--text-strong); --zen-ink-soft: var(--text-soft); }   /* data-tone overrides these below */
+.zen { display: none; --zen-ink: var(--text-strong); --zen-ink-soft: var(--text-soft); --zen-ink-on: var(--bg-card); }   /* data-tone overrides these below */
 :root[data-zen='on'] .app,
 :root[data-zen='on'] .drawer-scrim { display: none; }
 :root[data-zen='on'] .zen {
@@ -2772,13 +2772,75 @@ kbd {
   position: fixed; inset: 0; z-index: 40;
   display: flex; flex-direction: column;
   overflow-y: auto; overscroll-behavior: contain;
-  background: var(--zen-wall, none), var(--frame);
-  background-attachment: fixed;
+  background: var(--frame);
   color: var(--text);
 }
 .zen[data-tone='theme'] { background: var(--bg); }
-.zen[data-tone='dark'] { --zen-ink: #fbfbf8; --zen-ink-soft: rgba(251, 251, 248, 0.82); }
-.zen[data-tone='light'] { --zen-ink: #16151a; --zen-ink-soft: rgba(22, 21, 26, 0.72); }
+
+/* the wallpaper's own layer, a little larger than the screen so it can breathe without edges */
+.zen-wall { position: fixed; inset: -4%; background: var(--zen-wall, none); pointer-events: none; will-change: transform; }
+.zen[data-tone='theme'] .zen-wall, .zen[data-tone='theme'] .zen-fx { display: none; }
+.zen:not([data-motion='none']) .zen-wall { animation: zen-breathe 80s ease-in-out infinite alternate; }
+@keyframes zen-breathe { from { transform: scale(1) translate3d(0, 0, 0); } to { transform: scale(1.06) translate3d(-1.4%, -0.9%, 0); } }
+
+/* the motion over it: one set of specks, dressed per wallpaper */
+.zen-fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.zen-fx i { position: absolute; left: var(--x); top: var(--y); display: none; }
+.zen-fx::before, .zen-fx::after { content: ''; position: absolute; display: none; }
+/* mist: two soft banks of fog crossing slowly */
+.zen[data-motion='mist'] .zen-fx::before, .zen[data-motion='mist'] .zen-fx::after {
+  display: block; width: 90vw; height: 26vh; left: -30vw; top: 52vh; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0)); filter: blur(10px);
+  animation: zen-fog 70s linear infinite;
+}
+.zen[data-motion='mist'] .zen-fx::after { top: 68vh; width: 120vw; height: 22vh; opacity: .7; animation-duration: 110s; animation-delay: -40s; }
+@keyframes zen-fog { from { transform: translateX(-40vw); } to { transform: translateX(150vw); } }
+/* stars (and aurora skies): a slow twinkle */
+.zen:is([data-motion='stars'], [data-motion='aurora']) .zen-fx i {
+  display: block; top: calc(var(--y) * 0.6); width: calc(3px * var(--s)); height: calc(3px * var(--s)); border-radius: 50%;
+  background: #fff; box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.7); opacity: 0; animation: zen-twinkle calc(var(--t) * 0.35) ease-in-out infinite; animation-delay: var(--d);
+}
+@keyframes zen-twinkle { 0%, 100% { opacity: 0; } 50% { opacity: .95; } }
+/* aurora: the light itself sways */
+.zen[data-motion='aurora'] .zen-fx::before {
+  display: block; inset: 4vh -10vw auto; height: 46vh; border-radius: 50%;
+  background: radial-gradient(60% 50% at 50% 50%, rgba(110, 240, 190, 0.32), rgba(110, 240, 190, 0)); filter: blur(24px);
+  mix-blend-mode: screen; animation: zen-aurora 26s ease-in-out infinite alternate;
+}
+@keyframes zen-aurora { from { transform: translateX(-6vw) skewX(-8deg) scaleY(.9); opacity: .55; } to { transform: translateX(6vw) skewX(8deg) scaleY(1.15); opacity: 1; } }
+/* fireflies: warm points wandering and breathing */
+.zen[data-motion='fireflies'] .zen-fx i {
+  display: block; top: calc(35% + var(--y) * 0.6); width: calc(5px * var(--s)); height: calc(5px * var(--s)); border-radius: 50%;
+  background: #f4ffb0; box-shadow: 0 0 12px 4px rgba(225, 255, 140, 0.55);
+  animation: zen-wander var(--t) ease-in-out infinite alternate, zen-glow calc(var(--t) * 0.25) ease-in-out infinite; animation-delay: var(--d);
+}
+@keyframes zen-wander { 0% { transform: translate(0, 0); } 33% { transform: translate(5vw, -4vh); } 66% { transform: translate(-3vw, -9vh); } 100% { transform: translate(4vw, 3vh); } }
+@keyframes zen-glow { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
+/* petals and leaves: drifting down, turning as they go */
+.zen:is([data-motion='petals'], [data-motion='leaves']) .zen-fx i {
+  display: block; top: -6vh; width: calc(13px * var(--s)); height: calc(9px * var(--s)); border-radius: 60% 0 60% 0;
+  background: #f4b9c9; opacity: .85; animation: zen-fall var(--t) linear infinite; animation-delay: var(--d);
+}
+.zen[data-motion='leaves'] .zen-fx i { background: #7fa86a; opacity: .7; }
+.zen[data-motion='leaves'] .zen-fx i:nth-child(n + 12) { display: none; }
+@keyframes zen-fall {
+  0% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(4vw, 28vh) rotate(120deg); }
+  50% { transform: translate(-2vw, 56vh) rotate(220deg); }
+  75% { transform: translate(5vw, 84vh) rotate(320deg); }
+  100% { transform: translate(1vw, 112vh) rotate(420deg); }
+}
+/* waves: light lines shimmering across the water */
+.zen[data-motion='waves'] .zen-fx::before {
+  display: block; left: -20vw; right: -20vw; top: 56vh; bottom: 0;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0) 0 18px, rgba(255, 255, 255, 0.22) 18px 20px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+  animation: zen-swell 14s ease-in-out infinite alternate;
+}
+@keyframes zen-swell { from { transform: translateX(-6vw) translateY(0); opacity: .5; } to { transform: translateX(6vw) translateY(6px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .zen-wall, .zen-fx i, .zen-fx::before, .zen-fx::after { animation: none !important; } .zen-fx i { opacity: .6; } }
+.zen[data-tone='dark'] { --zen-ink: #fbfbf8; --zen-ink-soft: rgba(251, 251, 248, 0.82); --zen-ink-on: #16151a; }
+.zen[data-tone='light'] { --zen-ink: #16151a; --zen-ink-soft: rgba(22, 21, 26, 0.72); --zen-ink-on: #fbfbf8; }
 .zen-veil { position: fixed; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--frame) 22%, transparent)); }
 .zen[data-tone='theme'] .zen-veil { display: none; }
@@ -2792,15 +2854,37 @@ kbd {
 .zen-thought { display: flex; align-items: center; gap: 12px; min-width: 0; margin: 0; color: var(--zen-ink); }
 .zen-thought-mark { flex: none; display: inline-flex; opacity: .55; }
 .zen-thought-mark svg { stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.zen-thought-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .zen-thought-text { margin: 0; font: 500 clamp(16px, 1.55vw, 21px)/1.35 var(--grot); letter-spacing: -0.01em; text-wrap: balance; }
-.zen-thought-next {
-  flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  color: var(--zen-ink-soft); opacity: 0; transition: opacity .15s, background .13s;
+.zen-thought-by { font: 500 var(--t2) var(--mono); color: var(--zen-ink-soft); letter-spacing: 0.02em; }
+.zen-thought-by[hidden] { display: none; }
+.zen-thought-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; align-self: center; }
+.zen-thought-btn {
+  width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--zen-ink-soft); opacity: .55; transition: opacity .15s, background .13s, color .13s, transform .2s;
 }
-.zen-thought:hover .zen-thought-next, .zen-thought-next:focus-visible { opacity: 1; }
-.zen-thought-next:hover { background: color-mix(in srgb, var(--zen-ink) 14%, transparent); color: var(--zen-ink); }
-.zen-thought-next svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-@media (hover: none) { .zen-thought-next { opacity: 1; } }
+.zen-thought:hover .zen-thought-btn, .zen-thought-btn:focus-visible, .zen-thought-star[aria-pressed='true'] { opacity: 1; }
+.zen-thought-btn:hover { background: color-mix(in srgb, var(--zen-ink) 14%, transparent); color: var(--zen-ink); }
+.zen-thought-btn svg, .zen-thought-only svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-thought-star[aria-pressed='true'] { color: #f2b33d; }
+.zen-thought-star[aria-pressed='true'] svg { fill: currentColor; }
+.zen-thought-star:active { transform: scale(1.25); }
+.zen-thought-only {
+  display: inline-flex; align-items: center; gap: 0; height: 26px; margin-left: 4px; padding: 0 8px; border-radius: var(--pill);
+  border: 1px solid color-mix(in srgb, var(--zen-ink) 25%, transparent); color: var(--zen-ink-soft); font: 600 var(--t1) var(--grot); white-space: nowrap;
+  opacity: 0; transition: opacity .15s, gap .2s;
+}
+/* the "starred" label stays out of the way: only the star shows (and only when it matters)
+   until the thought is hovered or the control is focused */
+.zen-thought-n { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; transition: max-width .22s ease, opacity .18s; }
+.zen-thought:hover .zen-thought-only, .zen-thought-only:focus-visible, .zen-thought-only[aria-pressed='true'] { opacity: 1; }
+.zen-thought:hover .zen-thought-only, .zen-thought-only:focus-visible { gap: 5px; }
+.zen-thought:hover .zen-thought-n, .zen-thought-only:focus-visible .zen-thought-n { max-width: 160px; opacity: 1; }
+.zen-thought-only[hidden] { display: none; }
+.zen-thought-only:hover { color: var(--zen-ink); border-color: var(--zen-ink); }
+.zen-thought-only[aria-pressed='true'] { background: var(--zen-ink); color: var(--zen-ink-on, #fff); border-color: var(--zen-ink); }
+.zen-thought-only[aria-pressed='true'] svg { fill: #f2b33d; stroke: #f2b33d; }
+@media (hover: none) { .zen-thought-btn { opacity: 1; } .zen-thought-only:not([hidden]) { opacity: 1; } }
 .zen[data-tone='dark'] .zen-thought, .zen[data-tone='dark'] .zen-clock { text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35); }
 .zen[data-tone='light'] .zen-thought, .zen[data-tone='light'] .zen-clock { text-shadow: 0 1px 14px rgba(255, 255, 255, 0.5); }
 
@@ -2875,6 +2959,16 @@ kbd {
 .zen-cal-none { font: 500 var(--t3) var(--grot); color: var(--text-mut); }
 .zen-cal-list { display: flex; flex-direction: column; gap: 6px; }
 /* quick reminder for the picked day */
+.zen-cal-addtoggle {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; margin-top: 2px; padding: 0 10px 0 9px; border-radius: var(--pill);
+  border: 1px dashed var(--card-line-2); font: 600 var(--t2) var(--grot); color: var(--text-soft);
+}
+.zen-cal-addtoggle[hidden] { display: none; }
+.zen-cal-addtoggle:hover { border-style: solid; color: var(--text-strong); background: var(--hov); }
+.zen-cal-addtoggle[aria-expanded='true'] { border-style: solid; color: var(--text-strong); }
+.zen-cal-addtoggle svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-cal-addchev { display: inline-flex; transition: transform .18s; }
+.zen-cal-addtoggle[aria-expanded='true'] .zen-cal-addchev { transform: rotate(90deg); }
 .zen-cal-form { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .zen-cal-form[hidden] { display: none; }
 .zen-cal-form-row { display: flex; gap: 6px; }
@@ -3062,6 +3156,119 @@ kbd {
 .zen-note-md > :last-child { margin-bottom: 0; }
 .zen-note-md a { color: var(--accent-text); }
 
+/* ——— Zen's two pages: the little switch at the bottom centre, and the arcade page ——— */
+.zen-pager {
+  position: fixed; left: 50%; bottom: 18px; z-index: 3; transform: translateX(-50%);
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pill);
+  background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5);
+}
+.zen-page-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 10px; border-radius: var(--pill);
+  font: 600 var(--t2) var(--grot); color: var(--text-mut); transition: background .15s, color .15s;
+}
+.zen-page-btn:hover { color: var(--text-strong); }
+.zen-page-btn[aria-pressed='true'] { background: var(--text-strong); color: var(--bg-card); }
+.zen-page-btn svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-page-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zen .zen-stage { padding-bottom: 80px; }
+
+.zen-arcade { display: none; }
+.zen[data-page='arcade'] .zen-bar, .zen[data-page='arcade'] .zen-stage { display: none; }
+.zen[data-page='arcade'] .zen-arcade { position: relative; flex: 1 0 auto; display: flex; flex-direction: column; min-height: 100%; }
+.zen-a-bar {
+  display: flex; align-items: flex-start; justify-content: flex-end; gap: 16px;
+  width: 100%; max-width: 1640px; margin: 0 auto; padding: clamp(18px, 3.4vh, 40px) clamp(16px, 4vw, 56px) 0;
+}
+.zen-a-clock { color: var(--zen-ink); }
+.zen[data-tone='dark'] .zen-a-clock { text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35); }
+.zen[data-tone='light'] .zen-a-clock { text-shadow: 0 1px 12px rgba(255, 255, 255, 0.5); }
+.zen-a-time { font: 300 clamp(34px, 3.6vw, 52px)/1 var(--grot); letter-spacing: -0.04em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.zen-a-date { margin-top: 6px; font: 500 var(--t3) var(--grot); color: var(--zen-ink-soft); }
+.zen-a-stage {
+  flex: 1; display: grid; grid-template-columns: minmax(240px, 290px) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 40px); align-items: start;
+  width: 100%; max-width: 1640px; margin: 0 auto; padding: 14px clamp(16px, 4vw, 56px) 84px;
+}
+.zen-a-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; margin-top: -68px; container-type: inline-size; }
+.zen-a-stage > .arc-frame { justify-self: center; }
+@media (max-width: 1000px) {
+  .zen-a-stage { grid-template-columns: minmax(0, 1fr); }
+  .zen-a-side { margin-top: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); align-items: start; }
+}
+@media (max-width: 600px) { .zen-a-side { grid-template-columns: minmax(0, 1fr); } }
+
+/* the square frame */
+.arc-frame {
+  width: min(860px, calc(100vh / var(--app-zoom) - 120px), 100%); aspect-ratio: 1; min-width: 280px;
+  display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 26px; background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2); backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.55); color: var(--text);
+}
+.zen[data-tone='theme'] .arc-frame { background: var(--bg-col); border-color: var(--card-line); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.arc-menu { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: clamp(16px, 3.4%, 26px); gap: 14px; overflow-y: auto; }
+.arc-menu[hidden], .arc-play[hidden] { display: none; }
+.arc-head { display: flex; flex-direction: column; gap: 4px; }
+.arc-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.arc-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pill); background: var(--bg-inset); border: 1px solid var(--card-line); }
+.arc-tab {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 10px; border-radius: var(--pill);
+  font: 600 var(--t2) var(--grot); color: var(--text-mut); transition: background .15s, color .15s;
+}
+.arc-tab:hover { color: var(--text-strong); }
+.arc-tab[aria-pressed='true'] { background: var(--text-strong); color: var(--bg-card); }
+.arc-tab svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.arc-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.arc-shelf.is-lounge { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.arc-cap { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); }
+.arc-h { margin: 0; font: 700 var(--t7)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
+.arc-sub { margin: 0; font: 500 var(--t3)/1.45 var(--grot); color: var(--text-soft); }
+.arc-shelf { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: start; }
+.arc-card-k { margin-top: auto; }
+@media (max-width: 640px) { .arc-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.arc-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 8px 12px; border-radius: 18px; text-align: left;
+  background: var(--bg-card); border: 1px solid var(--card-line); transition: transform .18s ease, border-color .15s, box-shadow .18s;
+}
+.arc-card:hover { transform: translateY(-2px); border-color: var(--hovbr); box-shadow: 0 18px 30px -22px rgba(0, 0, 0, 0.5); }
+.arc-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.arc-thumb { width: 100%; aspect-ratio: 1; height: auto; border-radius: 12px; margin-bottom: 6px; background: var(--bg-inset); }
+.arc-card-t { padding: 0 4px; font: 700 var(--t4)/1.25 var(--grot); color: var(--text-strong); }
+.arc-card-s { padding: 0 4px; font: 500 var(--t2)/1.4 var(--grot); color: var(--text-soft); }
+.arc-card-k { padding: 2px 4px 0; font: 500 var(--t1) var(--mono); color: var(--text-mut); }
+
+.arc-play { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.arc-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.arc-title { font: 700 var(--t4) var(--grot); color: var(--text-strong); white-space: nowrap; }
+.arc-score { flex: 1; min-width: 0; text-align: right; font: 500 var(--t2) var(--mono); color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arc-btn {
+  display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border-radius: var(--pill);
+  border: 1px solid var(--card-line-2); background: var(--bg-card); font: 600 var(--t2) var(--grot); color: var(--text-strong);
+}
+.arc-btn:hover { background: var(--text-strong); color: var(--bg-card); border-color: var(--text-strong); }
+.arc-btn svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.arc-back-ic svg { transform: scaleX(-1); display: block; }
+.arc-sound[aria-checked='false'] { color: var(--text-mut); }
+/* full screen: the player fills the screen on a dark ground, the picture as large as fits */
+.arc-play:fullscreen { background: #0c0c10; color: #eee; display: flex; flex-direction: column; }
+.arc-play:fullscreen .arc-bar { border-color: rgba(255,255,255,.08); background: rgba(20,20,26,.9); }
+.arc-play:fullscreen .arc-title { color: #f3f3f3; }
+.arc-play:fullscreen .arc-btn { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); color: #f3f3f3; }
+.arc-play:fullscreen .arc-btn:hover { background: #f3f3f3; color: #111; }
+.arc-play:fullscreen .arc-stage { padding: 12px; }
+.arc-play:fullscreen .arc-canvas { border-radius: 10px; }
+@media (max-width: 520px) { .arc-fs span { display: none; } }
+.arc-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 10px; }
+.arc-canvas { height: 100%; max-width: 100%; aspect-ratio: 1; border-radius: 16px; touch-action: none; cursor: pointer; display: block; }
+.arc-canvas:focus { outline: none; }
+.arc-canvas:focus-visible { outline: 2px solid color-mix(in srgb, var(--focus) 40%, transparent); outline-offset: 3px; }
+@media (max-width: 700px) {
+  .zen-a-bar { flex-direction: column-reverse; align-items: stretch; }
+  .zen-a-bar .zen-btn-pill { align-self: flex-end; }
+  .arc-frame { width: 100%; aspect-ratio: auto; min-height: 560px; }
+}
+
 /* the pin on a Notes card, a link or a folder: lit when it is pinned to Zen */
 .mos-acts .pin-btn.on, .acts .pin-btn.on { color: var(--accent-text); }
 .mos-acts .pin-btn.on svg, .acts .pin-btn.on svg { fill: currentColor; fill-opacity: .25; }
@@ -3114,7 +3321,7 @@ kbd {
 .wall-sw:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .zen-link, .zen-check, .zen-icb, .zen-btn-pill, .zen-toggle, .zen-grip, .zen-rowpin, .zen-thought-next, .zen-cal-chev, .zen-rest-prog, .zen-eye-ic::after, .zen-eye-track, .zen-eye-knob { transition: none; }
+  .zen-link, .zen-check, .zen-icb, .zen-btn-pill, .zen-toggle, .zen-grip, .zen-rowpin, .zen-thought-btn, .zen-cal-chev, .zen-rest-prog, .zen-page-btn, .arc-card, .zen-eye-ic::after, .zen-eye-track, .zen-eye-knob { transition: none; }
   .zen-rest { animation: none; }
 }
 

@@ -16,7 +16,9 @@ function firstDayOfWeek() {
   return 0;
 }
 
+let calSeq = 0;
 export function createCalendar({ onToggle, onAdd }) {
+  const uid = `zen-cal-${++calSeq}`;
   const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   let view = today(); view.setDate(1);
   let selected = today();
@@ -24,7 +26,7 @@ export function createCalendar({ onToggle, onAdd }) {
   let dueByDay = new Map();
 
   const label = el('span', { class: 'zen-cal-month' });
-  const toggle = el('button', { class: 'zen-cal-toggle', type: 'button', 'aria-expanded': 'true', 'aria-controls': 'zen-cal-body' },
+  const toggle = el('button', { class: 'zen-cal-toggle', type: 'button', 'aria-expanded': 'true', 'aria-controls': `${uid}-body` },
     icon('calendar', 15), label, el('span', { class: 'zen-cal-chev', 'aria-hidden': 'true' }, icon('chevron', 13)));
   const prev = el('button', { class: 'zen-cal-nav zen-cal-prev', type: 'button', 'aria-label': 'Previous month', title: 'Previous month' }, icon('chevron', 13));
   const next = el('button', { class: 'zen-cal-nav', type: 'button', 'aria-label': 'Next month', title: 'Next month' }, icon('chevron', 13));
@@ -37,7 +39,19 @@ export function createCalendar({ onToggle, onAdd }) {
   const addTime = el('input', { class: 'zen-cal-tin', type: 'time', 'aria-label': 'Reminder time', step: '300' });
   const addBtn = el('button', { class: 'zen-cal-add', type: 'submit' }, icon('bell', 13), el('span', { text: 'Remind me' }));
   const addHint = el('p', { class: 'zen-cal-hint', 'aria-live': 'polite' });
-  const form = el('form', { class: 'zen-cal-form' }, addText, el('div', { class: 'zen-cal-form-row' }, addTime, addBtn), addHint);
+  const form = el('form', { class: 'zen-cal-form', id: `${uid}-form`, hidden: '' }, addText, el('div', { class: 'zen-cal-form-row' }, addTime, addBtn));
+  // the form stays folded behind one small button until it is wanted
+  const addOpen = el('button', { class: 'zen-cal-addtoggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': `${uid}-form` },
+    icon('bell', 12), el('span', { text: 'Add a reminder' }), el('span', { class: 'zen-cal-addchev', 'aria-hidden': 'true' }, icon('chevron', 11)));
+  let formOpen = false;
+  const setForm = (open, { focus = true } = {}) => {
+    formOpen = open;
+    addOpen.setAttribute('aria-expanded', String(open));
+    form.hidden = !open;
+    if (open && focus) requestAnimationFrame(() => addText.focus({ preventScroll: true }));
+  };
+  addOpen.addEventListener('click', () => setForm(!formOpen));
+  form.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setForm(false); addOpen.focus(); } });
   let defaultsFor = '';
   const pad = (n) => String(n).padStart(2, '0');
   const fmtAt = (d) => `${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
@@ -67,11 +81,12 @@ export function createCalendar({ onToggle, onAdd }) {
       await onAdd?.(text, at);
       addText.value = '';
       hint(`Set for ${fmtAt(at)}: a notification and a chime.`);
+      setTimeout(() => { if (!addText.value && document.activeElement !== addText) setForm(false, { focus: false }); }, 2600);   // fold away again once seen
     } catch { hint('Could not save that reminder.', true); }
     finally { addBtn.disabled = false; }
   });
-  const agenda = el('div', { class: 'zen-cal-agenda' }, agendaList, form);
-  const body = el('div', { class: 'zen-cal-body', id: 'zen-cal-body' }, grid, agenda);
+  const agenda = el('div', { class: 'zen-cal-agenda' }, agendaList, addOpen, form, addHint);
+  const body = el('div', { class: 'zen-cal-body', id: `${uid}-body` }, grid, agenda);
   const node = el('section', { class: 'zen-cal', 'aria-label': 'Calendar' },
     el('header', { class: 'zen-cal-head' }, toggle, el('span', { class: 'zen-cal-navs' }, todayBtn, prev, next)), body);
 
@@ -124,7 +139,8 @@ export function createCalendar({ onToggle, onAdd }) {
     const due = dueByDay.get(dayKey(selected)) || [];
     const when = selected.getTime() === t.getTime() ? 'Today' : selected.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
     const past = selected.getTime() < t.getTime();
-    form.hidden = past;
+    addOpen.hidden = past;
+    form.hidden = past || !formOpen;
     if (!past) setDefaults();
     agendaList.replaceChildren(
       el('div', { class: 'zen-cal-agenda-h', text: when }),
@@ -136,8 +152,9 @@ export function createCalendar({ onToggle, onAdd }) {
   }
 
   // items: the notes store's cards; anything with a reminder time lands on its day
+  // items: the notes store's cards (null keeps the ones already known — a fold-only refresh)
   function render(items, isOpen) {
-    dueByDay = new Map();
+    if (items) dueByDay = new Map();
     for (const it of items || []) {
       if (!it?.reminder?.at) continue;
       const at = new Date(it.reminder.at);

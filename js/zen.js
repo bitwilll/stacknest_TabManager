@@ -25,8 +25,9 @@ import { WALLPAPER_KEY, wallpaperFor } from './wallpapers.js';
 import { ZENPINS_KEY, ZENLAYOUT_KEY, loadZenPins, unpinZenItem, zenPinBtn } from './zenpins.js';
 import { createCalendar } from './zencal.js';
 import { createEyeRest } from './zenrest.js';
-import { thoughtFor } from './thoughts.js';
+import { THOUGHTS_KEY, thoughtFor, normalizeThoughts } from './thoughts.js';
 import { playChime } from './chime.js';
+import { createArcade } from './arcade.js';
 import { renderMarkdown, renderInline } from './markdown.js';
 
 export const ZEN_KEY = 'stacknest:zen';
@@ -36,6 +37,7 @@ const ZEN_MIME = 'text/x-stacknest-zen';
 let root, shell = null, clockTimer = null, renderTimer = null, lastFocus = null;
 let layout = { panes: [...PANES], order: {}, cal: true };
 let thoughtOffset = 0;
+let thoughtPrefs = { fav: [], only: false };
 let chimeOn = true;
 
 const isOn = () => document.documentElement.dataset.zen === 'on';
@@ -64,6 +66,11 @@ export function initZen({ root: r, openSettings }) {
   document.addEventListener('keydown', (e) => {
     if (!isOn() || e.key !== 'Escape') return;
     if (shell.rest.isShowing()) { e.preventDefault(); shell.rest.skip(); return; }   // Esc ends the pause, not Zen
+    if (root.dataset.page === 'arcade' && !/^(input|textarea|select)$/i.test(document.activeElement?.tagName || '')) {
+      e.preventDefault();
+      if (!shell.arcade.escape()) setPage('home');     // a game goes back to the shelf, the shelf back to Zen
+      return;
+    }
     const typing = /^(input|textarea|select)$/i.test(document.activeElement?.tagName || '');
     if (typing) { document.activeElement.blur(); return; }   // first Esc leaves the field, the next leaves Zen
     if (document.querySelector('.modal-scrim')) return;       // a dialog owns Escape while it is up
@@ -72,7 +79,7 @@ export function initZen({ root: r, openSettings }) {
   chrome.storage?.onChanged?.addListener((c, area) => {
     if (area !== 'local' || !isOn()) return;
     if (c[NOTES_KEY] || c[SPACES_KEY] || c[ACTIVE_WS_KEY] || c[WORKSPACES_KEY] || c[SETTINGS_KEY] || c[WALLPAPER_KEY]
-      || c[ZENPINS_KEY] || c[ZENLAYOUT_KEY]) scheduleRender();
+      || c[ZENPINS_KEY] || c[ZENLAYOUT_KEY] || c[THOUGHTS_KEY]) scheduleRender();
   });
   // a pinned Library folder shows its links live
   for (const ev of ['onCreated', 'onRemoved', 'onChanged', 'onMoved']) {
@@ -99,6 +106,7 @@ export function setZen(on, { persist = true, focus = true } = {}) {
     if (focus) requestAnimationFrame(() => shell.exit.focus({ preventScroll: true }));
   } else {
     shell.rest.stop();
+    setPage('home', { focus: false });
     if (focus) (lastFocus?.isConnected ? lastFocus : document.getElementById('zen-btn'))?.focus?.({ preventScroll: true });
   }
 }
@@ -111,10 +119,23 @@ function buildShell(openSettings) {
   const greet = el('div', { class: 'zen-greet' });
 
   // the thought for the day, across the top
+  // the thought for the day, across the top: star the ones worth keeping, and show only those
   const thoughtText = el('blockquote', { class: 'zen-thought-text' });
-  const thoughtNext = el('button', { class: 'zen-thought-next', type: 'button', title: 'Another thought', 'aria-label': 'Show another thought',
+  const thoughtBy = el('figcaption', { class: 'zen-thought-by' });
+  const saveThoughts = (patch) => update(THOUGHTS_KEY, null, (cur) => { thoughtPrefs = normalizeThoughts({ ...normalizeThoughts(cur), ...patch }); return thoughtPrefs; }).then(paintThought);
+  const thoughtStar = el('button', { class: 'zen-thought-btn zen-thought-star', type: 'button', 'aria-pressed': 'false',
+    onclick: () => {
+      const text = shell.thoughtText.textContent;
+      const fav = thoughtPrefs.fav.includes(text) ? thoughtPrefs.fav.filter((x) => x !== text) : [...thoughtPrefs.fav, text];
+      saveThoughts({ fav, only: thoughtPrefs.only && fav.length > 0 });
+    } }, icon('star', 14));
+  const thoughtNext = el('button', { class: 'zen-thought-btn', type: 'button', title: 'Another thought', 'aria-label': 'Show another thought',
     onclick: () => { thoughtOffset += 1; paintThought(); } }, icon('reset', 13));
-  const thought = el('figure', { class: 'zen-thought' }, el('span', { class: 'zen-thought-mark', 'aria-hidden': 'true' }, icon('quote', 18)), thoughtText, thoughtNext);
+  const thoughtOnly = el('button', { class: 'zen-thought-only', type: 'button', 'aria-pressed': 'false', hidden: '',
+    onclick: () => { thoughtOffset = 0; saveThoughts({ only: !thoughtPrefs.only }); } }, icon('star', 11), el('span', { class: 'zen-thought-n' }));
+  const thought = el('figure', { class: 'zen-thought' }, el('span', { class: 'zen-thought-mark', 'aria-hidden': 'true' }, icon('quote', 18)),
+    el('div', { class: 'zen-thought-body' }, thoughtText, thoughtBy),
+    el('div', { class: 'zen-thought-acts' }, thoughtStar, thoughtNext, thoughtOnly));
 
   const exit = el('button', { class: 'zen-btn-pill', type: 'button', title: 'Leave Zen (Esc)', onclick: () => setZen(false) },
     icon('close', 14), el('span', { text: 'Leave zen' }));
@@ -178,7 +199,7 @@ function buildShell(openSettings) {
   };
   const grid = el('main', { class: 'zen-grid' }, ...layout.panes.map((p) => panes[p]));
 
-  const cal = createCalendar({ onToggle: (open) => saveLayout({ cal: open }), onAdd: async (text, at) => { await addQuickReminder(text, at); render(); } });
+  const cal = createCalendar({ onToggle: (open) => { saveLayout({ cal: open }); shell.cal2?.render(null, open); }, onAdd: async (text, at) => { await addQuickReminder(text, at); render(); } });
   const rest = createEyeRest({
     isActive: isOn,
     onDone: () => { if (chimeOn) playChime(); },   // a soft bell when the pause is over
@@ -187,7 +208,40 @@ function buildShell(openSettings) {
     },
   });
 
+  // page two: a blank Zen page with a clock, Leave zen and the arcade frame
+  const arcade = createArcade({ isPaused: () => !isOn() || root.dataset.page !== 'arcade' || document.hidden || rest.isShowing(), onShelf: () => shell && paintPager() });
+  const aTime = el('div', { class: 'zen-a-time' });
+  const aDate = el('div', { class: 'zen-a-date' });
+  // the same calendar sits beside the games (a second view of it; folding either folds both)
+  const cal2 = createCalendar({ onToggle: (open) => { saveLayout({ cal: open }); shell.cal.render(null, open); },
+    onAdd: async (text, at) => { await addQuickReminder(text, at); render(); } });
+  const arcadePage = el('section', { class: 'zen-arcade', 'aria-label': 'Arcade' },
+    el('header', { class: 'zen-a-bar' },
+      el('button', { class: 'zen-btn-pill', type: 'button', title: 'Leave Zen', onclick: () => setZen(false) }, icon('close', 14), el('span', { text: 'Leave zen' }))),
+    el('div', { class: 'zen-a-stage' },
+      el('aside', { class: 'zen-a-side' }, el('div', { class: 'zen-a-clock' }, aTime, aDate), cal2.node),
+      arcade.node));
+
+  // the little switch at the bottom centre: Zen ↔ Arcade
+  // the little switch at the bottom centre: Zen · Arcade · Lounge (the arcade page, on its lounge shelf)
+  const pageBtn = (id, label, ic, go) => el('button', { class: 'zen-page-btn', type: 'button', dataset: { page: id }, 'aria-pressed': 'false',
+    onclick: go }, icon(ic, 14), el('span', { text: label }));
+  const pager = el('nav', { class: 'zen-pager', 'aria-label': 'Zen pages' },
+    pageBtn('home', 'Zen', 'zen', () => setPage('home')),
+    pageBtn('arcade', 'Arcade', 'gamepad', () => { arcade.showShelf('games'); setPage('arcade'); }),
+    pageBtn('lounge', 'Lounge', 'lounge', () => { arcade.showShelf('lounge'); setPage('arcade'); }));
+
+  // the wallpaper on its own layer (so it can breathe), and the motion laid over it: a fixed
+  // handful of specks the stylesheet turns into stars, fireflies, petals or leaves per wallpaper
+  const fx = el('div', { class: 'zen-fx', 'aria-hidden': 'true' });
+  for (let i = 0; i < 22; i++) {
+    const r = (n) => ((Math.sin((i + 1) * n * 12.9898) * 43758.5453) % 1 + 1) % 1;   // a fixed scatter, same every load
+    fx.append(el('i', { style: `--x:${(r(1) * 100).toFixed(1)}%;--y:${(r(2) * 100).toFixed(1)}%;--d:${(-r(3) * 20).toFixed(1)}s;--t:${(14 + r(4) * 14).toFixed(1)}s;--s:${(0.6 + r(5) * 0.9).toFixed(2)}` }));
+  }
+
   root.replaceChildren(
+    el('div', { class: 'zen-wall', 'aria-hidden': 'true' }),
+    fx,
     el('div', { class: 'zen-veil', 'aria-hidden': 'true' }),
     el('header', { class: 'zen-bar' }, thought, el('div', { class: 'zen-tools' }, eyeBtn, wallBtn, exit)),
     el('div', { class: 'zen-stage' },
@@ -195,6 +249,8 @@ function buildShell(openSettings) {
         el('div', { class: 'zen-clock' }, time, el('div', { class: 'zen-sub' }, greet, el('span', { class: 'zen-dot', 'aria-hidden': 'true', text: '·' }), date)),
         cal.node),
       grid),
+    arcadePage,
+    pager,
     rest.node,
   );
 
@@ -204,12 +260,42 @@ function buildShell(openSettings) {
   sortable(todoBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { todo: keys } }) });
   sortable(pinBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { pinned: keys } }) });
 
-  shell = { time, date, greet, exit, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, grid, panes, cal, rest, colKey: null };
+  shell = { cal2, arcade, aTime, aDate, pager, time, date, greet, exit, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, thoughtBy, thoughtStar, thoughtOnly, grid, panes, cal, rest, colKey: null };
   paintThought();
+  setPage('home', { focus: false });
+}
+
+function paintPager() {
+  const page = root.dataset.page, where = page === 'arcade' ? (shell.arcade.shelf === 'lounge' ? 'lounge' : 'arcade') : 'home';
+  for (const b of shell.pager.children) b.setAttribute('aria-pressed', String(b.dataset.page === where));
+}
+
+function setPage(page, { focus = true } = {}) {
+  const was = root.dataset.page;
+  root.dataset.page = page;
+  paintPager();
+  if (page !== 'arcade') shell.arcade.stop();
+  root.scrollTop = 0;
+  if (focus && was !== page) requestAnimationFrame(() => (page === 'arcade' ? shell.arcade.focus() : shell.pager.children[0].focus({ preventScroll: true })));
 }
 
 let thoughtDay = '';
-function paintThought() { shell.thoughtText.textContent = thoughtFor(thoughtOffset); thoughtDay = new Date().toDateString(); }
+function paintThought() {
+  const t = thoughtFor(thoughtOffset, thoughtPrefs);
+  shell.thoughtText.textContent = t.text;
+  shell.thoughtBy.textContent = t.by ? `— ${t.by}` : '';
+  shell.thoughtBy.hidden = !t.by;
+  const starred = thoughtPrefs.fav.includes(t.text);
+  shell.thoughtStar.setAttribute('aria-pressed', String(starred));
+  shell.thoughtStar.title = starred ? 'Starred — click to unstar' : 'Star this thought';
+  shell.thoughtStar.setAttribute('aria-label', starred ? 'Unstar this thought' : 'Star this thought');
+  const n = thoughtPrefs.fav.length;
+  shell.thoughtOnly.hidden = !n;
+  shell.thoughtOnly.setAttribute('aria-pressed', String(thoughtPrefs.only));
+  shell.thoughtOnly.querySelector('.zen-thought-n').textContent = thoughtPrefs.only ? `Starred only · ${n}` : `${n} starred`;
+  shell.thoughtOnly.title = thoughtPrefs.only ? 'Showing only starred thoughts. Click to show all.' : 'Show only starred thoughts';
+  thoughtDay = new Date().toDateString();
+}
 
 function tick() {
   const d = new Date();
@@ -221,6 +307,8 @@ function tick() {
   shell.time.setAttribute('aria-label', d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
   shell.date.textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const h = d.getHours();
+  shell.aTime.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  shell.aDate.textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   shell.greet.textContent = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 22 ? 'Good evening' : 'Good night';
   if (d.toDateString() !== thoughtDay) { thoughtOffset = 0; paintThought(); }   // a new day brings a new thought
 }
@@ -307,14 +395,17 @@ function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(
 export async function render() {
   if (!shell || !isOn()) return;
   if (drag) { scheduleRender(); return; }   // never rebuild a list under a drag
-  const [settings, spaces, items, custom, pins, rawLayout] = await Promise.all([
-    loadSettings(), loadActiveSpaces(), loadNotes(), getKey(WALLPAPER_KEY, null), loadZenPins(), getKey(ZENLAYOUT_KEY, null)]);
+  const [settings, spaces, items, custom, pins, rawLayout, rawThoughts] = await Promise.all([
+    loadSettings(), loadActiveSpaces(), loadNotes(), getKey(WALLPAPER_KEY, null), loadZenPins(), getKey(ZENLAYOUT_KEY, null), getKey(THOUGHTS_KEY, null)]);
+  thoughtPrefs = normalizeThoughts(rawThoughts);
+  paintThought();
   layout = normalizeLayout(rawLayout);
 
   // wallpaper + the ink that reads on it
   const wp = wallpaperFor(settings.zenWallpaper, custom);
   root.style.setProperty('--zen-wall', wp.css);
   root.dataset.tone = wp.tone;
+  root.dataset.motion = settings.zenMotion ? wp.motion : 'none';
   shell.rest.setEnabled(settings.zenEyeRest);
   chimeOn = settings.reminderChime;
 
@@ -323,6 +414,7 @@ export async function render() {
   if (want.some((p, i) => shell.grid.children[i] !== p)) shell.grid.append(...want);
 
   shell.cal.render(items, layout.cal);
+  shell.cal2.render(items, layout.cal);
   renderCollection(spaces, settings.zenCollection);
 
   // a focused field in Zen (the add box) is never rebuilt, so only the lists are refilled

@@ -81,6 +81,7 @@ export const DEFAULT_SETTINGS = {
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
   zenWallpaper: DEFAULT_WALLPAPER, zenCollection: '',   // Zen mode (js/zen.js)
   zenEyeRest: true,                                      // a 30-second pause every 30 min in Zen (js/zenrest.js)
+  zenMotion: true,                                       // the wallpaper's slow animation in Zen
   reminderChime: true,                                   // a soft chime with reminder notifications (js/chime.js)
   newTab: true,                                          // StackNest replaces Chrome's new tab page (boot.js)
 };
@@ -151,6 +152,7 @@ function normalize(raw) {
     zenCollection: typeof m.zenCollection === 'string' ? m.zenCollection.slice(0, 200) : '',
     zenEyeRest: m.zenEyeRest !== false,
     reminderChime: m.reminderChime !== false,
+    zenMotion: m.zenMotion !== false,
     newTab: m.newTab !== false,
   };
 }
@@ -697,6 +699,9 @@ async function zenPlate(s, st) {
   }
   draw();
 
+  const motionSw = switchCtl('set-zen-motion', 'Animate the wallpaper', s.zenMotion, 'zen-motion', (on) => saveSettings({ zenMotion: on })
+    .then(() => toast(on ? 'Wallpaper animation on' : 'Wallpaper animation off')));
+  onSettingsChange(motionSw, (next) => { motionSw.checked = next.zenMotion; });
   const replaceBtn = el('button', { class: 'btnx soft sm', type: 'button', dataset: { key: 'wall-upload' }, onclick: upload }, icon('image', 13), el('span', { text: 'Use my own image…' }));
   const openBtn = el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'zen-open' },
     onclick: () => document.getElementById('zen-btn')?.click() }, icon('zen', 14), el('span', { text: 'Enter zen' }));
@@ -715,7 +720,9 @@ async function zenPlate(s, st) {
       help: 'After every 30 minutes of screen time in Zen, a 30-second pause to look into the distance. Five minutes away from the screen starts the count again.' }),
       setRow({ label: 'Chime with reminders', forId: 'set-chime', control: [hear, chimeSw],
         help: 'A soft bell when a reminder’s notification appears, and when an eye-rest pause ends. Add a timed reminder from the calendar in Zen.' })),
-    secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn, removeBtn) }, grid),
+    secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn, removeBtn) }, grid,
+      setRow({ label: 'Animate the wallpaper', forId: 'set-zen-motion', control: motionSw,
+        help: 'A slow drift, with mist, petals, leaves, fireflies or stars to suit each picture. Off when your system asks for reduced motion.' })),
   ], [callout('Your own image is resized and kept on this device only — it is not part of a backup file or a Drive sync. Plain uses the current theme’s background.')]);
 }
 
