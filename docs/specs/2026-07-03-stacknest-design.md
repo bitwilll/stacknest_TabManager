@@ -441,6 +441,15 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
   arches; dusk to night to dawn. The critic's dignity notes (the first face read as a grin, the
   hands as a block, a prostration as a fall) were all fixed before it went on the shelf. The
   meditation timer's gong button appears on the bar here only.
+- **Reading Room** (`js/lounge-reading.js`): an old library on a rainy night, from your own
+  armchair. A tall arched window with rain on the glass, a gas lamp and a church spire beyond;
+  floor-to-ceiling shelves with gilt spines and a rolling ladder; a green banker's lamp over an
+  open book whose pages turn, tea, spectacles and an hourglass; a stone fireplace with a mantel
+  clock that keeps and strikes the real hour; a tabby by the hearth. Wide: a window-seat nook, a
+  writing desk with quill and inkwell, framed maps. Click to turn a page, pull a book (an
+  invented title), light or dim the lamp, poke the fire, pour tea, change the rain, roll the
+  ladder. It plays "Pages", the piano waltz written for it. Whole bays appear only when they
+  fit, so no full-screen shape cuts a window or a desk in half.
 - **The shelf as a mosaic.** Games and lounges are picture tiles in a few sizes (big, wide,
   square, a full-width banner), laid out for how many there are so the rows always fill the
   frame; the title and a line sit over a soft shade, the controls slide up on hover or focus.

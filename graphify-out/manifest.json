@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794891424.9623964,
-    "seen": 1794891430.3338099,
-    "ast_hash": "ccd9575ef29e0f202c9c94de19714c07",
+    "mtime": 1794891714.9345605,
+    "seen": 1794891720.0269709,
+    "ast_hash": "fe0897838a4dfad9d3077af7d21e91de",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "js/arcade.js": {
-    "mtime": 1794891358.4087546,
-    "seen": 1794891430.3337758,
-    "ast_hash": "7d28a7d1505aa7638e1411dff900f689",
+    "mtime": 1794891673.709238,
+    "seen": 1794891720.026935,
+    "ast_hash": "b84ca43a1a9ee737de33d7825c273999",
     "semantic_hash": ""
   },
   "js/chime.js": {
@@ -546,9 +546,9 @@
     "semantic_hash": ""
   },
   "js/lounge-reading.js": {
-    "mtime": 1794891279.9622023,
-    "seen": 1794891430.3337889,
-    "ast_hash": "9adcfa0de69ebe42c37b52998e3bce65",
+    "mtime": 1794891548.1625721,
+    "seen": 1794891720.0269492,
+    "ast_hash": "5fe9653bf11d5fa177769de39a67640e",
     "semantic_hash": ""
   },
   "js/lounge-temple.js": {

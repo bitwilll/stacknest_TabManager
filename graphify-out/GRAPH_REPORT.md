@@ -1,17 +1,17 @@
 # Graph Report - StackNest  (2026-11-17)
 
 ## Corpus Check
-- 67 files · ~337,609 words
+- 67 files · ~337,760 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 6 file(s) not represented in the graph (top: (none) 2, .woff2 2, .css 1)
 
 ## Summary
-- 2166 nodes · 6074 edges · 92 communities (85 shown, 7 thin omitted)
+- 2166 nodes · 6075 edges · 92 communities (85 shown, 7 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 217 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a5cf97e9`
+- Built from commit: `07308f57`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -128,7 +128,7 @@
   docs/specs/2026-07-03-stacknest-design.md → js/spacesStore.js
 - `De-clutter pass (2026-07-04)` --references--> `domainOf()`  [INFERRED]
   docs/specs/2026-07-03-stacknest-design.md → js/ui.js
-- `Design-chief polish + launch readiness (2026-10-09)` --references--> `badgeText()`  [INFERRED]
+- `"Precision" redesign from reference images (2026-10-06)` --references--> `emptyState()`  [INFERRED]
   docs/specs/2026-07-03-stacknest-design.md → js/ui.js
 
 ## Import Cycles
@@ -138,20 +138,20 @@
 ## Communities (92 total, 7 thin omitted)
 
 ### Community 0 - "myspace.js"
-Cohesion: 0.14
-Nodes (33): Audit + design refresh (2026-09-07), "Precision" redesign from reference images (2026-10-06), Section system + bento sidebar (2026-10-06), pushHistory(), isSessionUnlocked(), relock(), absorbFromChrome(), countEls (+25 more)
+Cohesion: 0.17
+Nodes (30): Section system + bento sidebar (2026-10-06), pushHistory(), isSessionUnlocked(), absorbFromChrome(), countEls, deleteBtn(), folderCount(), gate() (+22 more)
 
 ### Community 1 - "notes.js"
 Cohesion: 0.09
 Nodes (40): Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10), CARD_COLORS, cardDone(), clampScale(), clearDropMarks(), consumeSelfWrite(), detectKind(), editingInMosaic() (+32 more)
 
 ### Community 2 - "spaces.js"
-Cohesion: 0.15
-Nodes (41): Collection curation pass (2026-07-06), addLinkChecked(), addTabGhost(), buildBookmarksHtml(), colorOf(), column(), createEmpty(), datestamp() (+33 more)
+Cohesion: 0.11
+Nodes (48): Collection curation pass (2026-07-06), Spaces — Toby-style collections (2026-07-04), exportBackup(), stamp(), addLinkChecked(), addTabGhost(), boardCounts(), buildBookmarksHtml() (+40 more)
 
 ### Community 3 - "settings.js"
-Cohesion: 0.08
-Nodes (53): Collection-tile & duplicates refinements (2026-07-07), appearancePlate(), appearanceStatus(), applySettings(), backupPlate(), callout(), checkGroup(), DEFAULT_SETTINGS (+45 more)
+Cohesion: 0.07
+Nodes (58): Collection-tile & duplicates refinements (2026-07-07), CLOUD_KEY, LOCK_KEY, MAX_FAILS, SECURITY_QUESTIONS, appearancePlate(), appearanceStatus(), applySettings() (+50 more)
 
 ### Community 4 - "support.js"
 Cohesion: 0.05
@@ -198,8 +198,8 @@ Cohesion: 0.15
 Nodes (27): loadNotes(), NOTES_KEY, arrange(), check(), dueChip(), flash(), fmtDue(), folderPin() (+19 more)
 
 ### Community 18 - "lock.js"
-Cohesion: 0.13
-Nodes (36): attemptsLeft(), b64(), clearFailures(), clearPin(), derive(), enc, getQuestion(), hasPin() (+28 more)
+Cohesion: 0.17
+Nodes (31): attemptsLeft(), b64(), clearFailures(), clearPin(), derive(), enc, getQuestion(), hasPin() (+23 more)
 
 ### Community 19 - "game-drive.js"
 Cohesion: 0.09
@@ -207,7 +207,7 @@ Nodes (39): BASE, BASE_RGB, bike(), broadleaf(), car(), CLOUDS, css(), curveAt()
 
 ### Community 20 - "ui.js"
 Cohesion: 0.14
-Nodes (28): autoClean(), collectOccurrences(), forgetLink(), forgottenSection(), groupCard(), groupDuplicates(), initDuplicates(), loadForgotten() (+20 more)
+Nodes (29): autoClean(), collectOccurrences(), forgetLink(), forgottenSection(), groupCard(), groupDuplicates(), initDuplicates(), loadForgotten() (+21 more)
 
 ### Community 21 - "game-ripples.js"
 Cohesion: 0.20
@@ -287,19 +287,19 @@ Nodes (9): band(), buildScreens(), cloudStrip(), glow(), makeSign(), outside(), 
 
 ### Community 40 - "tags.js"
 Cohesion: 0.20
-Nodes (23): buildGraph(), chip(), closeTagEditor(), dedupe(), gatherItems(), graphView, itemGrid(), itemMatches() (+15 more)
+Nodes (23): buildGraph(), chip(), closeTagEditor(), dedupe(), gatherItems(), graphView, initTags(), itemGrid() (+15 more)
 
 ### Community 41 - "StackNest — Tab Manager: Design"
 Cohesion: 0.07
-Nodes (27): Aesthetic direction, Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17), De-clutter pass (2026-07-04), Design-chief polish + launch readiness (2026-10-09), Features, Files, Fix: invisible collection-header actions (2026-07-06), Follow-up: two gaps the token audit could not have caught (+19 more)
+Nodes (28): Aesthetic direction, Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17), De-clutter pass (2026-07-04), Design-chief polish + launch readiness (2026-10-09), Features, Files, Fix: invisible collection-header actions (2026-07-06), Follow-up: two gaps the token audit could not have caught (+20 more)
 
 ### Community 42 - "fr"
 Cohesion: 0.17
 Nodes (23): activity(), armPos(), bubble(), curtain(), door(), ease(), farWalker(), fr() (+15 more)
 
 ### Community 43 - "el"
-Cohesion: 0.22
-Nodes (21): acceptMoves(), bookmarkCard(), crumbsBar(), deleteBtn(), ensureFolder(), folderCard(), folderTile(), getFolder() (+13 more)
+Cohesion: 0.23
+Nodes (20): acceptMoves(), bookmarkCard(), crumbsBar(), deleteBtn(), ensureFolder(), folderCard(), folderTile(), getFolder() (+12 more)
 
 ### Community 44 - "lounge-temple.js"
 Cohesion: 0.04
@@ -318,8 +318,8 @@ Cohesion: 0.22
 Nodes (16): armSprite(), baristaFrame(), carSprite(), catFrame(), coreStroke(), croissantSprite(), cupSprite(), dogFrame() (+8 more)
 
 ### Community 48 - "tabs.js"
-Cohesion: 0.23
-Nodes (17): StackNest on the web: one connected site can show the new tab (2026-11-17), barMode(), chip(), currentWindowTabs(), initTabs(), isOwnPage(), render(), saveCurrentWindow() (+9 more)
+Cohesion: 0.21
+Nodes (19): Audit + design refresh (2026-09-07), deleteBtn(), navDeleteBtn(), barMode(), chip(), currentWindowTabs(), initTabs(), isOwnPage() (+11 more)
 
 ### Community 49 - "5. Data shapes"
 Cohesion: 0.10
@@ -374,8 +374,8 @@ Cohesion: 0.17
 Nodes (25): azalea(), band(), bridgeY(), clamp(), foliage(), grass(), mixc(), paintBack() (+17 more)
 
 ### Community 63 - "spacesStore.js"
-Cohesion: 0.10
-Nodes (42): Spaces, Settings, Backup + hardening (2026-07-06), Undo / redo for deletes (2026-07-06), exportBackup(), importFlow(), isObj(), stamp(), FORGET_KEY, SPACE_KEY (+34 more)
+Cohesion: 0.12
+Nodes (35): Spaces, Settings, Backup + hardening (2026-07-06), Undo / redo for deletes (2026-07-06), importFlow(), isObj(), FORGET_KEY, relock(), SPACE_KEY, removeCollection() (+27 more)
 
 ### Community 64 - "sq"
 Cohesion: 0.16
@@ -486,16 +486,16 @@ Nodes (6): bookLift(), drawBook(), openBook(), pageBot(), pageText(), pageTop()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `el()` connect `el` to `myspace.js`, `notes.js`, `spaces.js`, `settings.js`, `drive.js`, `format.js`, `zen.js`, `lock.js`, `ui.js`, `mutate`, `buildShell`, `arcade.js`, `ticker.js`, `main`, `tags.js`, `el`, `buildShell`, `tabs.js`, `openReminderEditor`, `createEyeRest`, `createCalendar`, `arcade.js`?**
-  _High betweenness centrality (0.129) - this node is a cross-community bridge._
+  _High betweenness centrality (0.134) - this node is a cross-community bridge._
 - **What connects `RFC-2606` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `myspace.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.14260249554367202 - nodes in this community are weakly interconnected._
-- **Why does `icon()` connect `el` to `myspace.js`, `notes.js`, `spaces.js`, `settings.js`, `drive.js`, `format.js`, `zen.js`, `lock.js`, `ui.js`, `mutate`, `buildShell`, `arcade.js`, `zenpins.js`, `main`, `tags.js`, `el`, `buildShell`, `tabs.js`, `openReminderEditor`, `createEyeRest`, `createCalendar`, `arcade.js`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
 - **Should `notes.js` be split into smaller, more focused modules?**
   _Cohesion score 0.0859465737514518 - nodes in this community are weakly interconnected._
-- **Why does `note()` connect `note` to `notes.js`, `lounge-reading.js`, `game-lantern.js`, `lounge-garden.js`, `lounge-room.js`, `lounge-temple.js`, `game-llama.js`, `game-ripples.js`, `game-brush.js`, `lounge-train.js`, `start`, `lounge-cafe.js`, `arcade-kit.js`?**
-  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Why does `icon()` connect `el` to `myspace.js`, `notes.js`, `spaces.js`, `settings.js`, `drive.js`, `format.js`, `zen.js`, `lock.js`, `ui.js`, `mutate`, `buildShell`, `arcade.js`, `zenpins.js`, `main`, `tags.js`, `el`, `buildShell`, `tabs.js`, `openReminderEditor`, `createEyeRest`, `createCalendar`, `arcade.js`?**
+  _High betweenness centrality (0.079) - this node is a cross-community bridge._
 - **Should `spaces.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.14982578397212543 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11479591836734694 - nodes in this community are weakly interconnected._
+- **Why does `note()` connect `note` to `notes.js`, `lounge-reading.js`, `game-lantern.js`, `lounge-garden.js`, `lounge-room.js`, `lounge-temple.js`, `game-llama.js`, `game-ripples.js`, `game-brush.js`, `lounge-train.js`, `start`, `lounge-cafe.js`, `arcade-kit.js`?**
+  _High betweenness centrality (0.042) - this node is a cross-community bridge._
+- **Should `settings.js` be split into smaller, more focused modules?**
+  _Cohesion score 0.07364114552893045 - nodes in this community are weakly interconnected._
