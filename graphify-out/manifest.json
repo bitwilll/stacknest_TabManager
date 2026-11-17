@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794884568.5335648,
-    "seen": 1794884742.548409,
-    "ast_hash": "3626970d11d1c132ad135a4eb47241f7",
+    "mtime": 1794888911.794936,
+    "seen": 1794888916.734282,
+    "ast_hash": "c91ed7b346974fddbac0b0b7250b3f1f",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {
@@ -390,15 +390,15 @@
     "semantic_hash": ""
   },
   "js/arcade-kit.js": {
-    "mtime": 1794884662.8424914,
-    "seen": 1794884742.548374,
-    "ast_hash": "288a0681acd819dca9fc87673404a098",
+    "mtime": 1794887791.983453,
+    "seen": 1794888916.734247,
+    "ast_hash": "cc239d254b6a3c95fc120fb91a692085",
     "semantic_hash": ""
   },
   "js/arcade.js": {
-    "mtime": 1794885684.5451043,
-    "seen": 1794886015.462346,
-    "ast_hash": "b704835700be0f1bb9a540523424d511",
+    "mtime": 1794888857.0482373,
+    "seen": 1794888916.734247,
+    "ast_hash": "af8bff9fde9ed9f18280684cc49dbcbe",
     "semantic_hash": ""
   },
   "js/chime.js": {
@@ -408,8 +408,8 @@
     "semantic_hash": ""
   },
   "js/game-brush.js": {
-    "mtime": 1794885976.1400397,
-    "seen": 1794886015.462354,
+    "mtime": 1794886083.0049026,
+    "seen": 1794888916.7342541,
     "ast_hash": "91c626d718f4a0ad6b613d7657f27662",
     "semantic_hash": ""
   },
@@ -537,6 +537,30 @@
     "mtime": 1794885946.7893436,
     "seen": 1794886015.4623601,
     "ast_hash": "e33993b485e2dbce0b0e0169bebcdc74",
+    "semantic_hash": ""
+  },
+  "js/lounge-garden.js": {
+    "mtime": 1794888774.1076539,
+    "seen": 1794888916.73426,
+    "ast_hash": "893eaa08d41a1cede45d39f17ccdebfd",
+    "semantic_hash": ""
+  },
+  "js/lounge-reading.js": {
+    "mtime": 1794887857.3404782,
+    "seen": 1794888916.734261,
+    "ast_hash": "d1d04df1bf6f716b29abff190efeca7b",
+    "semantic_hash": ""
+  },
+  "js/lounge-temple.js": {
+    "mtime": 1794886892.2826786,
+    "seen": 1794888916.734262,
+    "ast_hash": "c00d54ca33b9bafaa50719ac55e5bb37",
+    "semantic_hash": ""
+  },
+  "js/lounge-train.js": {
+    "mtime": 1794888858.57291,
+    "seen": 1794888916.734262,
+    "ast_hash": "8e67cfe4407681bb8a08c31823117be2",
     "semantic_hash": ""
   }
 }

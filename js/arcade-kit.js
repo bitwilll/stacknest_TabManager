@@ -692,16 +692,46 @@ export const TEMPLE = (() => {
    in audio/CREDITS.txt). It starts on a random track, plays the rest in turn, fades in and out
    with pause and the sound switch, and falls back to the synthesised loops above if a file is
    missing or the browser can't play it. Returns a stop function. */
+// "Pages", written for the Reading Room: a slow piano waltz in D major (3/4, 64 bpm), the left
+// hand a low note on one and a soft chord on two, the melody resting on the chord tones; the second
+// half thins to a few high bell notes so the loop breathes. 32 bars, about a minute and a half.
+export const READING = (() => {
+  const G = [43, [59, 62, 66]], D = [38, [57, 61, 66]], Bm = [47, [57, 62, 66]], Em = [40, [59, 62, 67]];
+  const Asus = [45, [62, 64, 67]], Fsm = [42, [57, 61, 64]], A = [45, [61, 64, 69]];
+  const prog = [G, D, G, D, Bm, Em, G, Asus, D, Fsm, G, Em, Bm, G, Em, A];
+  const events = [];
+  for (let i = 0; i < 32; i++) {
+    const [bass, chord] = prog[i % 16], t = i * 3;
+    events.push({ t, midi: bass, dur: 2.6, vol: 0.07, sustain: 0.45 });
+    for (const m of chord) events.push({ t: t + 1, midi: m, dur: 1.7, vol: 0.031, sustain: 0.35 });
+  }
+  const melody = [   // [bar, beat, midi, beats]
+    [1, 1, 69, 1], [1, 2, 73, 1], [2, 0, 74, 2], [2, 2, 71, 1], [3, 0, 69, 3],
+    [4, 0, 78, 2], [4, 2, 74, 1], [5, 0, 76, 1], [5, 1, 79, 1], [5, 2, 71, 1], [6, 0, 74, 3],
+    [7, 0, 76, 2], [7, 2, 74, 1], [8, 0, 73, 3], [9, 1, 69, 1], [9, 2, 73, 1],
+    [10, 0, 78, 2], [10, 2, 74, 1], [11, 0, 76, 1], [11, 1, 74, 1], [11, 2, 71, 1],
+    [12, 0, 74, 2], [12, 2, 66, 1], [13, 0, 71, 3], [14, 0, 67, 1], [14, 1, 71, 1], [14, 2, 76, 1], [15, 0, 73, 2], [15, 2, 76, 1],
+    [18, 0, 81, 3], [21, 1, 78, 2], [24, 0, 85, 3], [26, 1, 81, 2], [29, 0, 79, 3], [31, 1, 76, 2],
+  ];
+  for (const [bar, beat, midi, beats] of melody) events.push({ t: bar * 3 + beat, midi, dur: beats * 0.95, vol: bar >= 16 ? 0.05 : 0.077, attack: 0.02, sustain: bar >= 16 ? 0.5 : 0.32 });
+  return { bpm: 64, length: 96, events };
+})();
+
 const LOUNGE_TRACKS = {
   room: ['audio/room-chill-lofi-loop.ogg', 'audio/room-softly.ogg'],
   cafe: ['audio/cafe-lofi-hip-hop-loop.ogg', 'audio/cafe-lofi-hip-hop.ogg'],
   temple: [],   // no recording yet, so the synthesised raga (TEMPLE) plays
+  train: ['audio/room-chill-lofi-loop.ogg', 'audio/cafe-lofi-hip-hop-loop.ogg', 'audio/room-softly.ogg', 'audio/cafe-lofi-hip-hop.ogg'],   // all four lo-fi tracks, for a long ride
+  garden: [],    // the koto-style SUMI
+  reading: [],   // the piano waltz READING
 };
+// the synthesised score for a lounge with no recordings (or when a file can't play)
+const LOUNGE_SCORES = { cafe: () => BOSSA, temple: () => TEMPLE, garden: () => SUMI, reading: () => READING };
 const TRACK_VOL = 0.5;
 
 export function playLoungeMusic(kind, isPaused) {
   const list = LOUNGE_TRACKS[kind] || [];
-  const synth = () => playMusic(kind === 'cafe' ? BOSSA : kind === 'temple' ? TEMPLE : LOFI, isPaused);
+  const synth = () => playMusic(LOUNGE_SCORES[kind]?.() || LOFI, isPaused);
   if (!list.length || typeof Audio === 'undefined') return synth();
 
   const audio = new Audio();

@@ -431,6 +431,18 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
 - **The gong** is synthesised: seven inharmonic partials, each a pair of tones detuned a
   fraction of a hertz (the slow beating is its shimmer), a padded mallet thump, a faint settle
   in pitch, and a ten-second fade. Rendered offline: peak 0.35, silent by 12 s.
+- **Koi Garden** (`js/lounge-garden.js`): a garden seen from a wooden veranda in late
+  afternoon, the sun sinking to evening over ten minutes. A koi pond (six koi, nine when wide)
+  with reflections, lily pads, a lotus and a frog; a stone lantern, a red arched bridge, a red
+  maple, a bamboo spout into a stone basin, raked gravel, a calico cat dozing by its tea. Wind
+  chimes under the eaves are played by the scene itself: each breeze swings the clapper, and a
+  rod sounds only when it is struck, so what you hear is what you see. Touch the water and the
+  koi come for food; the lantern lights, the maple sheds, the spout tips, the cat stretches.
+- **Music for the new lounges** (`js/arcade-kit.js`): the Temple keeps its composed raga (the
+  owner chose it over the free recordings found); the Garden plays the koto-style "Sumi"; the
+  Night Train rotates all four CC0 lo-fi recordings; the Reading Room gets "Pages", a slow
+  piano waltz in D major written for it (32 bars, 90 s, about 1.5 dB under the lo-fi loop).
+  Lounge scores are now looked up from one table, `LOUNGE_SCORES`.
 - **Brush Stroke, with or without the stroke.** The end card's painting has a switch, "Brush
   stroke shown / hidden": hidden saves the paper, the trace and the inscription without the
   black stroke. The thumbnail redraws as it flips; the choice is remembered.
