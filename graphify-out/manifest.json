@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794892266.910488,
-    "seen": 1794892271.907286,
-    "ast_hash": "a32a47386c82fa58ba3f7bcafc66198d",
+    "mtime": 1794893965.6362095,
+    "seen": 1794893971.649581,
+    "ast_hash": "da7f2069f9aecd74fe7e7f06b4fbb792",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {
@@ -426,9 +426,9 @@
     "semantic_hash": ""
   },
   "js/game-llama.js": {
-    "mtime": 1794892024.4195268,
-    "seen": 1794892271.9072618,
-    "ast_hash": "299cf6bd58642c4c900fd7f9fc172d24",
+    "mtime": 1794893734.2971869,
+    "seen": 1794893971.6495512,
+    "ast_hash": "c53b615fc1c77607f14f41d2f5d9aa4c",
     "semantic_hash": ""
   },
   "js/game-pebbles.js": {
@@ -561,6 +561,24 @@
     "mtime": 1794890314.007677,
     "seen": 1794890459.931502,
     "ast_hash": "ce1358eab53af121b86f978339b500ca",
+    "semantic_hash": ""
+  },
+  "js/lounge-beach.js": {
+    "mtime": 1794893945.7161548,
+    "seen": 1794893971.649554,
+    "ast_hash": "1a168f94827c8183b579a6690494404a",
+    "semantic_hash": ""
+  },
+  "js/lounge-cabin.js": {
+    "mtime": 1794893940.5340788,
+    "seen": 1794893971.649555,
+    "ast_hash": "86fdb1e11f74c392f6c6d7bb8487964b",
+    "semantic_hash": ""
+  },
+  "js/lounge-woods.js": {
+    "mtime": 1794893947.9877934,
+    "seen": 1794893971.649559,
+    "ast_hash": "ac076dec243a2d30b593fb5d8958ea82",
     "semantic_hash": ""
   }
 }

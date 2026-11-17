@@ -450,6 +450,19 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
   invented title), light or dim the lamp, poke the fire, pour tea, change the rain, roll the
   ladder. It plays "Pages", the piano waltz written for it. Whole bays appear only when they
   fit, so no full-screen shape cuts a window or a desk in half.
+- **Llama Trail, a glide rather than a gauntlet.** The owner asked for the genre's best feel
+  and presentation (Alto's Adventure the reference; mechanics and polish only, our own art) with
+  the stones gone and an easy glide. No rocks and no chasms; landings are forgiving (clean
+  within ±0.75 rad, wobbly to ±1.35) and, with the button up, the llama settles to the slope, so
+  ordinary jumps land smoothly; gentler swells (steepest uphill 48°→22°) and a minimum speed.
+  Rails to grind (fences that follow the snow, fallen logs on stakes), and combos: flips, grinds,
+  long air and apples multiply on a clean landing, and ×2 or more gives a two-second boost with a
+  light ribbon. Presentation: four-stop skies through the day cached and cross-faded, four ranges
+  in atmospheric perspective with mist between them and rim light, sun bloom, a crescent moon,
+  stars, shooting stars and the odd aurora, drifting fog and changing snowfall, soft spray, a
+  shadow, landing squash, a scarf that streams with speed, and a camera that eases back and
+  looks ahead as it speeds (less under reduced motion). Left alone it glides on: a measured idle
+  minute covered 825 m with no fall.
 - **Forest Drive, a new road every time.** Each drive draws a route from a seed: the road's
   bends and hills, which trees line it (more pine or broadleaf, how many birches, ferns, how
   thick), and its season, one of a summer road, an autumn road (copper and amber), a spring road
