@@ -1,17 +1,17 @@
 # Graph Report - StackNest  (2026-11-17)
 
 ## Corpus Check
-- 70 files · ~427,464 words
+- 70 files · ~428,645 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 6 file(s) not represented in the graph (top: (none) 2, .woff2 2, .css 1)
 
 ## Summary
-- 2717 nodes · 7423 edges · 110 communities (103 shown, 7 thin omitted)
+- 2717 nodes · 7429 edges · 110 communities (102 shown, 8 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 240 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `66e628f8`
+- Built from commit: `6695d0fa`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -38,7 +38,7 @@
 - backup.js
 - game-ripples.js
 - game-brush.js
-- mutate
+- normalize
 - buildShell
 - lounge-cafe.js
 - wallpapers.js
@@ -58,15 +58,15 @@
 - tags.js
 - StackNest — Tab Manager: Design
 - fr
-- icon
+- el
 - lounge-temple.js
 - game-llama.js
 - zen.js
 - painter
-- tabs.js
+- sq
 - 5. Data shapes
 - mixc
-- step
+- build
 - rng
 - lounge-train.js
 - drawRoom
@@ -101,13 +101,13 @@
 - paintArm
 - sq
 - sq
-- toast
+- myspace.js
 - start
 - mk
 - render
 - drawBook
 - outside
-- buildFormatBar
+- placeFormatBar
 - glassBeads
 - mixc
 - fx
@@ -142,42 +142,42 @@
   docs/specs/2026-07-03-stacknest-design.md → js/arcade-kit.js
 - `Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17)` --references--> `artwork()`  [INFERRED]
   docs/specs/2026-07-03-stacknest-design.md → js/game-brush.js
+- `Reorderable Spaces / drag-and-drop (2026-07-06)` --references--> `reorderSpace()`  [INFERRED]
+  docs/specs/2026-07-03-stacknest-design.md → js/spacesStore.js
 - `De-clutter pass (2026-07-04)` --references--> `domainOf()`  [INFERRED]
   docs/specs/2026-07-03-stacknest-design.md → js/ui.js
 - `"Precision" redesign from reference images (2026-10-06)` --references--> `emptyState()`  [INFERRED]
-  docs/specs/2026-07-03-stacknest-design.md → js/ui.js
-- `Design-chief polish + launch readiness (2026-10-09)` --references--> `badgeText()`  [INFERRED]
   docs/specs/2026-07-03-stacknest-design.md → js/ui.js
 
 ## Import Cycles
 - 3-file cycle: `js/backup.js -> js/notes.js -> js/drive.js -> js/backup.js`
 - 3-file cycle: `js/backup.js -> js/settings.js -> js/drive.js -> js/backup.js`
 
-## Communities (110 total, 7 thin omitted)
+## Communities (110 total, 8 thin omitted)
 
 ### Community 0 - "game-lantern.js"
-Cohesion: 0.14
-Nodes (28): SIZE, backdrop(), beyond(), ease(), firefly(), hill(), hillLine(), land() (+20 more)
+Cohesion: 0.15
+Nodes (27): backdrop(), beyond(), ease(), firefly(), hill(), hillLine(), land(), lantern() (+19 more)
 
 ### Community 1 - "notes.js"
-Cohesion: 0.10
-Nodes (34): Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10), CARD_COLORS, clampScale(), clearDropMarks(), consumeSelfWrite(), detectKind(), editingInMosaic(), GUIDE (+26 more)
+Cohesion: 0.11
+Nodes (32): CARD_COLORS, cardDone(), clearDropMarks(), closePop(), consumeSelfWrite(), editingInMosaic(), GUIDE, initNotes() (+24 more)
 
 ### Community 2 - "spaces.js"
 Cohesion: 0.08
-Nodes (74): Collection curation pass (2026-07-06), Collection-tile & duplicates refinements (2026-07-07), Reorderable Spaces / drag-and-drop (2026-07-06), Spaces, Settings, Backup + hardening (2026-07-06), Spaces — Toby-style collections (2026-07-04), Undo / redo for deletes (2026-07-06), flashDeleted(), pushHistory() (+66 more)
+Nodes (78): Collection curation pass (2026-07-06), Spaces, Settings, Backup + hardening (2026-07-06), Undo / redo for deletes (2026-07-06), removeOccurrence(), flashDeleted(), pushHistory(), addLinkChecked(), addTabGhost() (+70 more)
 
 ### Community 3 - "settings.js"
-Cohesion: 0.08
-Nodes (65): fillTodos(), saveCanvas(), showCard(), CLOUD_KEY, appearancePlate(), appearanceStatus(), applySettings(), backupPlate() (+57 more)
+Cohesion: 0.07
+Nodes (65): Collection-tile & duplicates refinements (2026-07-07), CLOUD_KEY, MAX_FAILS, SECURITY_QUESTIONS, appearancePlate(), appearanceStatus(), applySettings(), backupPlate() (+57 more)
 
 ### Community 4 - "support.js"
 Cohesion: 0.05
 Nodes (63): boot(), collectProps(), compileAttr(), compileTemplate(), contentKey(), createComponentFactory(), getDC(), Dispatcher() (+55 more)
 
 ### Community 5 - "drive.js"
-Cohesion: 0.09
-Nodes (49): Cloud sync · views · tags · duplicates · ticker (2026-07-07), Drive: whose Google account? (2026-07-09), Google Drive sync hardening (2026-07-08), authUrl(), canChooseAccount(), forgetAllTokens(), forgetToken(), mintToken() (+41 more)
+Cohesion: 0.10
+Nodes (45): Cloud sync · views · tags · duplicates · ticker (2026-07-07), Drive: whose Google account? (2026-07-09), Google Drive sync hardening (2026-07-08), authUrl(), canChooseAccount(), forgetAllTokens(), forgetToken(), mintToken() (+37 more)
 
 ### Community 6 - "render-icons.mjs"
 Cohesion: 0.07
@@ -200,8 +200,8 @@ Cohesion: 0.06
 Nodes (45): BAYER, blendSet(), CARS, CAT, CATC, CT, curtainEdge(), drawGlass() (+37 more)
 
 ### Community 11 - "format.js"
-Cohesion: 0.19
-Nodes (19): DEFAULT_SCALE, enclosingPair(), isRun(), lineKind(), listContinuation(), MARKERS, replaceRange(), replaceText() (+11 more)
+Cohesion: 0.13
+Nodes (26): canStepScale(), DEFAULT_SCALE, enclosingPair(), isRun(), lineKind(), listContinuation(), MARKERS, replaceRange() (+18 more)
 
 ### Community 12 - "mock.js"
 Cohesion: 0.13
@@ -213,43 +213,43 @@ Nodes (12): Additional fields, Chrome Web Store listing: StackNest, Detailed des
 
 ### Community 14 - "lounge-cabin.js"
 Cohesion: 0.03
-Nodes (62): AUR, BAYER, BOOK, BOOKC, BRASS, CHAIR, COLS, CT (+54 more)
+Nodes (65): AUR, BAYER, BOOK, BOOKC, BRASS, CHAIR, COLS, CT (+57 more)
 
 ### Community 18 - "lock.js"
-Cohesion: 0.15
+Cohesion: 0.17
 Nodes (31): attemptsLeft(), b64(), clearFailures(), clearPin(), derive(), enc, getQuestion(), hasPin() (+23 more)
 
 ### Community 19 - "game-drive.js"
 Cohesion: 0.09
-Nodes (46): clamp(), rumble(), BASE, bike(), broadleaf(), car(), CLOUDS, css() (+38 more)
+Nodes (44): clamp(), BASE, bike(), broadleaf(), car(), CLOUDS, css(), curveAt() (+36 more)
 
 ### Community 20 - "backup.js"
-Cohesion: 0.15
-Nodes (18): Calm structure + Linen theme (2026-09-07), Notes & Todos view (2026-07-08), applyBackup(), exportBackup(), exportBookmarkTree(), importBookmarkTree(), importFlow(), isObj() (+10 more)
+Cohesion: 0.16
+Nodes (19): Calm structure + Linen theme (2026-09-07), Notes & Todos view (2026-07-08), applyBackup(), buildBackup(), exportBackup(), exportBookmarkTree(), importBookmarkTree(), importFlow() (+11 more)
 
 ### Community 21 - "game-ripples.js"
-Cohesion: 0.20
-Nodes (19): card(), LIGHT, makeKoi(), meta, MORE_KOI, pad(), PADS, padsFor() (+11 more)
+Cohesion: 0.19
+Nodes (20): card(), SIZE, LIGHT, makeKoi(), meta, MORE_KOI, pad(), PADS (+12 more)
 
 ### Community 22 - "game-brush.js"
 Cohesion: 0.06
-Nodes (75): BIP39_WORDS, artwork(), BOARDS, brushOnRest(), brushRest(), buildDesk(), castShadow(), clearTrace() (+67 more)
+Nodes (77): BIP39_WORDS, artwork(), BOARDS, brushOnRest(), brushRest(), buildDesk(), castShadow(), clearTrace() (+69 more)
 
-### Community 23 - "mutate"
-Cohesion: 0.26
-Nodes (20): addQuickReminder(), addRow(), checkRow(), composer(), exportNotesOnly(), flushSaves(), focusItem(), focusRow() (+12 more)
+### Community 23 - "normalize"
+Cohesion: 0.21
+Nodes (16): Three kinds: note / to-do list / reminder, + Markdown & formatting (2026-07-10), clampScale(), detectKind(), focusItem(), hasContent(), importFromFile(), isObj(), mergeIn() (+8 more)
 
 ### Community 24 - "buildShell"
-Cohesion: 0.21
-Nodes (16): buildShell(), flash(), focusTodo(), initZen(), isOn(), normalizeLayout(), paintFolds(), paintPager() (+8 more)
+Cohesion: 0.25
+Nodes (14): buildShell(), focusTodo(), initZen(), isOn(), paintPager(), paintThought(), saveLayout(), setPage() (+6 more)
 
 ### Community 25 - "lounge-cafe.js"
 Cohesion: 0.05
 Nodes (39): ARM, AWN, BAY, BLD, BOOK, BOOKCOL, BRICK, C (+31 more)
 
 ### Community 26 - "wallpapers.js"
-Cohesion: 0.16
-Nodes (25): aurora, bamboo, DEFAULT_WALLPAPER, dunes, dusk, enso, forest, isImage() (+17 more)
+Cohesion: 0.15
+Nodes (27): activeOwn(), aurora, bamboo, DEFAULT_WALLPAPER, dunes, dusk, enso, forest (+19 more)
 
 ### Community 27 - "game-pebbles.js"
 Cohesion: 0.12
@@ -260,24 +260,24 @@ Cohesion: 0.11
 Nodes (27): BOLS, BOSSA, buffers(), CANON, DAYAN, drum(), hallBus(), hz() (+19 more)
 
 ### Community 29 - "buildShell"
-Cohesion: 0.39
-Nodes (8): buildShell(), closeAllMenus(), menuButton(), close(), onDoc(), open(), place(), openGuide()
+Cohesion: 0.26
+Nodes (12): backupMenu(), buildShell(), closeAllMenus(), composer(), driveBackup(), menuButton(), close(), onDoc() (+4 more)
 
 ### Community 30 - "lounge-beach.js"
 Cohesion: 0.04
 Nodes (54): AMB, ARM, BAYER, BEACHES, beachFor(), beachW(), BIG_FRONDS, BOOK (+46 more)
 
 ### Community 31 - "ticker.js"
-Cohesion: 0.12
-Nodes (25): main(), doRedo(), doUndo(), flash(), hide(), initHistory(), redoStack, undoStack (+17 more)
+Cohesion: 0.14
+Nodes (21): main(), doRedo(), doUndo(), flash(), hide(), initHistory(), redoStack, undoStack (+13 more)
 
 ### Community 32 - "webbridge.js"
-Cohesion: 0.08
-Nodes (53): RFC-2606, isFinished(), rearmReminders(), ACTIONS, arr(), boardOut(), BRIDGE_FILE, BRIDGE_SCRIPT_ID (+45 more)
+Cohesion: 0.09
+Nodes (51): RFC-2606, ACTIONS, arr(), boardOut(), BRIDGE_FILE, BRIDGE_SCRIPT_ID, CHANNEL, DEFAULT_SECTIONS (+43 more)
 
 ### Community 33 - "note"
-Cohesion: 0.28
-Nodes (31): drip(), ensureCtx(), note(), playAmbience(), playLoungeMusic(), pointIn(), runLoop(), setupCanvas() (+23 more)
+Cohesion: 0.26
+Nodes (34): drip(), ensureCtx(), note(), playAmbience(), playLoungeMusic(), pointIn(), rumble(), runLoop() (+26 more)
 
 ### Community 34 - "lounge-reading.js"
 Cohesion: 0.04
@@ -288,8 +288,8 @@ Cohesion: 0.12
 Nodes (37): CAPS, createArcade(), launch(), setShelf(), showMenu(), stop(), zoomLaunch(), setSound() (+29 more)
 
 ### Community 36 - "zenpins.js"
-Cohesion: 0.31
-Nodes (15): cache, FROM, initZenPins(), isZenPinned(), keyOf(), loadZenPins(), normalize(), paint() (+7 more)
+Cohesion: 0.25
+Nodes (17): cache, FROM, initZenPins(), isZenPinned(), keyOf(), loadZenPins(), normalize(), paint() (+9 more)
 
 ### Community 37 - "lounge-woods.js"
 Cohesion: 0.04
@@ -304,20 +304,20 @@ Cohesion: 0.19
 Nodes (11): band(), buildScreens(), fx(), glow(), makeSign(), outside(), paintCity(), paintStreet() (+3 more)
 
 ### Community 40 - "tags.js"
-Cohesion: 0.20
-Nodes (23): buildGraph(), chip(), closeTagEditor(), dedupe(), gatherItems(), graphView, initTags(), itemGrid() (+15 more)
+Cohesion: 0.18
+Nodes (25): buildGraph(), chip(), closeTagEditor(), dedupe(), gatherItems(), graphView, initTags(), itemGrid() (+17 more)
 
 ### Community 41 - "StackNest — Tab Manager: Design"
 Cohesion: 0.07
-Nodes (28): Aesthetic direction, Audit + design refresh (2026-09-07), Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17), De-clutter pass (2026-07-04), Design-chief polish + launch readiness (2026-10-09), Features, Files, Fix: invisible collection-header actions (2026-07-06) (+20 more)
+Nodes (29): Aesthetic direction, Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17), De-clutter pass (2026-07-04), Design-chief polish + launch readiness (2026-10-09), Features, Files, Fix: invisible collection-header actions (2026-07-06), Follow-up: two gaps the token audit could not have caught (+21 more)
 
 ### Community 42 - "fr"
-Cohesion: 0.19
-Nodes (22): activity(), armPos(), bubble(), curtain(), door(), ease(), farWalker(), fr() (+14 more)
+Cohesion: 0.17
+Nodes (23): activity(), armPos(), bubble(), curtain(), door(), ease(), farWalker(), fr() (+15 more)
 
-### Community 43 - "icon"
-Cohesion: 0.10
-Nodes (56): Section system + bento sidebar (2026-10-06), autoClean(), collectOccurrences(), forgetLink(), forgottenSection(), groupCard(), groupDuplicates(), initDuplicates() (+48 more)
+### Community 43 - "el"
+Cohesion: 0.08
+Nodes (80): Audit + design refresh (2026-09-07), Section system + bento sidebar (2026-10-06), fillTodos(), saveCanvas(), showCard(), acceptMoves(), bookmarkCard(), crumbsBar() (+72 more)
 
 ### Community 44 - "lounge-temple.js"
 Cohesion: 0.04
@@ -328,16 +328,16 @@ Cohesion: 0.10
 Nodes (39): apple(), aurora(), backdrop(), blend(), css(), fog(), hourAt(), lightAt() (+31 more)
 
 ### Community 46 - "zen.js"
-Cohesion: 0.15
-Nodes (28): loadNotes(), NOTES_KEY, arrange(), check(), dueChip(), fmtDue(), folderPin(), FROM_LABEL (+20 more)
+Cohesion: 0.14
+Nodes (29): loadNotes(), NOTES_KEY, arrange(), check(), dueChip(), flash(), fmtDue(), folderPin() (+21 more)
 
 ### Community 47 - "painter"
 Cohesion: 0.22
 Nodes (16): armSprite(), baristaFrame(), carSprite(), catFrame(), coreStroke(), croissantSprite(), cupSprite(), dogFrame() (+8 more)
 
-### Community 48 - "tabs.js"
-Cohesion: 0.28
-Nodes (15): barMode(), chip(), currentWindowTabs(), initTabs(), isOwnPage(), render(), saveCurrentWindow(), saveWindow() (+7 more)
+### Community 48 - "sq"
+Cohesion: 0.22
+Nodes (10): coolAt(), fireAt(), lantAt(), moonPatch(), onMuntin(), paintBunk(), paintLanternLit(), sq() (+2 more)
 
 ### Community 49 - "5. Data shapes"
 Cohesion: 0.10
@@ -347,13 +347,13 @@ Nodes (21): 1. How a person connects, 2. Detecting the extension, 3. Transport, 
 Cohesion: 0.23
 Nodes (14): cloudStrip(), deskL(), deskR(), fairyY(), kbAt(), leaf(), mixc(), paintBack() (+6 more)
 
-### Community 51 - "step"
-Cohesion: 0.36
-Nodes (8): bell(), glassSpan(), newDrop(), newWalker(), seedParticles(), startVisitor(), step(), visitorStep()
+### Community 51 - "build"
+Cohesion: 0.22
+Nodes (13): build(), buildVignette(), glassSpan(), layout(), mk(), newDrop(), newWalker(), seedParticles() (+5 more)
 
 ### Community 52 - "rng"
-Cohesion: 0.14
-Nodes (21): build(), buildCity(), buildClouds(), building(), buildMid(), buildSky(), buildVignette(), layout() (+13 more)
+Cohesion: 0.23
+Nodes (12): buildCity(), buildClouds(), building(), buildSky(), makeState(), preview(), rng(), snowCap() (+4 more)
 
 ### Community 53 - "lounge-train.js"
 Cohesion: 0.06
@@ -380,20 +380,20 @@ Cohesion: 0.25
 Nodes (9): guestFrame(), guestSpr(), mixHex(), nearWalker(), rimOf(), umbrellaSprite(), umbSpr(), walkerFrame() (+1 more)
 
 ### Community 59 - "openReminderEditor"
-Cohesion: 0.16
-Nodes (24): armAlarm(), cardDone(), checkbox(), clearAlarm(), closePop(), findItem(), fireTime(), itemCard() (+16 more)
+Cohesion: 0.20
+Nodes (28): addQuickReminder(), addRow(), armAlarm(), checkbox(), checkRow(), clearAlarm(), exportNotesOnly(), findItem() (+20 more)
 
 ### Community 60 - "fgProp"
-Cohesion: 0.47
-Nodes (6): blade(), bookY(), buildFront(), fgProp(), pageText(), rim()
+Cohesion: 0.38
+Nodes (7): blade(), bookY(), buildFront(), buildMid(), fgProp(), pageText(), rim()
 
 ### Community 62 - "paintBack"
 Cohesion: 0.17
 Nodes (25): azalea(), band(), bridgeY(), clamp(), foliage(), grass(), mixc(), paintBack() (+17 more)
 
 ### Community 63 - "buildRoom"
-Cohesion: 0.08
-Nodes (41): buildRoom(), coolAt(), fireAt(), lantAt(), lineY(), mainPanes(), mixc(), moonPatch() (+33 more)
+Cohesion: 0.10
+Nodes (31): buildRoom(), lineY(), mainPanes(), mixc(), paintBasket(), paintChair(), paintCorner(), paintCurtains() (+23 more)
 
 ### Community 64 - "sq"
 Cohesion: 0.15
@@ -424,20 +424,20 @@ Cohesion: 0.19
 Nodes (14): archTop(), garland(), paintArch(), paintBackJob(), paintBellFrame(), paintBuddha(), paintNiche(), paintPillar() (+6 more)
 
 ### Community 73 - "Ras"
-Cohesion: 0.15
-Nodes (9): band(), deerFrame(), foxFrame(), fx(), glow(), owlFrame(), Ras, rgba() (+1 more)
+Cohesion: 0.16
+Nodes (6): deerFrame(), foxFrame(), fx(), owlFrame(), Ras, rgba()
 
 ### Community 74 - "buildGarden"
 Cohesion: 0.21
 Nodes (14): buildGarden(), fieldsFor(), fx(), glow(), layout(), lilyPads(), paintGravel(), paintKakei() (+6 more)
 
 ### Community 75 - "drawRoom"
-Cohesion: 0.14
-Nodes (20): bakeGen(), bandN(), bay(), drawFire(), drawGuide(), drawLayer(), drawLit(), drawRoom() (+12 more)
+Cohesion: 0.13
+Nodes (21): bakeGen(), bandN(), bands(), bay(), drawFire(), drawGuide(), drawLayer(), drawLit() (+13 more)
 
 ### Community 76 - "buildRoom"
-Cohesion: 0.14
-Nodes (22): buildRoom(), bulbsOf(), clamp(), crestY(), fillString(), fillWarm(), fireAt(), frac() (+14 more)
+Cohesion: 0.16
+Nodes (17): buildRoom(), bulbsOf(), crestY(), fillString(), fireAt(), frac(), layoutFor(), lightAt() (+9 more)
 
 ### Community 77 - "render"
 Cohesion: 0.09
@@ -448,20 +448,16 @@ Cohesion: 0.16
 Nodes (18): bodhiTree(), buildJob(), flagStrings(), grove(), layout(), mixc(), paintBell(), paintLantern() (+10 more)
 
 ### Community 79 - "Ras"
-Cohesion: 0.17
-Nodes (7): cloudStrip(), fx(), glow(), Ras, ridgeFor(), ridgeStrip(), toCanvas()
+Cohesion: 0.16
+Nodes (7): cloudStrip(), drawLit(), Ras, ridgeFor(), ridgeStrip(), spriteImg(), toCanvas()
 
 ### Community 80 - "render"
-Cohesion: 0.16
-Nodes (21): bandPalette(), clamp(), cloudsFor(), disc(), drawCastle(), drawGull(), drawSun(), fill() (+13 more)
-
-### Community 81 - "Ras"
-Cohesion: 0.14
-Nodes (11): band(), mistBand(), outside(), outT(), paintDeer(), paintFrog(), paintOwl(), Ras (+3 more)
+Cohesion: 0.15
+Nodes (22): bandPalette(), clamp(), cloudsFor(), disc(), drawCastle(), drawGull(), drawSun(), fill() (+14 more)
 
 ### Community 82 - "buildBeach"
-Cohesion: 0.15
-Nodes (17): buildBeach(), drawLit(), fieldsFor(), layout(), paintCrown(), paintFire(), paintHut(), paintPalmSprite() (+9 more)
+Cohesion: 0.16
+Nodes (17): buildBeach(), fieldsFor(), fx(), glow(), layout(), paintCrown(), paintFire(), paintHut() (+9 more)
 
 ### Community 83 - "rng"
 Cohesion: 0.25
@@ -479,17 +475,17 @@ Nodes (17): bakeGen(), buildRoom(), coolAt(), drawLit(), fillWarm(), fireAt(), l
 Cohesion: 0.18
 Nodes (12): bellSound(), bowlSound(), coolAt(), droneSound(), fieldJob(), lift(), lightStick(), paintPose() (+4 more)
 
-### Community 87 - "toast"
-Cohesion: 0.19
-Nodes (28): acceptMoves(), bookmarkCard(), crumbsBar(), deleteBtn(), ensureFolder(), folderCard(), folderTile(), getFolder() (+20 more)
+### Community 87 - "myspace.js"
+Cohesion: 0.26
+Nodes (16): isSessionUnlocked(), absorbFromChrome(), countEls, deleteBtn(), groupedBody(), initMySpace(), loadSpace(), moveFromLibrary() (+8 more)
 
 ### Community 88 - "start"
 Cohesion: 0.21
 Nodes (25): fmt(), riderX(), riderY(), start(), airStep(), cash(), catchRail(), draw() (+17 more)
 
 ### Community 89 - "mk"
-Cohesion: 0.12
-Nodes (27): addLog(), animals(), drawFrost(), drawOutside(), drawSnow(), finishJob(), FIRETXT(), flipCanvas() (+19 more)
+Cohesion: 0.11
+Nodes (23): addLog(), animals(), drawFrost(), drawSnow(), finishJob(), flipCanvas(), glassClip(), glassState() (+15 more)
 
 ### Community 90 - "render"
 Cohesion: 0.18
@@ -500,28 +496,28 @@ Cohesion: 0.27
 Nodes (11): bookLift(), bookStack(), drawBook(), openBook(), pageBot(), pageText(), pageTop(), paintFront() (+3 more)
 
 ### Community 92 - "outside"
-Cohesion: 0.26
-Nodes (12): bands(), bigTrunk(), fir(), mossRock(), mossyMaple(), paintFar(), paintGround(), paintHangingFern() (+4 more)
+Cohesion: 0.17
+Nodes (18): band(), bigTrunk(), fir(), mistBand(), mossRock(), mossyMaple(), outside(), paintDeer() (+10 more)
 
-### Community 93 - "buildFormatBar"
-Cohesion: 0.23
-Nodes (12): canStepScale(), stepScale(), buildFormatBar(), hideFormatBar(), placeFormatBar(), runFormat(), runList(), runScale() (+4 more)
+### Community 93 - "placeFormatBar"
+Cohesion: 0.60
+Nodes (5): hideFormatBar(), placeFormatBar(), showFormatBar(), syncFormatBar(), updateBarState()
 
 ### Community 94 - "glassBeads"
-Cohesion: 0.18
-Nodes (15): bedBay(), coolAt(), doorBay(), fern(), fogMap(), glassBeads(), inWin(), isBar() (+7 more)
+Cohesion: 0.16
+Nodes (18): clamp(), coolAt(), fern(), fillWarm(), fogMap(), glassBeads(), inWin(), isBar() (+10 more)
 
 ### Community 95 - "mixc"
-Cohesion: 0.26
-Nodes (13): bulbPath(), ceilS(), ladderBay(), mixc(), paintBack(), paintBeams(), paintCeiling(), paintFloor() (+5 more)
+Cohesion: 0.17
+Nodes (18): bedBay(), bulbPath(), ceilS(), doorBay(), kitchenBay(), ladderBay(), mixc(), paintBack() (+10 more)
 
 ### Community 96 - "fx"
 Cohesion: 0.17
 Nodes (15): creekY(), drawGlass(), drawOutside(), drawRivs(), fx(), makeBuffers(), makeState(), newRiv() (+7 more)
 
 ### Community 97 - "paintSea"
-Cohesion: 0.29
-Nodes (13): bakeOne(), band(), bay(), mixc(), paintDunes(), paintFar(), paintFront(), paintSand() (+5 more)
+Cohesion: 0.32
+Nodes (13): bakeOne(), band(), bay(), drawBand(), mixc(), paintDunes(), paintFar(), paintFront() (+5 more)
 
 ### Community 98 - "fx"
 Cohesion: 0.22
@@ -532,16 +528,16 @@ Cohesion: 0.47
 Nodes (6): paintPier(), paintStairs(), pDY(), pGY(), pW(), pX()
 
 ### Community 100 - "buildOutside"
-Cohesion: 0.27
-Nodes (11): buildOutside(), cl(), far2Y(), farY(), fieldY(), frostFor(), noise2(), paintFireplace() (+3 more)
+Cohesion: 0.18
+Nodes (16): band(), buildOutside(), cl(), drawOutside(), far2Y(), farY(), fieldY(), frostFor() (+8 more)
 
 ### Community 101 - "update"
-Cohesion: 0.24
-Nodes (12): drawBand(), ease(), frontAt(), gust(), makeState(), newGull(), newWave(), preview() (+4 more)
+Cohesion: 0.25
+Nodes (11): ease(), frontAt(), gust(), makeState(), newGull(), newWave(), preview(), rng() (+3 more)
 
 ### Community 102 - "drawRoom"
-Cohesion: 0.22
-Nodes (10): bakeOne(), drawLit(), drawRoom(), drawTableThings(), hex(), litHex(), rampOf(), sm() (+2 more)
+Cohesion: 0.28
+Nodes (8): bakeOne(), drawLit(), drawRoom(), drawTableThings(), litHex(), rampOf(), spriteImg(), toCanvas()
 
 ### Community 103 - "drawFire"
 Cohesion: 0.40
@@ -570,22 +566,22 @@ Nodes (7): createCalendar(), draw(), render(), setDefaults(), setOpen(), dayKey(
 ## Knowledge Gaps
 - **1 isolated node(s):** `RFC-2606`
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 708 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **8 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `el()` connect `settings.js` to `notes.js`, `spaces.js`, `drive.js`, `format.js`, `lock.js`, `backup.js`, `mutate`, `buildShell`, `buildShell`, `ticker.js`, `game-lantern.js`, `tags.js`, `StackNest — Tab Manager: Design`, `icon`, `zen.js`, `tabs.js`, `openReminderEditor`, `toast`, `buildFormatBar`, `createEyeRest`, `createCalendar`?**
-  _High betweenness centrality (0.095) - this node is a cross-community bridge._
+- **Why does `el()` connect `el` to `notes.js`, `spaces.js`, `game-lantern.js`, `settings.js`, `drive.js`, `tags.js`, `createEyeRest`, `format.js`, `createCalendar`, `zen.js`, `lock.js`, `backup.js`, `myspace.js`, `buildShell`, `openReminderEditor`, `buildShell`, `ticker.js`?**
+  _High betweenness centrality (0.096) - this node is a cross-community bridge._
 - **What connects `RFC-2606` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `game-lantern.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.14022988505747128 - nodes in this community are weakly interconnected._
-- **Why does `note()` connect `note` to `game-lantern.js`, `notes.js`, `lounge-reading.js`, `lounge-woods.js`, `lounge-garden.js`, `lounge-room.js`, `lounge-temple.js`, `game-llama.js`, `lounge-cabin.js`, `game-ripples.js`, `game-brush.js`, `lounge-cafe.js`, `start`, `mk`, `lounge-train.js`, `arcade-kit.js`, `lounge-beach.js`?**
-  _High betweenness centrality (0.072) - this node is a cross-community bridge._
+  _Cohesion score 0.1477832512315271 - nodes in this community are weakly interconnected._
+- **Why does `note()` connect `note` to `game-lantern.js`, `lounge-reading.js`, `lounge-woods.js`, `lounge-garden.js`, `lounge-room.js`, `lounge-temple.js`, `game-llama.js`, `lounge-cabin.js`, `game-ripples.js`, `game-brush.js`, `normalize`, `start`, `lounge-cafe.js`, `lounge-train.js`, `arcade-kit.js`, `lounge-beach.js`?**
+  _High betweenness centrality (0.069) - this node is a cross-community bridge._
 - **Should `notes.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.09523809523809523 - nodes in this community are weakly interconnected._
-- **Why does `icon()` connect `icon` to `notes.js`, `spaces.js`, `settings.js`, `drive.js`, `lock.js`, `mutate`, `buildShell`, `buildShell`, `ticker.js`, `game-lantern.js`, `zenpins.js`, `tags.js`, `zen.js`, `tabs.js`, `openReminderEditor`, `toast`, `buildFormatBar`, `createEyeRest`, `createCalendar`?**
+  _Cohesion score 0.10873440285204991 - nodes in this community are weakly interconnected._
+- **Why does `icon()` connect `el` to `notes.js`, `spaces.js`, `game-lantern.js`, `settings.js`, `drive.js`, `zenpins.js`, `tags.js`, `createEyeRest`, `format.js`, `createCalendar`, `zen.js`, `lock.js`, `myspace.js`, `buildShell`, `openReminderEditor`, `buildShell`, `ticker.js`?**
   _High betweenness centrality (0.049) - this node is a cross-community bridge._
 - **Should `spaces.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.08065618591934381 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08364197530864198 - nodes in this community are weakly interconnected._

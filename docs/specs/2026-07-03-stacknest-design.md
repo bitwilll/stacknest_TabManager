@@ -482,6 +482,15 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
   the braided rug. Wind gusts lift the murmur layer in step with the snow. Wide: a bunk under a
   second window, the door with a wreath, a woodpile, a reading corner. Plays the two gentlest
   lo-fi recordings.
+- **Sunset Beach** (`js/lounge-beach.js`): a tropical beach from a deckchair as the sun sinks over
+  ten minutes, golden hour through coral and rose to violet dusk, stars and a crescent moon. A
+  glittering path on the water, a sailboat crossing, waves that stand up lit through, break, wash
+  up in lacy foam and draw back leaving glossy sand and bubbles; a palm, a pier whose lanterns
+  come on one by one, gulls, crabs, sandpipers. The surf's sound is read from the same wave
+  timeline the picture uses (a roar at each break, a fizz in the run-up, 0.45 s ahead to land
+  with it). Shells to collect, a sandcastle the next wave softens, dolphins, a shooting star.
+  Wide (whole bays only): a hammock, tide pools, a bonfire with friends, a lifeguard hut, dunes,
+  a lighthouse. Plays warm lo-fi recordings.
 - **The shelf as a mosaic.** Games and lounges are picture tiles in a few sizes (big, wide,
   square, a full-width banner), laid out for how many there are so the rows always fill the
   frame; the title and a line sit over a soft shade, the controls slide up on hover or focus.

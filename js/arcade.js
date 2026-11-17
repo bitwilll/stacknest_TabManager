@@ -20,11 +20,12 @@ import * as train from './lounge-train.js';
 import * as temple from './lounge-temple.js';
 import * as reading from './lounge-reading.js';
 import * as cabin from './lounge-cabin.js';
+import * as beach from './lounge-beach.js';
 
 const SHELVES = {
   games: { list: [llama, drive, lantern, ripples, brush, pebbles], label: 'Games', h: 'A quiet corner',
     sub: 'Small, slow games for a pause. No timers, no losing streaks — soft music on the trail, the drive and the brush.' },
-  lounge: { list: [room, cafe, garden, train, temple, reading, cabin], label: 'Lounge', h: 'Somewhere to sit',
+  lounge: { list: [room, cafe, garden, train, temple, reading, cabin, beach], label: 'Lounge', h: 'Somewhere to sit',
     sub: 'Nothing to win. Rain on the window, a little music, things to touch. Stay as long as you like.' },
 };
 const SHELF_KEY = 'stacknest:arcade-shelf';
