@@ -5,7 +5,7 @@
 #
 # The zip is an allowlist, never a copy of the folder. It carries only what the extension
 # runs: manifest.json (minus the dev "key"), newtab.html, css/, js/ (minus the dev-only
-# js/mock.js), fonts/ and icons/*.png. Personal backups, docs, the "new design" sketches,
+# js/mock.js), fonts/, audio/ and icons/*.png. Personal backups, docs, the "new design" sketches,
 # .git and .DS_Store can't reach the store, because nothing outside the list is copied.
 # Upload only the zip this prints, never an older hand-made one.
 #
@@ -30,6 +30,7 @@ mkdir -p "$OUT/js" "$OUT/icons"
 # ——— 1. the allowlist ———
 cp newtab.html offscreen.html "$OUT/"
 cp -R css fonts "$OUT/"
+if [ -d audio ]; then cp -R audio "$OUT/"; fi   # CC0 lounge music + CREDITS.txt
 cp icons/*.png "$OUT/icons/"
 for f in js/*.js; do
   [ "$f" = js/mock.js ] || cp "$f" "$OUT/js/"

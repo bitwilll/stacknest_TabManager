@@ -2,12 +2,26 @@
 // winds and rolls (drawn segment by segment in perspective); pines, broadleaf trees, birches
 // and ferns crowd both verges. A whole day passes as you drive (sunrise, day, sunset, a starry
 // night with the headlights on) and the weather changes on its own: clear, cloudy, rain, snow.
-// There is nowhere to crash: steer to keep to the road (the verge only slows you down).
+// Space changes the weather (sunny, clear, cloudy, rain, a thunderstorm, snow), in a shuffled
+// order so each comes round before any repeats; left alone it changes by itself.
+// Some days it's an open-top car, some days a motorbike. The verge only slows you down; steer
+// deep into the trees and the journey ends there, kindly, with a word about journeys.
 // Pachelbel's Canon plays softly underneath.
 
-import { SIZE, setupCanvas, runLoop, card, clamp, playMusic, CANON, pointIn } from './arcade-kit.js';
+import { SIZE, setupCanvas, runLoop, card, clamp, playMusic, playAmbience, CANON, pointIn, swish, rumble } from './arcade-kit.js';
 
-export const meta = { id: 'drive', title: 'Forest Drive', blurb: 'An endless road through deep forest: day, night and weather.', keys: '← → to steer, ↑ ↓ for pace' };
+export const meta = { id: 'drive', title: 'Forest Drive', blurb: 'Open-top car or motorbike, an endless road through deep forest: day, night and weather.', keys: '← → to steer, ↑ ↓ for pace, Space for weather' };
+
+// when a drive ends in the trees: it was never about getting somewhere
+const JOURNEY = [
+  'The journey was the point, not the destination.',
+  'It was never about where the road ends. It was the trees, the light, the way there.',
+  'Life is a journey, not a destination. You just took the scenic part.',
+  'To travel well is better than to arrive.',
+  'You wandered off the map for a while. That counts as travelling too.',
+  'Every road leads somewhere. This one led to a quiet moment, and that was enough.',
+];
+const CRASH_AT = 1.8;   // how far past the road's edge (in road half-widths) the trees take you
 
 const W = SIZE, H = SIZE, HORIZON = H / 2;
 const SEG = 200, ROAD = 2000, CAM_H = 900, DEPTH = 0.84, DRAW = 140, LANES = 2;
@@ -83,9 +97,19 @@ function sky(ctx, env, sway, t) {
     const low = 1 - Math.sin(th);
     const col = mixRgb([255, 248, 225], [255, 160, 90], low);
     const rgb = col.map(Math.round).join(',');
-    const sg = ctx.createRadialGradient(sx, sy, 4, sx, sy, 150);
-    sg.addColorStop(0, `rgba(${rgb},${0.55 * (1 - env.cloud * 0.7)})`); sg.addColorStop(1, `rgba(${rgb},0)`);
-    ctx.fillStyle = sg; ctx.fillRect(sx - 150, sy - 150, 300, 300);
+    const R = 150 + env.sun * 90;
+    const sg = ctx.createRadialGradient(sx, sy, 4, sx, sy, R);
+    sg.addColorStop(0, `rgba(${rgb},${(0.55 + env.sun * 0.25) * (1 - env.cloud * 0.7)})`); sg.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = sg; ctx.fillRect(sx - R, sy - R, R * 2, R * 2);
+    if (env.sun > 0.05) {   // a sunny day: soft rays turning slowly round the sun
+      ctx.save(); ctx.translate(sx, sy); ctx.rotate(t * 0.03); ctx.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 10; k++) {
+        ctx.rotate(Math.PI / 5);
+        ctx.fillStyle = `rgba(${rgb},${0.05 * env.sun * (k % 2 ? 0.6 : 1)})`;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-14, -320); ctx.lineTo(14, -320); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
     ctx.fillStyle = css(col); ctx.globalAlpha = 1 - env.cloud * 0.8;
     ctx.beginPath(); ctx.arc(sx, sy, 26, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
   }
@@ -108,6 +132,16 @@ function sky(ctx, env, sway, t) {
       for (const [dx, dy, r] of [[0, 0, 40], [46, -14, 50], [96, 0, 42], [140, 6, 30]]) { ctx.beginPath(); ctx.ellipse(x + dx * c.s, c.y + dy * c.s, r * c.s * 1.3, r * c.s * 0.8, 0, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
+  }
+  // a fork of lightning against the clouds
+  if (env.bolt && env.flash > 0.05) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(245,247,255,${Math.min(1, env.flash * 1.2)})`; ctx.lineWidth = 2.6; ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(200,210,255,.9)'; ctx.shadowBlur = 14;
+    ctx.beginPath(); env.bolt.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+    const mid = env.bolt[Math.floor(env.bolt.length / 2)];
+    ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(mid[0], mid[1]); ctx.lineTo(mid[0] + 34, mid[1] + 40); ctx.lineTo(mid[0] + 30, mid[1] + 66); ctx.stroke();
+    ctx.restore();
   }
   // far hills, sliding with the road's bends
   for (const [base, amp, col, k] of [[HORIZON - 40, 50, [150, 186, 168], 0.15], [HORIZON - 14, 40, [118, 164, 132], 0.3]]) {
@@ -140,50 +174,148 @@ function fern(ctx, P, x, y, h, band) {
   ctx.beginPath(); ctx.ellipse(x, y - h * 0.3, h * 0.7, h * 0.32, 0, Math.PI, 0); ctx.fill();
 }
 
-function car(ctx, env, steer, bump, t) {
-  const cx = W / 2, cy = H - 70 + bump;
+// the beams ahead after dark: two from the car, one from the bike
+function headlights(ctx, env, steer, cx, cy, kind) {
   const night = clamp((0.7 - env.light) / 0.35, 0, 1);
-  // headlights on the road ahead
-  if (night > 0.02) {
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (const side of [-1, 1]) {
-      const g = ctx.createLinearGradient(0, cy - 20, 0, HORIZON + 40);
-      g.addColorStop(0, `rgba(255,240,200,${0.22 * night})`); g.addColorStop(1, 'rgba(255,240,200,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(cx + side * 40, cy - 18); ctx.lineTo(cx + side * 70 - steer * 30, cy - 18);
-      ctx.lineTo(cx + side * 150 - steer * 120, HORIZON + 50); ctx.lineTo(cx + side * 10 - steer * 120, HORIZON + 50); ctx.fill();
-    }
-    ctx.restore();
+  if (night <= 0.02) return night;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const side of kind === 'bike' ? [0] : [-1, 1]) {
+    const g = ctx.createLinearGradient(0, cy - 20, 0, HORIZON + 40);
+    g.addColorStop(0, `rgba(255,240,200,${(kind === 'bike' ? 0.26 : 0.22) * night})`); g.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.fillStyle = g;
+    const a = side * 40, b = kind === 'bike' ? 26 : 30;
+    ctx.beginPath(); ctx.moveTo(cx + a - b, cy - 18); ctx.lineTo(cx + a + b - steer * 30, cy - 18);
+    ctx.lineTo(cx + side * 110 + 70 - steer * 120, HORIZON + 50); ctx.lineTo(cx + side * 110 - 70 - steer * 120, HORIZON + 50); ctx.fill();
   }
+  ctx.restore();
+  return night;
+}
+function tailGlow(ctx, night, points) {
+  if (night <= 0.02) return;
+  for (const [x, y] of points) { const g = ctx.createRadialGradient(x, y, 2, x, y, 40); g.addColorStop(0, `rgba(255,80,60,${0.45 * night})`); g.addColorStop(1, 'rgba(255,80,60,0)'); ctx.fillStyle = g; ctx.fillRect(x - 40, y - 40, 80, 80); }
+}
+// a scarf streaming back in the wind
+function scarf(ctx, x, y, t, len, col) {
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(x, y - 4);
+  for (let k = 1; k <= 6; k++) ctx.lineTo(x + k * len / 6, y - 4 + Math.sin(t * 9 - k * 0.9) * (1 + k * 0.9) + k * 0.6);
+  for (let k = 6; k >= 0; k--) ctx.lineTo(x + k * len / 6, y + 3 + Math.sin(t * 9 - k * 0.9) * (1 + k * 0.9) + k * 0.9);
+  ctx.closePath(); ctx.fill();
+}
+
+// an open-top car seen from behind: a folded soft top on the rear deck, two seats, the driver
+// (hair and scarf in the wind), the windscreen's frame beyond
+function car(ctx, env, steer, bump, t, crash) {
+  const cx = W / 2, cy = H - 70 + bump;
+  const night = headlights(ctx, env, steer, cx, cy, 'car');
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(steer * 0.04);
+  ctx.rotate(steer * 0.04 + crash * 0.05);
   const shade = (c) => css(rgbOf(c).map((v) => v * (0.35 + 0.65 * env.light)));
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(0, 34, 96, 14, 0, 0, Math.PI * 2); ctx.fill();
+  // the windscreen, far side of the open cabin
+  ctx.fillStyle = `rgba(${env.skyBot.map((v) => Math.round(v)).join(',')},.28)`;
+  ctx.strokeStyle = shade('#c9ced2'); ctx.lineWidth = 3; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(-60, -22); ctx.lineTo(-52, -54); ctx.quadraticCurveTo(0, -60, 52, -54); ctx.lineTo(60, -22); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // the driver: shoulders, head, hair lifting in the wind, a scarf
+  ctx.fillStyle = shade('#3f6f8a'); ctx.beginPath(); ctx.roundRect(-52, -50, 44, 30, [14, 14, 4, 4]); ctx.fill();
+  ctx.fillStyle = shade('#d9a27c'); ctx.beginPath(); ctx.roundRect(-35, -58, 10, 10, 3); ctx.fill();
+  ctx.fillStyle = shade('#3a2a20'); ctx.beginPath(); ctx.arc(-30, -66, 13, 0, Math.PI * 2); ctx.fill();
+  for (let k = 0; k < 4; k++) { const a = -2.2 + k * 0.35; ctx.beginPath(); ctx.ellipse(-30 + Math.cos(a) * 12 + 4, -66 + Math.sin(a) * 12, 6, 2.6, a + 0.5 + Math.sin(t * 11 + k) * 0.25, 0, Math.PI * 2); ctx.fill(); }
+  scarf(ctx, -24, -52, t, 34, shade('#e8a15a'));
+  // seats: two backs and headrests, the driver's head above the left one
+  ctx.fillStyle = shade('#6b3f2d');
+  ctx.beginPath(); ctx.roundRect(-52, -38, 40, 18, 8); ctx.roundRect(12, -38, 40, 18, 8); ctx.fill();
+  ctx.fillStyle = shade('#5a3426');
+  ctx.beginPath(); ctx.roundRect(-41, -52, 18, 15, 6); ctx.roundRect(23, -52, 18, 15, 6); ctx.fill();
+  // the soft top, folded down on the rear deck
+  ctx.fillStyle = shade('#2f3b3c'); ctx.beginPath(); ctx.roundRect(-64, -34, 128, 13, 7); ctx.fill();
+  ctx.strokeStyle = shade('#435354'); ctx.lineWidth = 1.2;
+  for (const x of [-40, -12, 16, 44]) { ctx.beginPath(); ctx.moveTo(x, -33); ctx.quadraticCurveTo(x + 3, -27, x, -22); ctx.stroke(); }
+  if (env.snow > 0.3) { ctx.fillStyle = `rgba(245,248,252,${(env.snow - 0.3) * 1.2})`; ctx.beginPath(); ctx.roundRect(-62, -36, 124, 5, 3); ctx.fill(); }
+  // the body
   ctx.fillStyle = '#1f2124';
   ctx.beginPath(); ctx.roundRect(-84, 6, 30, 30, 6); ctx.roundRect(54, 6, 30, 30, 6); ctx.fill();
   ctx.fillStyle = shade('#6fb3a6');
   ctx.beginPath(); ctx.roundRect(-90, -24, 180, 46, 18); ctx.fill();
   ctx.fillStyle = shade('#5c9f93');
   ctx.beginPath(); ctx.roundRect(-90, 4, 180, 18, [0, 0, 18, 18]); ctx.fill();
-  ctx.fillStyle = shade('#6fb3a6');
-  ctx.beginPath(); ctx.moveTo(-58, -24); ctx.quadraticCurveTo(-52, -66, 0, -68); ctx.quadraticCurveTo(52, -66, 58, -24); ctx.fill();
-  if (env.snow > 0.3) { ctx.fillStyle = `rgba(245,248,252,${(env.snow - 0.3) * 1.2})`; ctx.beginPath(); ctx.moveTo(-50, -40); ctx.quadraticCurveTo(0, -78, 50, -40); ctx.quadraticCurveTo(0, -60, -50, -40); ctx.fill(); }
-  ctx.fillStyle = shade('#cfe6ea');
-  ctx.beginPath(); ctx.moveTo(-46, -26); ctx.quadraticCurveTo(-42, -58, 0, -59); ctx.quadraticCurveTo(42, -58, 46, -26); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(-30, -30); ctx.lineTo(-14, -54); ctx.lineTo(-4, -54); ctx.lineTo(-20, -30); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.beginPath(); ctx.roundRect(-80, -21, 160, 5, 3); ctx.fill();
   // tail lights glow brighter after dark
   ctx.fillStyle = night > 0.1 ? '#ff5a4a' : '#e8775a';
   ctx.beginPath(); ctx.roundRect(-82, -12, 26, 12, 5); ctx.roundRect(56, -12, 26, 12, 5); ctx.fill();
-  if (night > 0.02) {
-    for (const side of [-69, 69]) { const g = ctx.createRadialGradient(side, -6, 2, side, -6, 40); g.addColorStop(0, `rgba(255,80,60,${0.45 * night})`); g.addColorStop(1, 'rgba(255,80,60,0)'); ctx.fillStyle = g; ctx.fillRect(side - 40, -46, 80, 80); }
-  }
+  tailGlow(ctx, night, [[-69, -6], [69, -6]]);
   ctx.fillStyle = shade('#e9e2d0'); ctx.beginPath(); ctx.roundRect(-92, 14, 184, 8, 4); ctx.fill();
   ctx.fillStyle = '#f6f1e4'; ctx.fillRect(-20, -8, 40, 14);
   ctx.fillStyle = '#5c6b66'; ctx.font = '600 9px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.fillText('ZEN', 0, 3);
-  ctx.fillStyle = `rgba(255,255,255,${0.22 + Math.sin(t * 6) * 0.07})`;
-  ctx.beginPath(); ctx.arc(70, 26 + Math.sin(t * 4) * 2, 7, 0, Math.PI * 2); ctx.fill();
+  if (!crash) { ctx.fillStyle = `rgba(255,255,255,${0.22 + Math.sin(t * 6) * 0.07})`; ctx.beginPath(); ctx.arc(70, 26 + Math.sin(t * 4) * 2, 7, 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
+}
+
+// a motorbike seen from behind, leaning into the turns: rider in a jacket and helmet, mirrors
+// on their stalks, one tail light, a scarf streaming
+function bike(ctx, env, steer, bump, t, crash) {
+  const cx = W / 2, cy = H - 70 + bump;
+  const night = headlights(ctx, env, steer, cx, cy, 'bike');
+  const shade = (c) => css(rgbOf(c).map((v) => v * (0.35 + 0.65 * env.light)));
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(cx, cy + 34, 42, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save();
+  ctx.translate(cx, cy + 34);   // lean about the tyre's contact with the road
+  ctx.rotate(steer * 0.2 + crash * 0.42);
+  // handlebars and mirrors beyond the rider
+  ctx.strokeStyle = shade('#2a2c30'); ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-52, -96); ctx.quadraticCurveTo(0, -102, 52, -96); ctx.stroke();
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-44, -97); ctx.lineTo(-56, -122); ctx.moveTo(44, -97); ctx.lineTo(56, -122); ctx.stroke();
+  ctx.fillStyle = shade('#3a3d42'); ctx.beginPath(); ctx.ellipse(-58, -126, 9, 6, -0.2, 0, Math.PI * 2); ctx.ellipse(58, -126, 9, 6, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = shade('#26282c'); ctx.beginPath(); ctx.roundRect(-58, -101, 13, 9, 4); ctx.roundRect(45, -101, 13, 9, 4); ctx.fill();
+  // the rear tyre and mudguard
+  ctx.fillStyle = '#1c1d20'; ctx.beginPath(); ctx.roundRect(-11, -44, 22, 44, 9); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(-3, -40, 3, 36);
+  ctx.fillStyle = shade('#4f8f86'); ctx.beginPath(); ctx.roundRect(-15, -58, 30, 20, [10, 10, 4, 4]); ctx.fill();
+  // exhaust
+  ctx.fillStyle = shade('#b9bec4'); ctx.beginPath(); ctx.roundRect(16, -46, 11, 30, 5); ctx.fill();
+  ctx.fillStyle = shade('#6c7076'); ctx.beginPath(); ctx.ellipse(21.5, -16, 4.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // tail light and plate
+  ctx.fillStyle = night > 0.1 ? '#ff5a4a' : '#e8775a'; ctx.beginPath(); ctx.roundRect(-12, -66, 24, 8, 4); ctx.fill();
+  tailGlow(ctx, night, [[0, -62]]);
+  ctx.fillStyle = '#f6f1e4'; ctx.fillRect(-13, -56, 26, 11);
+  ctx.fillStyle = '#5c6b66'; ctx.font = '600 8px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.fillText('ZEN', 0, -47.5);
+  // the rider: legs either side of the tank, boots on the pegs, jacket, helmet
+  ctx.fillStyle = shade('#3c4a66');
+  ctx.beginPath(); ctx.roundRect(-34, -78, 16, 40, 7); ctx.roundRect(18, -78, 16, 40, 7); ctx.fill();
+  ctx.fillStyle = shade('#2a2522'); ctx.beginPath(); ctx.roundRect(-36, -42, 18, 12, 4); ctx.roundRect(18, -42, 18, 12, 4); ctx.fill();
+  ctx.fillStyle = shade('#26282c'); ctx.beginPath(); ctx.roundRect(-22, -76, 44, 12, 6); ctx.fill();   // the seat
+  ctx.fillStyle = shade('#8a5a3a');
+  ctx.beginPath(); ctx.moveTo(-26, -70); ctx.lineTo(-32, -112); ctx.quadraticCurveTo(0, -124, 32, -112); ctx.lineTo(26, -70); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = shade('#8a5a3a'); ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(-28, -108); ctx.lineTo(-48, -97); ctx.moveTo(28, -108); ctx.lineTo(48, -97); ctx.stroke();
+  ctx.strokeStyle = shade('#6e472e'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -120); ctx.lineTo(0, -74); ctx.stroke();
+  scarf(ctx, 6, -122, t, 30, shade('#e8a15a'));
+  ctx.fillStyle = shade('#ece6d6'); ctx.beginPath(); ctx.arc(0, -136, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = shade('#4f8f86'); ctx.fillRect(-3.5, -152, 7, 32);
+  ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(-6, -142, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// into the trees: ferns and leaves close in around the vehicle, a few leaves shaken loose
+function woods(ctx, st) {
+  const { crash, leaves, env } = st;
+  if (!crash) return;
+  const k = Math.min(1, crash * 1.6), dark = 0.35 + 0.65 * env.light;
+  const P = (c, a = 1) => `rgba(${rgbOf(c).map((v) => Math.round(v * dark)).join(',')},${a})`;
+  for (let i = 0; i < 9; i++) {
+    const x = (i + 0.5) * (W / 9) + Math.sin(i * 7.1) * 24, h = (70 + hash(i, 41) * 90) * k;
+    ctx.fillStyle = P(i % 2 ? '#2f6a3a' : '#3c7d44', 0.95);
+    for (let f = -3; f <= 3; f++) {
+      const a = -Math.PI / 2 + f * 0.32 + Math.sin(st.t * 1.6 + i) * 0.04;
+      ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * h * 0.45, H + 6 + Math.sin(a) * h * 0.45, h * 0.5, 9, a, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  for (const l of leaves) {
+    ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.rot);
+    ctx.fillStyle = P(l.col, Math.min(1, l.life)); ctx.beginPath(); ctx.ellipse(0, 0, l.r, l.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
 }
 
 function render(ctx, st) {
@@ -261,51 +393,83 @@ function render(ctx, st) {
   if (env.rain > 0.02) {
     ctx.strokeStyle = `rgba(210,222,240,${0.35 * env.rain})`; ctx.lineWidth = 1.2;
     ctx.beginPath();
-    for (const d of st.drops) { if (d.k > env.rain) continue; ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 4 - steer * 6, d.y + 18); }
+    const len = 18 + env.storm * 10, lean = 4 + env.storm * 8;   // a storm drives the rain harder and slanting
+    for (const d of st.drops) { if (d.k > env.rain) continue; ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - lean - steer * 6, d.y + len); }
     ctx.stroke();
   }
   if (env.snowfall > 0.02) {
     ctx.fillStyle = 'rgba(255,255,255,.9)';
     for (const f of st.flakes) { if (f.k > env.snowfall) continue; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); }
   }
-  car(ctx, env, steer, Math.sin(t * 18) * Math.min(1.5, speed / 2400) + (Math.abs(playerX) > 1 ? Math.sin(t * 40) * 1.5 : 0), t);
+  const bump = Math.sin(t * 18) * Math.min(1.5, speed / 2400) + (Math.abs(playerX) > 1 ? Math.sin(t * 40) * 1.5 * Math.min(1, speed / 900) : 0);
+  (st.vehicle === 'bike' ? bike : car)(ctx, env, steer, bump, t, st.crash ? Math.sign(playerX) * Math.min(1, st.crash * 2) : 0);
+  woods(ctx, st);
+  if (env.flash > 0.01) { ctx.fillStyle = `rgba(232,238,255,${env.flash * 0.32})`; ctx.fillRect(0, 0, W, H); }   // the lightning lights everything
 }
 
 /* ——— the environment: the hour and the weather, blended smoothly ——— */
-const WEATHERS = ['clear', 'clear', 'cloudy', 'rain', 'clear', 'snow', 'cloudy'];
+const WEATHERS = ['sunny', 'clear', 'cloudy', 'rain', 'thunder', 'clear', 'snow', 'cloudy'];   // the drift, left alone
+const KINDS = ['sunny', 'clear', 'cloudy', 'rain', 'thunder', 'snow'];                           // what Space shuffles through
+const WX_LABEL = { sunny: 'sunny', clear: 'clear', cloudy: 'cloudy', rain: 'rain', thunder: 'thunderstorm', snow: 'snow' };
+const WX_BANNER = { sunny: 'Sunny', clear: 'Clear skies', cloudy: 'Cloudy', rain: 'Rain', thunder: 'Thunderstorm', snow: 'Snow' };
+// how each weather sets the sky: cloud cover, rain, snowfall, storm, sunshine
+const WX_GOAL = {
+  sunny: { cloud: 0, rain: 0, snowfall: 0, storm: 0, sun: 1 },
+  clear: { cloud: 0.08, rain: 0, snowfall: 0, storm: 0, sun: 0 },
+  cloudy: { cloud: 0.75, rain: 0, snowfall: 0, storm: 0, sun: 0 },
+  rain: { cloud: 0.9, rain: 1, snowfall: 0, storm: 0, sun: 0 },
+  thunder: { cloud: 1, rain: 1, snowfall: 0, storm: 1, sun: 0 },
+  snow: { cloud: 0.85, rain: 0, snowfall: 1, storm: 0, sun: 0 },
+};
 export function envFor(dayT, wx) {
   const sky = skyAt(dayT);
-  const cloud = wx.cloud, light = sky.light * (1 - cloud * 0.28);
-  const grey = mixRgb(sky.bot, [150, 156, 166].map((v) => v * (0.3 + 0.7 * sky.light)), cloud * 0.6);
+  const storm = wx.storm || 0, sun = wx.sun || 0;
+  const cloud = wx.cloud, light = Math.min(1, sky.light * (1 - cloud * 0.28) * (1 - storm * 0.3) * (1 + sun * 0.06));
+  const grey = mixRgb(sky.bot, [150, 156, 166].map((v) => v * (0.3 + 0.7 * sky.light) * (1 - storm * 0.35)), cloud * 0.6);
+  const day = clamp((sky.light - 0.5) / 0.4, 0, 1);
   return {
-    dayT, light, tint: sky.tint, cloud, rain: wx.rain, snowfall: wx.snowfall, snow: wx.snowCover, wet: wx.wet,
-    skyTop: mixRgb(sky.top, grey, cloud * 0.55), skyBot: grey, fog: grey,
-    fogMax: 0.22 + cloud * 0.18 + wx.rain * 0.08,   // a touch of distance, never a haze
+    dayT, light, tint: sky.tint, cloud, rain: wx.rain, snowfall: wx.snowfall, snow: wx.snowCover, wet: wx.wet, storm, sun,
+    skyTop: mixRgb(mixRgb(sky.top, [62, 140, 226], sun * day * 0.3), grey, cloud * 0.55), skyBot: grey, fog: grey,
+    fogMax: 0.22 + cloud * 0.18 + wx.rain * 0.08 - sun * 0.06,   // a touch of distance, never a haze
+    flash: wx.flash || 0, bolt: wx.bolt || null,
   };
 }
-const WX_NAME = (w) => (w.rain > 0.5 ? 'rain' : w.snowfall > 0.5 ? 'snow' : w.cloud > 0.5 ? 'cloudy' : 'clear');
 const HOUR_NAME = (d) => (d < 0.2 ? 'night' : d < 0.3 ? 'sunrise' : d < 0.66 ? 'day' : d < 0.76 ? 'sunset' : 'night');
 
 // a still of any hour and weather (the shelf's thumbnail uses a sunset)
 export function still(ctx, dayT, w = {}) {
-  const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0, ...w };
+  const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0, storm: 0, sun: 0, ...w };
   const drops = Array.from({ length: 160 }, (_, i) => ({ x: hash(i, 21) * W, y: hash(i, 22) * H, k: hash(i, 23) }));
   const flakes = Array.from({ length: 140 }, (_, i) => ({ x: hash(i, 31) * W, y: hash(i, 32) * H, r: 1 + hash(i, 33) * 2.4, k: hash(i, 34) }));
   render(ctx, { pos: 5200, playerX: 0, steer: 0, t: 1, speed: 2000, env: envFor(dayT, wx), drops, flakes });
 }
 export function preview(ctx) { still(ctx, 0.67); }
 
-export function start(canvas, { setScore, isPaused }) {
+export function start(canvas, { setScore, isPaused, finish }) {
   const ctx = setupCanvas(canvas);
   let t = 0, pos = 0, playerX = 0, speed = 0, steer = 0, left = false, right = false, up = false, down = false, started = false, pointerX = null;
-  let dayT = 0.27, wIdx = 0, wNext = 50 + Math.random() * 30;
-  const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0 };
+  // the day's ride, chosen at random (about one drive in three is on two wheels)
+  const pick = () => (Math.random() < 0.35 ? 'bike' : 'car');
+  let vehicle = pick(), crash = 0, carded = false, leaves = [], journeyAt = Math.floor(Math.random() * JOURNEY.length);
+  let dayT = 0.27, wIdx = 0, wNext = 50 + Math.random() * 30, want = 'sunny', quick = 0, banner = null;
+  let bag = [], strikeIn = 3, thunderAt = Infinity, flicker = Infinity;
+  const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0, storm: 0, sun: 0, flash: 0, bolt: null };
+  // Space: the next weather from a shuffled bag (never the one already here), turning quickly
+  const nextWeather = () => {
+    if (!bag.length) bag = KINDS.filter((k) => k !== want).sort(() => Math.random() - 0.5);
+    want = bag.pop();
+    quick = 4; wNext = 70 + Math.random() * 40;
+    banner = { text: WX_BANNER[want], l: 2.2 };
+    if (want === 'thunder') strikeIn = 1.2;
+    swish(0.04);
+  };
   const drops = Array.from({ length: 160 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 900 + Math.random() * 500, k: Math.random() }));
   const flakes = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 50 + Math.random() * 70, r: 1 + Math.random() * 2.4, p: Math.random() * 6, k: Math.random() }));
   const CRUISE = 2600, MAX = 4200, MIN = 1400;
   let target = CRUISE;
   const onKey = (e) => {
     const on = e.type === 'keydown';
+    if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); if (on && !e.repeat) nextWeather(); return; }
     if (e.key === 'ArrowLeft' || e.key === 'a') { left = on; e.preventDefault(); }
     else if (e.key === 'ArrowRight' || e.key === 'd') { right = on; e.preventDefault(); }
     else if (e.key === 'ArrowUp' || e.key === 'w') { up = on; e.preventDefault(); }
@@ -327,42 +491,110 @@ export function start(canvas, { setScore, isPaused }) {
     dayT = (dayT + dt / DAY) % 1;
     // the weather drifts from one state to the next over several seconds
     wNext -= dt;
-    if (wNext <= 0) { wIdx = (wIdx + 1 + Math.floor(Math.random() * 2)) % WEATHERS.length; wNext = 45 + Math.random() * 45; }
-    const want = WEATHERS[wIdx];
-    const ease = (v, goal, rate) => v + (goal - v) * Math.min(1, dt * rate);
-    wx.cloud = ease(wx.cloud, want === 'clear' ? 0 : want === 'cloudy' ? 0.75 : 0.9, 0.25);
-    wx.rain = ease(wx.rain, want === 'rain' ? 1 : 0, 0.3);
-    wx.snowfall = ease(wx.snowfall, want === 'snow' ? 1 : 0, 0.3);
-    wx.snowCover = clamp(wx.snowCover + (want === 'snow' ? dt / 25 : -dt / 40), 0, 1);
-    wx.wet = clamp(wx.wet + (want === 'rain' ? dt / 8 : -dt / 30), 0, 1);
+    if (wNext <= 0) { wIdx = (wIdx + 1 + Math.floor(Math.random() * 2)) % WEATHERS.length; want = WEATHERS[wIdx]; wNext = 45 + Math.random() * 45; }
+    quick = Math.max(0, quick - dt);
+    const fast = quick > 0 ? 3.5 : 1;   // a change asked for with Space arrives in a few seconds
+    const ease = (v, goal, rate) => v + (goal - v) * Math.min(1, dt * rate * fast);
+    const goal = WX_GOAL[want];
+    wx.cloud = ease(wx.cloud, goal.cloud, 0.25);
+    wx.rain = ease(wx.rain, goal.rain, 0.3);
+    wx.snowfall = ease(wx.snowfall, goal.snowfall, 0.3);
+    wx.storm = ease(wx.storm, goal.storm, 0.3);
+    wx.sun = ease(wx.sun, goal.sun, 0.3);
+    wx.snowCover = clamp(wx.snowCover + (want === 'snow' ? dt / 25 : -dt / 40) * fast, 0, 1);
+    wx.wet = clamp(wx.wet + (goal.rain ? dt / 8 : -dt / 30) * fast, 0, 1);
+    // lightning in a storm: a flash (and a flicker), a forked bolt, thunder a moment later
+    if (wx.storm > 0.6) {
+      strikeIn -= dt;
+      if (strikeIn <= 0) {
+        wx.flash = 1; flicker = t + 0.13; strikeIn = 4 + Math.random() * 8;
+        const pts = [[60 + Math.random() * 520, 10]];
+        while (pts[pts.length - 1][1] < HORIZON - 30) { const [x, y] = pts[pts.length - 1]; pts.push([x + (Math.random() - 0.5) * 50, y + 14 + Math.random() * 22]); }
+        wx.bolt = pts;
+        thunderAt = t + 0.35 + Math.random() * 1.3;
+      }
+    }
+    if (t >= flicker) { wx.flash = Math.max(wx.flash, 0.75); flicker = Infinity; }
+    wx.flash = Math.max(0, wx.flash - dt * 3.2);
+    if (wx.flash <= 0) wx.bolt = null;
+    if (t >= thunderAt) { rumble(0.16 + Math.random() * 0.08); thunderAt = Infinity; }
+    if (Math.floor(t * 4) !== Math.floor((t - dt) * 4)) amb.set('rain', wx.rain * (0.8 + wx.storm * 0.4));
+    if (banner) { banner.l -= dt; if (banner.l <= 0) banner = null; }
     const env = envFor(dayT, wx);
 
     if (up) target = Math.min(MAX, target + 1400 * dt);
     if (down) target = Math.max(MIN, target - 1400 * dt);
     const offroad = Math.abs(playerX) > 1.05;
-    const goal = started ? (offroad ? Math.min(target, 1300) : target) : 900;
-    speed += (goal - speed) * Math.min(1, dt * 0.8);
-    pos += speed * dt;
-    const pct = speed / MAX;
-    let wantSteer = (right ? 1 : 0) - (left ? 1 : 0);
-    if (pointerX != null) wantSteer = clamp((pointerX - W / 2) / 140, -1, 1);
-    steer += (wantSteer - steer) * Math.min(1, dt * 6);
-    playerX += steer * dt * 0.95 * (0.4 + pct);
-    playerX -= curveAt(Math.floor(pos / SEG)) * pct * dt * 0.3;
-    if (!started) playerX += (0 - playerX) * dt;
-    playerX = clamp(playerX, -2.2, 2.2);
+    if (crash) {
+      // in among the trees: a soft stop, a few leaves shaken loose, then the card
+      crash += dt;
+      speed *= Math.exp(-dt * 5);
+      pos += speed * dt;
+      steer += (0 - steer) * Math.min(1, dt * 4);
+      for (const l of leaves) { l.vy += 260 * dt; l.x += l.vx * dt; l.y += l.vy * dt; l.vx *= 1 - dt * 0.8; l.rot += l.spin * dt; l.life -= dt * 0.45; }
+      leaves = leaves.filter((l) => l.life > 0 && l.y < H + 20);
+      if (crash > 1.5 && !carded) {
+        carded = true;
+        journeyAt = (journeyAt + 1) % JOURNEY.length;
+        const km = (pos / 20000).toFixed(1);
+        if (finish) finish({
+          title: vehicle === 'bike' ? 'the bike rests in the ferns' : 'the car rests in the ferns',
+          message: JOURNEY[journeyAt],
+          stats: `${km} km through the forest · ${HOUR_NAME(dayT)} · ${WX_LABEL[want]}`,
+          againLabel: 'Back on the road',
+          again: newJourney,
+        });
+        else newJourney();
+      }
+    } else {
+      const goal = started ? (offroad ? Math.min(target, 1300) : target) : 900;
+      speed += (goal - speed) * Math.min(1, dt * 0.8);
+      pos += speed * dt;
+      const pct = speed / MAX;
+      let wantSteer = (right ? 1 : 0) - (left ? 1 : 0);
+      if (pointerX != null) wantSteer = clamp((pointerX - W / 2) / 140, -1, 1);
+      steer += (wantSteer - steer) * Math.min(1, dt * 6);
+      playerX += steer * dt * 0.95 * (0.4 + pct);
+      // hands off the wheel, the car mostly follows the bend and drifts back to its lane: only
+      // steering on into the trees takes you there
+      const hands = left || right || pointerX != null;
+      playerX -= curveAt(Math.floor(pos / SEG)) * pct * dt * 0.3 * (hands ? 1 : 0.2);
+      if (!hands) playerX += (0 - playerX) * Math.min(1, dt * 0.6);
+      if (!started) playerX += (0 - playerX) * dt;
+      playerX = clamp(playerX, -2.2, 2.2);
+      if (started && Math.abs(playerX) > CRASH_AT) {
+        crash = 0.001;
+        leaves = Array.from({ length: 26 }, (_, i) => ({
+          x: W / 2 + (Math.random() - 0.5) * 220, y: H - 120 - Math.random() * 90,
+          vx: (Math.random() - 0.5) * 220 - Math.sign(playerX) * 60, vy: -120 - Math.random() * 160,
+          r: 4 + Math.random() * 5, rot: Math.random() * 6, spin: (Math.random() - 0.5) * 8, life: 1 + Math.random() * 0.8,
+          col: ['#4f8a3e', '#6f9a3a', '#b58a3a', '#3c7d44'][i % 4],
+        }));
+        swish(0.06);
+        setScore(`${(pos / 20000).toFixed(1)} km · into the trees`);
+      }
+    }
     for (const d of drops) { d.y += d.v * dt; d.x -= (60 + steer * 120) * dt; if (d.y > H) { d.y = -20; d.x = Math.random() * (W + 80); } }
     for (const f of flakes) { f.y += f.v * dt; f.x += (Math.sin(t + f.p) * 18 - steer * 60) * dt; if (f.y > H) { f.y = -6; f.x = Math.random() * W; } if (f.x < -10) f.x += W + 20; if (f.x > W + 10) f.x -= W + 20; }
 
-    render(ctx, { pos, playerX, steer, t, speed, env, drops, flakes });
-    if (!started) card(ctx, [{ text: 'Forest Drive', size: 34, weight: 700 }, { text: '← → to steer, ↑ ↓ for pace — or drag', size: 17, weight: 500 }], { y: 150, shadow: 'rgba(20,50,30,.5)' });
-    if (Math.floor(t * 2) !== Math.floor((t - dt) * 2)) setScore(`${(pos / 20000).toFixed(1)} km · ${HOUR_NAME(dayT)} · ${WX_NAME(wx)}${offroad ? ' · on the verge' : ''}`);
+    render(ctx, { pos, playerX, steer, t, speed, env, drops, flakes, vehicle, crash, leaves });
+    if (!started) card(ctx, [{ text: 'Forest Drive', size: 34, weight: 700 }, { text: vehicle === 'bike' ? 'Today, by motorbike' : 'Today, top down', size: 15, weight: 600 }, { text: '← → to steer, ↑ ↓ for pace — or drag', size: 17, weight: 500 }, { text: 'Space changes the weather', size: 14, weight: 500, alpha: 0.85 }], { y: 160, shadow: 'rgba(20,50,30,.5)' });
+    if (banner && started) card(ctx, [{ text: banner.text, size: 26, weight: 700, alpha: Math.min(1, banner.l / 0.6) }], { y: 96, shadow: 'rgba(20,40,60,.55)' });
+    if (!crash && Math.floor(t * 2) !== Math.floor((t - dt) * 2)) setScore(`${(pos / 20000).toFixed(1)} km · ${HOUR_NAME(dayT)} · ${WX_LABEL[want]}${offroad ? ' · on the verge' : ''}`);
+  }
+  // back on the road for a new journey: the hour and the weather carry on, the ride may change
+  function newJourney() {
+    pos = 0; playerX = 0; speed = 0; steer = 0; target = CRUISE;
+    crash = 0; carded = false; leaves = []; started = true;
+    vehicle = pick();
+    setScore('0.0 km');
   }
   setScore('0.0 km');
+  const amb = playAmbience({ rain: 0 }, isPaused);   // the rain's own sound, kept low under the music
   const stop = runLoop(update, isPaused);
   const stopMusic = playMusic(CANON, isPaused);
   return () => {
-    stop(); stopMusic();
+    stop(); stopMusic(); amb.stop();
     for (const [ev, fn] of [['keydown', onKey], ['keyup', onKey], ['pointerdown', onPointer], ['pointermove', onPointer], ['pointerup', onUp], ['pointercancel', onUp]]) canvas.removeEventListener(ev, fn);
   };
 }

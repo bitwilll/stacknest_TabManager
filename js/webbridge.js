@@ -332,9 +332,14 @@ function settingsOut(raw) {
   return out;
 }
 
+// the person's own image that 'custom' shows: the gallery's active one ({ images, active }),
+// or the single image stored before the gallery ({ dataUrl, tone })
 function wallpaperOut(raw) {
-  if (!isObj(raw) || typeof raw.dataUrl !== 'string' || !raw.dataUrl.startsWith('data:image/')) return { custom: null };
-  return { custom: { dataUrl: raw.dataUrl, tone: str(raw.tone, 20) || null } };
+  const ok = (x) => isObj(x) && typeof x.dataUrl === 'string' && x.dataUrl.startsWith('data:image/');
+  const list = ok(raw) ? [raw] : (isObj(raw) && Array.isArray(raw.images) ? raw.images.filter(ok) : []);
+  const img = list.find((x) => x.id === raw?.active) || list[0];
+  if (!img) return { custom: null };
+  return { custom: { dataUrl: img.dataUrl, tone: str(img.tone, 20) || null } };
 }
 
 /* ————— the one write: tick a to-do, or untick it ————— */

@@ -1,365 +1,416 @@
-// Llama Trail — a llama slides down from the mountains and ambles along an endless forest path. Space, ↑ or a tap hops it over
-// stones, logs and bushes; apples hang along the way. A stumble is not a game over screen,
-// just a sit-down and a breath before walking on. The light drifts from morning through gold
-// to dusk and back as the walk goes on; the pace rises slowly and never gets frantic. Bach's
-// Prelude in C plays softly underneath (js/arcade-kit.js).
+// Llama Trail — a llama on a little red sled, riding an endless mountainside down through the
+// snow. The slope rolls (long swells, crests that lift you into the air, the odd kicker); the
+// speed builds downhill and eases uphill. Space, ↑ or a tap jumps; hold it in the air to flip
+// backwards, and land with the sled along the snow to keep the flow (a flip gives a burst of
+// speed). Rocks are to be hopped; apples hang above the snow. A landing on your head or a rock
+// is a tumble into soft snow, a sit-down, and the card. The sky turns through dawn, day, gold,
+// dusk and a starry night as you go. Bach's Prelude in C plays softly underneath.
 
-import { SIZE, setupCanvas, runLoop, note, card, mix, playMusic, PRELUDE } from './arcade-kit.js';
+import { SIZE, setupCanvas, runLoop, note, card, clamp, playMusic, PRELUDE, swish } from './arcade-kit.js';
 
-export const meta = { id: 'llama', title: 'Llama Trail', blurb: 'Hop over stones on an endless forest path.', keys: 'Space, ↑ or tap to hop' };
+export const meta = { id: 'llama', title: 'Llama Trail', blurb: 'Sled an endless mountainside: jump, flip, ride the snow.', keys: 'Space, ↑ or tap to jump · hold to flip' };
 const BEST_KEY = 'stacknest:arcade-llama-best';
 
-const GROUND = 520;
-const SKIES = [   // top, bottom, sun, hills, far forest, near forest, path, mountains
-  ['#bfe0f0', '#f4eedd', '#fff6d8', '#b9cdb6', '#7fa38a', '#4f7a5e', '#cfb58e', '#9fb3c8'],
-  ['#f2c79a', '#fbe7c6', '#ffe1a6', '#d1b28f', '#9a9a6e', '#5f7350', '#d6b086', '#b59c95'],
-  ['#5b5a8a', '#e3a58f', '#ffd0a0', '#8a7091', '#5d5a78', '#3a4258', '#a98a78', '#6c5f86'],
+const W = SIZE, H = SIZE;
+const G = 1350, G_AIR = 1000, DRAG = 0.42, MINV = 170, MAXV = 640, JUMP = 610, FLIP = 8.4, FLIP_AFTER = 0.16, LX = 210;   // the air is floatier than the snow
+const TAU = Math.PI * 2;
+const wrapAng = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+// colours as '#rrggbb' or 'rgb(…)', blended (the day's palette is itself a blend)
+const rgbOf = (c) => (c[0] === '#' ? [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)) : c.match(/[\d.]+/g).slice(0, 3).map(Number));
+const blend = (a, b, t) => { const x = rgbOf(a), y = rgbOf(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(',')})`; };
+
+/* ——— the mountainside: long swells over a steady fall, and a kicker now and then ——— */
+function makeGround(seed) {
+  const p1 = seed * 1.7, p2 = seed * 2.9, p3 = seed * 4.3;
+  const kicker = (x) => {
+    const k = ((x + seed * 97) % 980 + 980) % 980;
+    if (k < 640 || k > 800) return 0;
+    const u = (k - 640) / 160;
+    return -46 * Math.sin(Math.PI * u) ** 2 * (u < 0.7 ? 1 : 1 - (u - 0.7) * 1.6);   // a lip at the top
+  };
+  const y = (x) => x * 0.34 + 66 * Math.sin(x / 340 + p1) + 28 * Math.sin(x / 142 + p2) + 10 * Math.sin(x / 61 + p3) + kicker(x);
+  const angle = (x) => Math.atan2(y(x + 2) - y(x - 2), 4);
+  return { y, angle };
+}
+
+/* ——— the day: dawn, day, gold, dusk, night ——— */
+const DAYS = [   // sky top, sky low, far range, mid range, near range, forest, snow, snow shade, light
+  ['#2e3a6b', '#f2b48c', '#8e8fb6', '#6f7099', '#4f5679', '#343a58', '#f6e9e8', '#bdb5d2', 0.8],
+  ['#69abe2', '#dcf0f7', '#a9c4dc', '#84a6c4', '#5f86a8', '#3c5e78', '#f8fbff', '#c3d6e8', 1],
+  ['#ee9f68', '#fde2b0', '#d39c86', '#b0787a', '#865c6e', '#563f55', '#fff2e2', '#e0bfae', 0.9],
+  ['#3b3266', '#d8778a', '#8b5f86', '#6a4a73', '#4b3a60', '#2f2846', '#ecdcea', '#a993b8', 0.62],
+  ['#0b1030', '#26315e', '#2c3866', '#222c55', '#1a2246', '#10162f', '#ccd5ef', '#7f8cb6', 0.42],
 ];
-// a snowy range far behind everything (tiles every 1280)
-const PEAKS = [[0, 300], [120, 170], [230, 262], [360, 118], [500, 250], [640, 160], [760, 280], [900, 136], [1040, 252], [1160, 186], [1280, 300]];
-function drawMountains(ctx, off, color) {
-  for (const shift of [0, 1280]) {
-    const pts = PEAKS.map(([x, y]) => [x - off + shift, y + 40]);
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0], 460);
-    for (const [x, y] of pts) ctx.lineTo(x, y);
-    ctx.lineTo(pts[pts.length - 1][0], 460);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.save();
-    ctx.clip();
-    const g = ctx.createLinearGradient(0, 150, 0, 270);
-    g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(pts[0][0], 140, 1280, 140);
-    ctx.restore();
-  }
-}
-// the slope the llama slides down at the start of a walk: from the mountainside to the path
-const SLIDE = { p0: [-20, 360], c: [70, 470], p1: [150, GROUND] };
-const onSlide = (s) => {
-  const u = 1 - s, { p0, c, p1 } = SLIDE;
-  return { x: u * u * p0[0] + 2 * u * s * c[0] + s * s * p1[0], y: u * u * p0[1] + 2 * u * s * c[1] + s * s * p1[1],
-    a: Math.atan2(2 * u * (c[1] - p0[1]) + 2 * s * (p1[1] - c[1]), 2 * u * (c[0] - p0[0]) + 2 * s * (p1[0] - c[0])) };
-};
-function drawSlope(ctx, shift, near) {
-  const { p0, c, p1 } = SLIDE;
-  ctx.save();
-  ctx.translate(-shift, 0);
-  ctx.beginPath();
-  ctx.moveTo(-60, SIZE);
-  ctx.lineTo(-60, p0[1] - 10);
-  ctx.lineTo(p0[0], p0[1]);
-  ctx.quadraticCurveTo(c[0], c[1], p1[0] + 60, p1[1] + 2);
-  ctx.lineTo(p1[0] + 60, SIZE);
-  ctx.closePath();
-  ctx.fillStyle = near;
-  ctx.fill();
-  // snow along the top of the slope, thinning toward the path
-  ctx.beginPath();
-  ctx.moveTo(-60, p0[1] - 10);
-  ctx.lineTo(p0[0], p0[1]);
-  ctx.quadraticCurveTo(c[0], c[1], p1[0] + 60, p1[1] + 2);
-  ctx.lineTo(p1[0] + 30, p1[1] + 6);
-  ctx.quadraticCurveTo(c[0] - 10, c[1] + 16, p0[0], p0[1] + 22);
-  ctx.lineTo(-60, p0[1] + 14);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(255,255,255,.9)';
-  ctx.fill();
-  ctx.restore();
+function dayAt(c) {   // c in [0,1)
+  const n = DAYS.length, x = c * n, i = Math.floor(x) % n, j = (i + 1) % n, t = x - Math.floor(x);
+  const e = t < 0.6 ? 0 : ((t - 0.6) / 0.4) ** 2 * (3 - 2 * (t - 0.6) / 0.4);   // hold each hour, then turn
+  return DAYS[i].map((v, k) => (k === 8 ? v + (DAYS[j][k] - v) * e : blend(v, DAYS[j][k], e)));
 }
 
-function skyAt(p) {   // p in [0,1): morning → gold → dusk → morning
-  const n = SKIES.length, x = p * n, i = Math.floor(x) % n, j = (i + 1) % n, t = x - Math.floor(x);
-  const e = t * t * (3 - 2 * t);
-  return SKIES[i].map((c, k) => mix(c, SKIES[j][k], e));
-}
+/* ——— the ranges behind ——— */
+const peak = (u) => 1 - Math.abs(Math.sin(u));
+const RANGES = [
+  { f: 0.05, base: 340, amp: 175, w1: 260, w2: 113, w3: 47, s: 0.4, col: 2, cap: 1 },
+  { f: 0.12, base: 395, amp: 135, w1: 190, w2: 83, w3: 37, s: 1.9, col: 3, cap: 0.55 },
+  { f: 0.26, base: 450, amp: 90, w1: 150, w2: 64, w3: 29, s: 3.1, col: 4, cap: 0, trees: true },
+];
+const ridgeY = (x, L) => L.base - L.amp * (0.6 * peak(x / L.w1 + L.s) + 0.3 * peak(x / L.w2 + L.s * 2.1) + 0.1 * Math.sin(x / L.w3));
 
-function rng(seed) { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647); }
-
-// a repeating ridge (hills, tree line) of width 1280 so it tiles while scrolling
-function ridgePts(seed, base, amp, n = 16) {
-  const r = rng(seed); const pts = [];
-  for (let i = 0; i <= n; i++) pts.push([(i / n) * 1280, base - r() * amp]);
-  pts[n][1] = pts[0][1];
-  return pts;
-}
-function drawRidge(ctx, pts, off, color) {
-  ctx.fillStyle = color;
-  for (const shift of [0, 1280]) {
-    ctx.beginPath();
-    ctx.moveTo(-off + shift, SIZE);
-    ctx.lineTo(-off + shift + pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) {
-      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], mx = (x0 + x1) / 2;
-      ctx.bezierCurveTo(-off + shift + mx, y0, -off + shift + mx, y1, -off + shift + x1, y1);
-    }
-    ctx.lineTo(-off + shift + 1280, SIZE);
-    ctx.closePath();
-    ctx.fill();
-  }
-}
 function pine(ctx, x, base, h, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
   for (let k = 0; k < 3; k++) {
-    const top = base - h + k * h * 0.22, w = h * (0.22 + k * 0.1);
-    ctx.moveTo(x, top);
-    ctx.lineTo(x - w, top + h * 0.42);
-    ctx.lineTo(x + w, top + h * 0.42);
+    const top = base - h + k * h * 0.22, w = h * (0.2 + k * 0.1);
+    ctx.moveTo(x, top); ctx.lineTo(x - w, top + h * 0.42); ctx.lineTo(x + w, top + h * 0.42);
   }
   ctx.fill();
-  ctx.fillRect(x - h * 0.03, base - h * 0.12, h * 0.06, h * 0.12);
+  ctx.fillRect(x - h * 0.03, base - h * 0.12, h * 0.06, h * 0.13);
 }
+const hash = (i, k = 0) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
 
-function drawLlama(ctx, x, feet, t, air, sit) {
-  const wool = '#f6ecdb', line = '#d4bf9c', dark = '#8a7356';
-  ctx.save();
-  ctx.lineCap = 'round';
-  // legs
-  ctx.strokeStyle = line; ctx.lineWidth = 7;
-  const swing = air ? 0 : Math.sin(t * 13) * 9;
-  const legs = sit ? [[-24, 0], [-12, 0], [10, 0], [22, 0]] : [[-24, swing], [-12, -swing], [12, -swing], [24, swing]];
-  for (const [lx, s] of legs) {
-    ctx.beginPath();
-    const top = feet - 44;
-    if (sit) { ctx.moveTo(x + lx, top + 10); ctx.lineTo(x + lx + 8, feet - 4); }
-    else if (air) { ctx.moveTo(x + lx, top); ctx.lineTo(x + lx - 6, feet - 14); }
-    else { ctx.moveTo(x + lx, top); ctx.lineTo(x + lx + s * 0.6, feet - 2); }
-    ctx.stroke();
-  }
-  const by = sit ? feet - 40 : feet - 56;
-  // tail
-  ctx.fillStyle = wool;
-  ctx.beginPath(); ctx.arc(x - 40, by - 10, 9, 0, Math.PI * 2); ctx.fill();
-  // body
-  ctx.beginPath(); ctx.ellipse(x, by, 40, 22, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = line; ctx.lineWidth = 2; ctx.stroke();
-  // blanket
-  ctx.fillStyle = '#e8775a';
-  ctx.beginPath(); ctx.ellipse(x - 2, by - 8, 20, 13, 0, Math.PI, 0); ctx.fill();
-  ctx.fillStyle = '#f2c14e';
-  ctx.fillRect(x - 21, by - 9, 38, 3);
-  // neck
-  ctx.fillStyle = wool;
-  const bob = air || sit ? 0 : Math.sin(t * 13) * 1.5;
-  ctx.beginPath();
-  ctx.moveTo(x + 22, by - 8);
-  ctx.quadraticCurveTo(x + 30, by - 40 + bob, x + 30, by - 58 + bob);
-  ctx.lineTo(x + 46, by - 58 + bob);
-  ctx.quadraticCurveTo(x + 44, by - 30, x + 40, by - 4);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = line; ctx.stroke();
-  // head
-  const hx = x + 44, hy = by - 64 + bob;
-  ctx.fillStyle = wool;
-  ctx.beginPath(); ctx.ellipse(hx, hy, 15, 11, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#eadbc0';
-  ctx.beginPath(); ctx.ellipse(hx + 11, hy + 3, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
-  // ears
-  ctx.fillStyle = wool;
-  for (const ex of [-6, 2]) { ctx.beginPath(); ctx.moveTo(hx + ex, hy - 8); ctx.lineTo(hx + ex - 3, hy - 22); ctx.lineTo(hx + ex + 5, hy - 10); ctx.fill(); ctx.stroke(); }
-  // eye: a calm closed curve while sitting
-  ctx.strokeStyle = dark; ctx.fillStyle = dark; ctx.lineWidth = 2;
-  if (sit) { ctx.beginPath(); ctx.arc(hx + 3, hy - 2, 3, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke(); }
-  else { ctx.beginPath(); ctx.arc(hx + 3, hy - 2, 2.4, 0, Math.PI * 2); ctx.fill(); }
-  ctx.restore();
-}
-
-function drawObstacle(ctx, o) {
-  ctx.save();
-  if (o.kind === 'stone') {
-    ctx.fillStyle = '#8d918f';
-    ctx.beginPath(); ctx.ellipse(o.x + o.w / 2, GROUND, o.w / 2, o.h, 0, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#a9adaa';
-    ctx.beginPath(); ctx.ellipse(o.x + o.w * 0.4, GROUND - o.h * 0.55, o.w * 0.2, o.h * 0.25, -0.3, 0, Math.PI * 2); ctx.fill();
-  } else if (o.kind === 'log') {
-    ctx.fillStyle = '#8a5d3b';
-    ctx.beginPath(); ctx.roundRect(o.x, GROUND - o.h, o.w, o.h, o.h / 2); ctx.fill();
-    ctx.fillStyle = '#c49a6c';
-    ctx.beginPath(); ctx.ellipse(o.x + o.w - 6, GROUND - o.h / 2, 7, o.h / 2 - 1, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#8a5d3b'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.ellipse(o.x + o.w - 6, GROUND - o.h / 2, 3, o.h / 4, 0, 0, Math.PI * 2); ctx.stroke();
-  } else {
-    ctx.fillStyle = '#5f8f5a';
-    for (const [dx, dy, r] of [[0.25, 0.45, 0.3], [0.55, 0.3, 0.36], [0.8, 0.5, 0.28]]) {
-      ctx.beginPath(); ctx.arc(o.x + o.w * dx, GROUND - o.h * dy, o.w * r, 0, Math.PI * 2); ctx.fill();
+function sky(ctx, P, c, t, camX) {
+  const g = ctx.createLinearGradient(0, 0, 0, H * 0.75);
+  g.addColorStop(0, P[0]); g.addColorStop(1, P[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const night = clamp((0.62 - P[8]) / 0.2, 0, 1);
+  if (night > 0) {   // stars
+    for (let i = 0; i < 70; i++) {
+      const x = ((hash(i, 1) * W * 1.4 - camX * 0.01) % W + W) % W, y = hash(i, 2) * 300;
+      ctx.fillStyle = `rgba(255,255,255,${night * (0.35 + 0.6 * (0.5 + 0.5 * Math.sin(t * (1 + hash(i, 3) * 2) + i)))})`;
+      ctx.fillRect(x, y, 1.6, 1.6);
     }
-    ctx.fillStyle = '#f3d36b';
-    ctx.beginPath(); ctx.arc(o.x + o.w * 0.5, GROUND - o.h * 0.55, 3, 0, Math.PI * 2); ctx.fill();
   }
+  // the sun climbs and sets across the day; the moon has the night
+  const sunA = ((c + 0.92) % 1) / 0.78;   // up at dawn, down after dusk
+  if (sunA < 1) {
+    const x = 80 + sunA * 480, y = 300 - Math.sin(sunA * Math.PI) * 230;
+    const sg = ctx.createRadialGradient(x, y, 6, x, y, 90);
+    sg.addColorStop(0, 'rgba(255,246,220,.9)'); sg.addColorStop(1, 'rgba(255,246,220,0)');
+    ctx.fillStyle = sg; ctx.fillRect(x - 90, y - 90, 180, 180);
+    ctx.fillStyle = '#fff7e2'; ctx.beginPath(); ctx.arc(x, y, 22, 0, TAU); ctx.fill();
+  }
+  if (night > 0.05) {
+    ctx.fillStyle = `rgba(244,240,226,${night})`; ctx.beginPath(); ctx.arc(470, 110, 18, 0, TAU); ctx.fill();
+    ctx.fillStyle = P[0]; ctx.beginPath(); ctx.arc(478, 104, 16, 0, TAU); ctx.fill();
+  }
+}
+
+function ranges(ctx, P, camX) {
+  for (const L of RANGES) {
+    const ox = camX * L.f;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let sx = 0; sx <= W + 8; sx += 8) ctx.lineTo(sx, ridgeY(sx + ox, L));
+    ctx.lineTo(W, H); ctx.closePath();
+    ctx.fillStyle = P[L.col]; ctx.fill();
+    if (L.cap) {   // snow on the high ground
+      ctx.save(); ctx.clip();
+      const g = ctx.createLinearGradient(0, L.base - L.amp, 0, L.base - L.amp * 0.35);
+      g.addColorStop(0, `rgba(255,255,255,${0.9 * L.cap})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, L.base);
+      ctx.restore();
+    }
+    if (L.trees) for (let k = 0; k < 64; k++) {
+      const wx = Math.floor(ox / 12) * 12 + k * 12, sx = wx - ox;
+      if (hash(Math.floor(wx / 12), 5) < 0.45) continue;
+      pine(ctx, sx, ridgeY(wx, L) + 6, 18 + hash(Math.floor(wx / 12), 6) * 16, P[5]);
+    }
+  }
+}
+
+/* ——— the llama on its sled. Origin at the sled's foot, facing right, before rotation ——— */
+function rider(ctx, P, pose, t, light) {
+  const shade = (c) => blend(c, '#1b2140', (1 - light) * 0.55);
+  const wool = shade('#f6ecdb'), line = shade('#cdb894'), dark = '#5d4a38';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (pose !== 'sit') {
+    // the sled: two curled runners and a red deck
+    ctx.strokeStyle = shade('#6b4a2e'); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-36, -2); ctx.lineTo(26, -2); ctx.quadraticCurveTo(40, -2, 38, -14); ctx.quadraticCurveTo(36, -20, 30, -16); ctx.stroke();
+    ctx.lineWidth = 2.4; ctx.beginPath(); for (const x of [-26, -6, 14]) { ctx.moveTo(x, -2); ctx.lineTo(x, -9); } ctx.stroke();
+    ctx.fillStyle = shade('#c8553d'); ctx.beginPath(); ctx.roundRect(-36, -14, 66, 7, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(-34, -10, 62, 1.4);
+    if (pose === 'sled') return;   // the sled on its own, after a tumble
+  }
+  const by = pose === 'sit' ? -20 : -32;
+  // tucked legs reaching for the front of the sled
+  ctx.strokeStyle = line; ctx.lineWidth = 6.5;
+  ctx.beginPath();
+  if (pose === 'sit') { ctx.moveTo(8, by + 8); ctx.lineTo(28, by + 18); ctx.moveTo(-18, by + 10); ctx.lineTo(-2, by + 20); }
+  else { ctx.moveTo(10, by + 8); ctx.lineTo(26, -16); ctx.moveTo(-14, by + 10); ctx.lineTo(6, -15); }
+  ctx.stroke();
+  // body and tail
+  ctx.fillStyle = wool;
+  ctx.beginPath(); ctx.arc(-34, by - 6, 8, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-4, by, 31, 18, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = line; ctx.lineWidth = 2; ctx.stroke();
+  // neck and head
+  const lean = pose === 'air' ? -0.06 : 0;
+  ctx.save(); ctx.rotate(lean);
+  ctx.fillStyle = wool;
+  ctx.beginPath(); ctx.moveTo(12, by - 8); ctx.quadraticCurveTo(18, by - 34, 18, by - 48); ctx.lineTo(32, by - 48); ctx.quadraticCurveTo(31, by - 24, 28, by + 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  const hx = 30, hy = by - 54;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 14, 10, -0.15, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = shade('#eadbc0'); ctx.beginPath(); ctx.ellipse(hx + 10, hy + 3, 6.5, 5.5, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = wool;
+  for (const ex of [-6, 1]) { ctx.beginPath(); ctx.moveTo(hx + ex, hy - 7); ctx.lineTo(hx + ex - 4, hy - 20); ctx.lineTo(hx + ex + 4, hy - 9); ctx.fill(); ctx.stroke(); }
+  ctx.strokeStyle = dark; ctx.fillStyle = dark; ctx.lineWidth = 2;
+  if (pose === 'sit') { ctx.beginPath(); ctx.arc(hx + 3, hy - 2, 3, 0.1 * Math.PI, 0.9 * Math.PI); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.arc(hx + 3, hy - 2, 2.3, 0, TAU); ctx.fill(); }
+  // a scarf, its tail streaming back in the wind
+  ctx.fillStyle = shade('#2f8f84');
+  ctx.beginPath(); ctx.roundRect(13, by - 30, 19, 7, 3); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(15, by - 28);
+  const flap = pose === 'sit' ? 0.2 : 1;
+  for (let k = 1; k <= 6; k++) ctx.lineTo(15 - k * 6, by - 28 + Math.sin(t * 12 - k) * 2.2 * flap * k / 3 + (pose === 'sit' ? k * 2.6 : k * 0.4));
+  for (let k = 6; k >= 0; k--) ctx.lineTo(15 - k * 6, by - 22 + Math.sin(t * 12 - k) * 2.2 * flap * k / 3 + (pose === 'sit' ? k * 2.8 : k * 0.6));
+  ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 
-function drawApple(ctx, a, t) {
-  const y = a.y + Math.sin(t * 2 + a.x * 0.01) * 4;
-  ctx.save();
-  ctx.fillStyle = 'rgba(255,240,200,.35)';
-  ctx.beginPath(); ctx.arc(a.x, y, 16, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#d9534f';
-  ctx.beginPath(); ctx.arc(a.x, y, 9, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#6aa457';
-  ctx.beginPath(); ctx.ellipse(a.x + 4, y - 10, 5, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
+function rock(ctx, sx, sy, r, P, light) {
+  ctx.fillStyle = blend('#6d7287', '#1b2140', (1 - light) * 0.5);
+  ctx.beginPath(); ctx.moveTo(sx - r.w / 2, sy + 4); ctx.lineTo(sx - r.w * 0.36, sy - r.h * 0.7); ctx.lineTo(sx - r.w * 0.05, sy - r.h); ctx.lineTo(sx + r.w * 0.3, sy - r.h * 0.8); ctx.lineTo(sx + r.w / 2, sy + 4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = P[6]; ctx.beginPath(); ctx.moveTo(sx - r.w * 0.3, sy - r.h * 0.74); ctx.lineTo(sx - r.w * 0.05, sy - r.h); ctx.lineTo(sx + r.w * 0.26, sy - r.h * 0.82); ctx.lineTo(sx, sy - r.h * 0.84); ctx.closePath(); ctx.fill();
+}
+function apple(ctx, sx, sy, t) {
+  const bob = Math.sin(t * 3 + sx * 0.05) * 3;
+  ctx.fillStyle = 'rgba(255,240,200,.25)'; ctx.beginPath(); ctx.arc(sx, sy + bob, 16, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#d9443a'; ctx.beginPath(); ctx.arc(sx, sy + bob, 9, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.beginPath(); ctx.arc(sx - 3, sy + bob - 3, 2.6, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#5a3d22'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx, sy + bob - 8); ctx.lineTo(sx + 2, sy + bob - 13); ctx.stroke();
+  ctx.fillStyle = '#5f9a4a'; ctx.beginPath(); ctx.ellipse(sx + 5, sy + bob - 11, 4, 2, -0.5, 0, TAU); ctx.fill();
 }
 
-function makeWorld() {
-  return {
-    hills: ridgePts(11, 360, 90), far: ridgePts(23, 420, 50, 24), trees: (() => { const r = rng(37); return Array.from({ length: 18 }, (_, i) => ({ x: i * 72 + r() * 30, h: 70 + r() * 60 })); })(),
-    near: (() => { const r = rng(41); return Array.from({ length: 8 }, (_, i) => ({ x: i * 160 + r() * 60, h: 120 + r() * 70 })); })(),
-    clouds: (() => { const r = rng(5); return Array.from({ length: 5 }, (_, i) => ({ x: i * 260 + r() * 80, y: 70 + r() * 110, s: 0.7 + r() * 0.6 })); })(),
-  };
-}
-
-function drawScene(ctx, world, dist, cycle, t) {
-  const [top, bottom, sun, hills, far, near, path, peaks] = skyAt(cycle);
-  const g = ctx.createLinearGradient(0, 0, 0, GROUND);
-  g.addColorStop(0, top); g.addColorStop(1, bottom);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, SIZE, SIZE);
-  // sun, sinking a little toward dusk
-  const sy = 150 + Math.sin(cycle * Math.PI * 2 - Math.PI / 2) * 40 + 40;
-  ctx.fillStyle = sun; ctx.globalAlpha = 0.9;
-  ctx.beginPath(); ctx.arc(470, sy, 38, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 0.18; ctx.beginPath(); ctx.arc(470, sy, 70, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 1;
-  // clouds
-  ctx.fillStyle = 'rgba(255,255,255,.7)';
-  for (const c of world.clouds) {
-    const x = ((c.x - dist * 0.04) % 1300 + 1300) % 1300 - 200;
-    for (const [dx, dy, r] of [[0, 0, 22], [24, -8, 26], [50, 0, 20]]) { ctx.beginPath(); ctx.arc(x + dx * c.s, c.y + dy * c.s, r * c.s, 0, Math.PI * 2); ctx.fill(); }
+// everything in one pass: sky, ranges, the near slope with its pines and track, rocks, apples,
+// spray, the rider, and any word floating up from a landing
+function scene(ctx, S) {
+  const P = dayAt(S.cycle), light = P[8];
+  sky(ctx, P, S.cycle, S.t, S.camX);
+  ranges(ctx, P, S.camX);
+  const gy = (x) => S.ground.y(x) - S.camY;
+  // pines standing on the slope behind the rider
+  for (let k = Math.floor((S.camX - 80) / 230); k <= Math.floor((S.camX + W + 80) / 230); k++) {
+    if (hash(k, 11) < 0.5) continue;
+    const wx = k * 230 + hash(k, 12) * 120;
+    pine(ctx, wx - S.camX, gy(wx) + 4, 70 + hash(k, 13) * 70, blend(P[5], P[7], 0.15));
   }
-  drawMountains(ctx, (dist * 0.04) % 1280, peaks);
-  drawRidge(ctx, world.hills, (dist * 0.1) % 1280, hills);
-  drawRidge(ctx, world.far, (dist * 0.22) % 1280, far);
-  for (const tr of world.trees) { const x = ((tr.x - dist * 0.35) % 1296 + 1296) % 1296 - 40; pine(ctx, x, GROUND - 20, tr.h, far); }
-  for (const tr of world.near) { const x = ((tr.x - dist * 0.6) % 1280 + 1280) % 1280 - 60; pine(ctx, x, GROUND + 4, tr.h, near); }
-  // the path
-  ctx.fillStyle = near; ctx.fillRect(0, GROUND - 4, SIZE, SIZE - GROUND + 4);
-  ctx.fillStyle = path; ctx.fillRect(0, GROUND, SIZE, 44);
-  ctx.fillStyle = 'rgba(0,0,0,.08)';
-  for (let x = -((dist) % 64); x < SIZE; x += 64) ctx.fillRect(x, GROUND + 18, 26, 4);
-  ctx.fillStyle = 'rgba(255,255,255,.12)';
-  for (let x = -((dist * 1.0 + 30) % 90); x < SIZE; x += 90) ctx.fillRect(x, GROUND + 32, 12, 3);
-  // grass tufts in front
-  ctx.strokeStyle = near; ctx.lineWidth = 2;
-  for (let x = -((dist * 1.2) % 40); x < SIZE; x += 40) { ctx.beginPath(); ctx.moveTo(x, SIZE - 50); ctx.lineTo(x + 4, SIZE - 62); ctx.moveTo(x + 6, SIZE - 50); ctx.lineTo(x + 12, SIZE - 64); ctx.stroke(); }
-  return { path, near };
+  // the slope
+  ctx.beginPath(); ctx.moveTo(-10, H + 10);
+  for (let sx = -10; sx <= W + 10; sx += 6) ctx.lineTo(sx, gy(S.camX + sx));
+  ctx.lineTo(W + 10, H + 10); ctx.closePath();
+  const sg = ctx.createLinearGradient(0, 200, 0, H);
+  sg.addColorStop(0, P[6]); sg.addColorStop(1, P[7]);
+  ctx.fillStyle = sg; ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.strokeStyle = blend(P[7], P[6], 0.4); ctx.globalAlpha = 0.5; ctx.lineWidth = 10;
+  ctx.beginPath(); for (let sx = -10; sx <= W + 10; sx += 6) { const y = gy(S.camX + sx) + 9; sx < -4 ? ctx.moveTo(sx, y) : ctx.lineTo(sx, y); } ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); for (let sx = -10; sx <= W + 10; sx += 6) { const y = gy(S.camX + sx) + 0.5; sx < -4 ? ctx.moveTo(sx, y) : ctx.lineTo(sx, y); } ctx.stroke();
+  // the sled's track
+  ctx.strokeStyle = blend(P[7], '#5a6788', 0.25); ctx.globalAlpha = 0.55; ctx.lineWidth = 2;
+  ctx.beginPath();
+  let pen = false;
+  for (const p of S.track) { if (!p) { pen = false; continue; } const x = p[0] - S.camX, y = p[1] - S.camY + 1; pen ? ctx.lineTo(x, y) : ctx.moveTo(x, y); pen = true; }
+  ctx.stroke(); ctx.globalAlpha = 1;
+  for (const r of S.rocks) if (r.x - S.camX > -60 && r.x - S.camX < W + 60) rock(ctx, r.x - S.camX, gy(r.x), r, P, light);
+  for (const a of S.apples) if (!a.got) apple(ctx, a.x - S.camX, a.y - S.camY, S.t);
+  // snow thrown up behind the sled
+  for (const s of S.spray) { ctx.fillStyle = `rgba(255,255,255,${0.85 * s.l})`; ctx.beginPath(); ctx.arc(s.x - S.camX, s.y - S.camY, s.r, 0, TAU); ctx.fill(); }
+  if (S.sled) {   // after a tumble, the sled slides on alone
+    ctx.save(); ctx.translate(S.sled.x - S.camX, S.sled.y - S.camY); ctx.rotate(S.sled.rot); rider(ctx, P, 'sled', S.t, light); ctx.restore();
+  }
+  ctx.save(); ctx.translate(S.px - S.camX, S.py - S.camY); ctx.rotate(S.rot);
+  if (S.pose === 'sit') { ctx.save(); ctx.rotate(-S.rot + S.ground.angle(S.px)); rider(ctx, P, 'sit', S.t, light); ctx.restore(); }
+  else if (S.pose !== 'sled-only') rider(ctx, P, S.pose, S.t, light);
+  ctx.restore();
+  for (const w of S.words) {
+    ctx.save(); ctx.globalAlpha = Math.min(1, w.l * 1.6); ctx.textAlign = 'center'; ctx.font = '700 20px system-ui';
+    ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(30,40,80,.45)'; ctx.shadowBlur = 10;
+    ctx.fillText(w.text, w.x - S.camX, w.y - S.camY); ctx.restore();
+  }
+  // light snowfall over everything
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  for (let i = 0; i < 46; i++) {
+    const x = ((hash(i, 21) * W + S.t * (14 + hash(i, 22) * 20) - S.camX * 0.6) % W + W) % W;
+    const y = ((hash(i, 23) * H + S.t * (40 + hash(i, 24) * 40)) % H + H) % H;
+    ctx.beginPath(); ctx.arc(x, y, 1 + hash(i, 25) * 1.6, 0, TAU); ctx.fill();
+  }
 }
 
 export function preview(ctx) {
-  const world = makeWorld();
-  const { near } = drawScene(ctx, world, 220, 0.18, 0);
-  drawSlope(ctx, 0, near);
-  drawObstacle(ctx, { kind: 'stone', x: 420, w: 44, h: 26 });
-  const p = onSlide(0.55);
-  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a * 0.55); drawLlama(ctx, 0, 0, 0, true, false); ctx.restore();
+  const ground = makeGround(0);
+  const px = 1520, py = ground.y(px) - 70;
+  scene(ctx, { ground, camX: px - LX, camY: py - 380, cycle: 0.47, t: 1, px, py, rot: -0.9, pose: 'air', rocks: [{ x: 1700, w: 34, h: 24 }], apples: [{ x: 1610, y: ground.y(1610) - 120 }], spray: [], track: Array.from({ length: 30 }, (_, i) => [1300 + i * 7, ground.y(1300 + i * 7)]), words: [], sled: null });
 }
 
-export function start(canvas, { setScore, isPaused }) {
+export function start(canvas, { setScore, isPaused, finish }) {
   const ctx = setupCanvas(canvas);
-  const world = makeWorld();
   let best = 0;
   try { best = Number(localStorage.getItem(BEST_KEY)) || 0; } catch { /* none */ }
-  let state = 'ready', t = 0, dist = 0, speed = 250, y = 0, vy = 0, onGround = true, held = false, apples = 0;
-  let obstacles = [], fruit = [], nextGap = 520, cycle = 0.05, restT = 0, puffs = [], slideS = 0, slideShift = 0;
-  const LX = SLIDE.p1[0];
+  let ground, state = 'ready', t = 0, cycle = 0.02, held = false, carded = false, restT = 0;
+  let px, py, vx, vy, grounded, rot, spin, flips, apples, startX, camX, camY, airT = 0, endM = null;
+  let rocks, fruit, spray, track, words, sled, nextRock, nextFruit, trackGap;
 
-  const reset = () => { dist = 0; speed = 250; y = 0; vy = 0; onGround = true; apples = 0; obstacles = []; fruit = []; nextGap = 760; puffs = []; slideS = 0; slideShift = 0; };
-  const meters = () => Math.floor(dist / 40);
-  const score = () => setScore(`${meters()} m${apples ? ` · ${apples} apple${apples === 1 ? '' : 's'}` : ''}${best ? ` · best ${best} m` : ''}`);
-
-  function jump() {
-    if (state === 'ready' || state === 'rest') {
-      if (state === 'rest' && restT < 0.6) return;   // a breath before walking on
-      reset(); state = 'intro'; score(); note(9, { dur: 1.4, vol: 0.04 }); return;   // down the mountainside first
-    }
-    if (state === 'run' && onGround) { vy = -760; onGround = false; note(4, { dur: 0.35, vol: 0.05 }); }
-  }
-  const release = () => { held = false; if (vy < -300) vy = -300; };   // a short tap is a short hop
-
-  const onKey = (e) => {
-    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') { e.preventDefault(); if (!held) { held = true; jump(); } }
+  const reset = () => {
+    ground = makeGround(Math.random() * 1000);
+    px = 0; py = ground.y(0); vx = 0; vy = 0; grounded = true; rot = ground.angle(0); spin = 0;
+    flips = 0; apples = 0; startX = px; camX = px - LX; camY = py - 380; airT = 0; endM = null;
+    rocks = []; fruit = []; spray = []; track = []; words = []; sled = null;
+    nextRock = 1700; nextFruit = 620; trackGap = 0;   // a few calm seconds (and apples to jump for) before the first rock
   };
-  const onKeyUp = (e) => { if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') release(); };
-  const onDown = (e) => { e.preventDefault(); canvas.focus({ preventScroll: true }); held = true; jump(); };
+  const meters = () => endM ?? Math.max(0, Math.floor((px - startX) / 40));   // fixed at the tumble
+  const score = () => setScore(`${meters()} m${flips ? ` · ${flips} flip${flips === 1 ? '' : 's'}` : ''}${apples ? ` · ${apples} apple${apples === 1 ? '' : 's'}` : ''}${best ? ` · best ${best} m` : ''}`);
+
+  function ride() { reset(); carded = false; state = 'run'; const a = ground.angle(px); vx = 220 * Math.cos(a); vy = 220 * Math.sin(a); score(); swish(0.05); }
+  function press() {
+    if (state === 'ready') { ride(); return; }
+    if (state === 'rest') { if (restT > 0.6) ride(); return; }
+    if (state === 'run' && grounded) {
+      const a = ground.angle(px);
+      vy = Math.min(vy, 0) * 0.3 + vy * 0.7 - JUMP * Math.cos(a);
+      vx += JUMP * Math.sin(a) * 0.35;
+      grounded = false; spin = 0; airT = 0;
+      track.push(null);
+      note(4, { dur: 0.35, vol: 0.05 });
+    }
+  }
+  const onKey = (e) => { if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'Enter') { e.preventDefault(); if (!held) { held = true; press(); } } };
+  const onKeyUp = (e) => { if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'Enter') held = false; };
+  const onDown = (e) => { e.preventDefault(); canvas.focus({ preventScroll: true }); held = true; press(); };
+  const onUp = () => { held = false; };
   canvas.addEventListener('keydown', onKey);
   canvas.addEventListener('keyup', onKeyUp);
   canvas.addEventListener('pointerdown', onDown);
-  canvas.addEventListener('pointerup', release);
-  canvas.addEventListener('pointercancel', release);
+  canvas.addEventListener('pointerup', onUp);
+  canvas.addEventListener('pointercancel', onUp);
+
+  function tumble() {
+    state = 'rest'; restT = 0;
+    endM = meters();
+    sled = { x: px, y: py, rot, vx: Math.max(160, Math.hypot(vx, vy) * 0.7) };
+    if (meters() > best) { best = meters(); try { localStorage.setItem(BEST_KEY, String(best)); } catch { /* not kept */ } }
+    for (let i = 0; i < 24; i++) spray.push({ x: px + (Math.random() - 0.5) * 40, y: py - 10, vx: (Math.random() - 0.3) * 260, vy: -80 - Math.random() * 260, r: 2 + Math.random() * 4, l: 1 });
+    note(0, { dur: 1.1, vol: 0.06 }); note(2, { dur: 1.1, vol: 0.04 });
+    score();
+  }
+
+  function land() {
+    const a = ground.angle(px), diff = Math.abs(wrapAng(rot - a));
+    const turns = Math.floor((spin + 0.9) / TAU);
+    py = ground.y(px); grounded = true; track.push([px, py]);
+    if (diff > 1.05) { tumble(); return; }
+    // keep the speed that runs along the snow
+    let v = vx * Math.cos(a) + vy * Math.sin(a);
+    if (diff < 0.5) {
+      if (turns > 0) {
+        flips += turns; v += 140 * turns;
+        words.push({ text: turns > 1 ? `${turns}× backflip` : 'backflip', x: px, y: py - 90, l: 1 });
+        note(7, { dur: 0.6, vol: 0.06 }); note(9, { dur: 0.8, vol: 0.05, delay: 0.09 }); if (turns > 1) note(11, { dur: 0.9, vol: 0.05, delay: 0.18 });
+      } else note(2, { dur: 0.3, vol: 0.03 });
+    } else { v *= 0.72; words.push({ text: 'wobbly…', x: px, y: py - 80, l: 0.8 }); }
+    v = clamp(v, MINV, MAXV + 120);
+    vx = v * Math.cos(a); vy = v * Math.sin(a); rot = a; spin = 0;
+    for (let i = 0; i < 10; i++) spray.push({ x: px - 10 + Math.random() * 30, y: py - 2, vx: (Math.random() - 0.6) * 160, vy: -40 - Math.random() * 120, r: 2 + Math.random() * 3, l: 0.8 });
+    score();
+  }
 
   function spawn() {
-    const r = Math.random();
-    const kind = r < 0.45 ? 'stone' : r < 0.75 ? 'log' : 'bush';
-    const o = kind === 'stone' ? { w: 34 + Math.random() * 20, h: 20 + Math.random() * 12 }
-      : kind === 'log' ? { w: 54 + Math.random() * 26, h: 22 } : { w: 42 + Math.random() * 16, h: 34 + Math.random() * 8 };
-    obstacles.push({ kind, x: SIZE + 20, ...o });
-    if (Math.random() < 0.45) fruit.push({ x: SIZE + 20 + o.w / 2, y: GROUND - 150 - Math.random() * 40, got: false });
-    nextGap = (380 + Math.random() * 420) * (speed / 250) ** 0.6;
+    while (nextRock < camX + W + 200) {
+      const x = nextRock;
+      rocks.push({ x, w: 26 + Math.random() * 16, h: 18 + Math.random() * 10 });
+      nextRock += (560 + Math.random() * 760) * (1 - Math.min(0.35, meters() / 6000));
+    }
+    while (nextFruit < camX + W + 200) {   // an arc of apples over a swell, to be jumped for
+      const x0 = nextFruit, n = 3 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < n; k++) { const x = x0 + k * 34; fruit.push({ x, y: ground.y(x) - 70 - Math.sin((k / (n - 1)) * Math.PI) * 60, got: false }); }
+      nextFruit += 700 + Math.random() * 900;
+    }
+    rocks = rocks.filter((r) => r.x > camX - 80);
+    fruit = fruit.filter((a) => a.x > camX - 40 && !a.got);
   }
 
   function update(dt) {
     t += dt;
-    cycle = (cycle + dt / 150) % 1;
+    cycle = (cycle + dt / 240) % 1;
     if (state === 'run') {
-      speed = Math.min(470, speed + dt * 5);
-      const dx = speed * dt;
-      dist += dx;
-      nextGap -= dx;
-      if (nextGap <= 0) spawn();
-      for (const o of obstacles) o.x -= dx;
-      for (const a of fruit) a.x -= dx;
-      obstacles = obstacles.filter((o) => o.x + o.w > -40);
-      fruit = fruit.filter((a) => a.x > -30 && !a.got);
-      // hop
-      vy += 2100 * dt;
-      y = Math.min(0, y + vy * dt);
-      if (y === 0 && vy > 0) { if (!onGround) puffs.push({ x: LX, t: 0 }); vy = 0; onGround = true; }
-      // bump (a forgiving box: wool is soft)
-      const feet = GROUND + y;
-      for (const o of obstacles) {
-        if (LX + 30 > o.x + 6 && LX - 26 < o.x + o.w - 6 && feet > GROUND - o.h + 6) {
-          state = 'rest'; restT = 0; y = 0; vy = 0; onGround = true;
-          if (meters() > best) { best = meters(); try { localStorage.setItem(BEST_KEY, String(best)); } catch { /* not kept */ } }
-          note(0, { dur: 1.1, vol: 0.06 }); note(2, { dur: 1.1, vol: 0.04 });
-          break;
+      if (grounded) {
+        const a = ground.angle(px), tx = Math.cos(a), ty = Math.sin(a);
+        let v = vx * tx + vy * ty;
+        v += (G * ty - DRAG * v) * dt;
+        v = clamp(v, MINV, MAXV);
+        vx = v * tx; vy = v * ty;
+        const nx = px + vx * dt, by = py + vy * dt + 0.5 * G * dt * dt;
+        if (ground.y(nx) - by > 1.5 && v > 280) {   // over a crest fast enough: the snow falls away
+          grounded = false; spin = 0; airT = 0; px = nx; py = by; vy += G * dt; track.push(null);
+        } else {
+          px = nx; py = ground.y(px);
+          rot += wrapAng(ground.angle(px) - rot) * Math.min(1, dt * 14);
+          trackGap += vx * dt;
+          if (trackGap > 7) { track.push([px, py]); trackGap = 0; }
+          if (Math.random() < v / 700) spray.push({ x: px - 30, y: py - 2, vx: -v * 0.25 - Math.random() * 60, vy: -30 - Math.random() * 90, r: 1.5 + Math.random() * 2.5, l: 0.7 });
         }
+      } else {
+        vy += G_AIR * dt; vx *= 1 - dt * 0.04;
+        px += vx * dt; py += vy * dt;
+        airT += dt;
+        if (held && airT > FLIP_AFTER) { rot -= FLIP * dt; spin += FLIP * dt; }   // a tap is a jump; holding on flips
+        else rot += wrapAng(Math.atan2(vy, vx) * 0.5 - rot) * Math.min(1, dt * 2.2) * (spin > 0.4 ? 0 : 1);   // drift level, unless mid-flip
+        const hx = px + Math.sin(rot) * 58, hy = py - Math.cos(rot) * 58;   // the top of the rider
+        if (py >= ground.y(px)) land();
+        else if (Math.cos(rot - ground.angle(px)) < 0.2 && hy >= ground.y(hx) - 4) { py = Math.min(py, ground.y(px)); tumble(); }   // head first into the snow
       }
-      for (const a of fruit) {
-        if (!a.got && Math.abs(a.x - (LX + 40)) < 28 && Math.abs(a.y - (feet - 110)) < 40) { a.got = true; apples += 1; note(7 + (apples % 5), { dur: 0.6, vol: 0.07 }); }
+      if (state === 'run') {
+        // rocks: hop them or take a tumble (the box is kind)
+        const feet = py;
+        for (const r of rocks) {
+          if (Math.abs(r.x - px) < r.w / 2 + 12 && feet > ground.y(r.x) - r.h + 6) { tumble(); break; }
+        }
+        for (const a of fruit) {
+          if (!a.got && Math.hypot(a.x - px, a.y - (py - 40)) < 34) { a.got = true; apples += 1; note(7 + (apples % 5), { dur: 0.6, vol: 0.07 }); score(); }
+        }
+        spawn();
       }
       if (Math.floor(t * 4) !== Math.floor((t - dt) * 4)) score();
-    } else if (state === 'rest') restT += dt;
-    else if (state === 'intro') {
-      slideS = Math.min(1, slideS + dt / 1.7);
-      const p = onSlide(0.22 + (slideS * slideS * (3 - 2 * slideS) * 0.15 + slideS * 0.85) * 0.78);
-      if (Math.random() < 0.6) puffs.push({ x: p.x + 20, y: p.y, t: 0, snow: true });
-      if (slideS >= 1) { state = 'run'; puffs.push({ x: LX, t: 0 }); }
+    } else if (state === 'rest') {
+      restT += dt;
+      // the llama skids to a stop in the snow; the sled runs on a little and stops
+      const a = ground.angle(px);
+      const v = Math.max(0, Math.hypot(vx, vy) * Math.exp(-dt * 3.2));
+      vx = v * Math.cos(a); vy = v * Math.sin(a);
+      px += vx * dt; py = ground.y(px);
+      rot += wrapAng(a - rot) * Math.min(1, dt * 6);
+      if (sled) {
+        sled.vx *= Math.exp(-dt * 1.4); sled.x += sled.vx * dt; sled.y = ground.y(sled.x);
+        sled.rot += wrapAng(ground.angle(sled.x) - sled.rot) * Math.min(1, dt * 8);
+      }
     }
-    if (state === 'run' && slideShift < 400) slideShift += speed * dt;   // the slope slips away behind
-    puffs = puffs.filter((p) => (p.t += dt) < 0.5);
+    if (state === 'ready') { rot = ground.angle(px); }
+    for (const s of spray) { s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.l -= dt * 1.6; }
+    spray = spray.filter((s) => s.l > 0);
+    for (const w of words) { w.y -= 30 * dt; w.l -= dt * 0.9; }
+    words = words.filter((w) => w.l > 0);
+    if (track.length > 260) track.splice(0, track.length - 260);
+    // the camera keeps the rider a little left of centre, easing up and down with the slope
+    camX = px - LX;
+    camY += (py - 380 - camY) * Math.min(1, dt * 4);
     draw();
   }
 
   function draw() {
-    drawScene(ctx, world, dist + t * (state === 'run' ? 0 : 18), cycle, t);
-    for (const a of fruit) if (!a.got) drawApple(ctx, a, t);
-    for (const o of obstacles) drawObstacle(ctx, o);
-    const near = skyAt(cycle)[5];
-    if (state === 'ready' || state === 'intro' || slideShift < 400) drawSlope(ctx, slideShift, near);
-    for (const p of puffs) { ctx.fillStyle = `rgba(255,255,255,${0.5 - p.t})`; ctx.beginPath(); ctx.arc(p.x - 30 - p.t * 60, (p.snow ? p.y : GROUND) - 4, 6 + p.t * 14, 0, Math.PI * 2); ctx.fill(); }
-    if (state === 'ready' || state === 'intro') {
-      const s = state === 'ready' ? 0.22 : 0.22 + (slideS * slideS * (3 - 2 * slideS) * 0.15 + slideS * 0.85) * 0.78;
-      const p = onSlide(s);
-      // leaning into the slide, not tumbling
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a * 0.55); drawLlama(ctx, 0, 0, t, true, state === 'ready'); ctx.restore();
-    } else drawLlama(ctx, LX, GROUND + y, t, !onGround, state === 'rest');
-    if (state === 'ready') card(ctx, [{ text: 'Llama Trail', size: 34, weight: 700 }, { text: 'Space, ↑ or tap to slide down and walk', size: 18, weight: 500, alpha: 0.9 }], { y: 140 });
-    if (state === 'rest') card(ctx, [{ text: 'A little stumble.', size: 28, weight: 700 }, { text: `${meters()} m walked${apples ? ` · ${apples} apple${apples === 1 ? '' : 's'}` : ''}`, size: 18, weight: 500 },
-      { text: restT > 0.6 ? 'Breathe, then hop to walk on' : ' ', size: 16, weight: 500, alpha: 0.85 }], { y: 200 });
+    scene(ctx, { ground, camX, camY, cycle, t, px, py, rot, pose: state === 'rest' ? 'sit' : grounded ? 'ride' : 'air', rocks, apples: fruit, spray, track, words, sled });
+    if (state === 'ready') card(ctx, [{ text: 'Llama Trail', size: 34, weight: 700 }, { text: 'Tap to jump · hold in the air to flip', size: 18, weight: 500, alpha: 0.95 }, { text: 'Space, ↑ or tap to set off', size: 15, weight: 500, alpha: 0.8 }], { y: 150, shadow: 'rgba(30,40,80,.45)' });
+    // after a breath sitting in the snow, the round's card: a kind word, the ride, what's next
+    if (state === 'rest' && restT > 1.1 && !carded && finish) {
+      carded = true;
+      finish({ title: 'a soft landing in the snow',
+        stats: `${meters()} m down the mountain${flips ? ` · ${flips} flip${flips === 1 ? '' : 's'}` : ''}${apples ? ` · ${apples} apple${apples === 1 ? '' : 's'}` : ''}${best ? ` · best ${best} m` : ''}`,
+        againLabel: 'Ride again', again: ride });
+    }
+    if (state === 'rest' && !finish) card(ctx, [{ text: 'A soft landing.', size: 28, weight: 700 }, { text: restT > 0.6 ? 'Tap to ride again' : ' ', size: 16, weight: 500, alpha: 0.85 }], { y: 200 });
   }
 
+  reset();
   score();
   draw();
   const stopLoop = runLoop(update, isPaused);
@@ -370,8 +421,7 @@ export function start(canvas, { setScore, isPaused }) {
     canvas.removeEventListener('keydown', onKey);
     canvas.removeEventListener('keyup', onKeyUp);
     canvas.removeEventListener('pointerdown', onDown);
-    canvas.removeEventListener('pointerup', release);
-    canvas.removeEventListener('pointercancel', release);
+    canvas.removeEventListener('pointerup', onUp);
+    canvas.removeEventListener('pointercancel', onUp);
   };
 }
-

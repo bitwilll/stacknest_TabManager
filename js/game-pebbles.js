@@ -74,7 +74,7 @@ export function preview(ctx) {
   for (const r of [72, 92, 112]) { ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.92, 0, 0, Math.PI * 2); ctx.stroke(); }
 }
 
-export function start(canvas, { setScore, isPaused }) {
+export function start(canvas, { setScore, isPaused, finish: showCard }) {
   const ctx = setupCanvas(canvas);
   let tally = { you: 0, garden: 0, draw: 0 };
   try { tally = { ...tally, ...JSON.parse(localStorage.getItem(SCORE_KEY) || '{}') }; } catch { /* fresh */ }
@@ -95,7 +95,8 @@ export function start(canvas, { setScore, isPaused }) {
     say();
     return true;
   };
-  const newRound = () => { board = Array(9).fill(null); result = null; starter = starter === 'P' ? 'G' : 'P'; turn = starter; thinkT = 0.8; moves = 0; };
+  let resultT = 0, carded = false;
+  const newRound = () => { board = Array(9).fill(null); result = null; resultT = 0; carded = false; starter = starter === 'P' ? 'G' : 'P'; turn = starter; thinkT = 0.8; moves = 0; };
 
   const toss = (who, i) => {
     const [tx, ty] = centre(i);
@@ -155,6 +156,15 @@ export function start(canvas, { setScore, isPaused }) {
     const gx = 320 + Math.cos(fish.wander) * 250, gy = 330 + Math.sin(fish.wander * 1.3) * 230;
     let d = Math.atan2(gy - fish.y, gx - fish.x) - fish.a; d = Math.atan2(Math.sin(d), Math.cos(d));
     fish.a += d * Math.min(1, dt * 1.2); fish.x += Math.cos(fish.a) * 28 * dt; fish.y += Math.sin(fish.a) * 28 * dt;
+    // a round over: let the chord ring and the line glow, then the card (Another round / the list)
+    if (result) {
+      resultT += dt;
+      if (resultT > 2 && !carded && showCard) {
+        carded = true;
+        showCard({ title: result.who === 'P' ? 'three in a row' : result.who === 'G' ? 'the pond wins this one' : 'still water',
+          stats: `You ${tally.you} · Pond ${tally.garden} · Even ${tally.draw}`, againLabel: 'Another round', again: newRound });
+      }
+    }
     if (result?.line) { winT += dt; if (Math.floor(winT / 1.4) !== Math.floor((winT - dt) / 1.4)) for (const i of result.line) { const [x, y] = centre(i); ripples.push({ x, y, r: PAD, l: 0.8, delay: result.line.indexOf(i) * 0.18 }); } }
 
     water(ctx, t);

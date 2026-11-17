@@ -381,6 +381,52 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Zen, round five: music and the Buddha, motion tied to the picture, the wallpaper on the board (2026-11-17)
+
+The owner asked that every wallpaper visibly move, for two musical and two Buddha scenes, for the
+wallpaper to be shown outside Zen too (a switch), and for artistic icons on both wallpaper buttons.
+
+- **Checked by looking, scene by scene.** A headless run of the real extension screenshots each
+  wallpaper twice, three seconds apart, with Zen's furniture hidden and the wall's breathing
+  paused, and counts the pixels that changed. All 18 move (Plain and your own image included).
+  Night, Aurora and Bamboo moved least (0.2–0.3% of the screen), so Night gained a shooting star
+  every 13 s and a thin cloud crossing near the moon, Aurora a second rippling curtain, Bamboo
+  two shafts of sun leaning through the grove. With reduced motion, or the switch off, every
+  scene measures 0% change.
+- **Four new scenes** (`js/wallpapers.js`, drawn SVG like the rest): **Nocturne** (dark), an
+  upright piano under an arched window at night, one candle on the lid, a metronome, sheet
+  music; **Serenade** (light), a guitar leant against a warm wall in a window's afternoon light,
+  a stool, a snake plant; **Lotus** (dark), a seated Buddha on a lotus throne in a pond at dusk,
+  the rising moon as his halo, pads, flowers and floating lanterns; **Shrine** (light), a mossy
+  stone Buddha head among bamboo with three sticks of incense before it.
+- **Motion tied to the picture.** Their effects sit on points in the drawing: the flame flickers
+  on the wick and its light breathes on the wall while notes rise off the keys (`candle`); notes
+  drift out of the sound hole while leaf shade sways in the window light (`notes`); rings spread
+  on the near water, petals drift, the halo breathes, lanterns flicker (`ripples`); three threads
+  of smoke rise from the stick tips and break into curls over glowing embers (`incense`). The
+  unit is the scene's own (`--k`, one viewBox unit as the wall draws it); it is measured in
+  container units on `.zen-fx`, not `vw`, because the interface-size zoom on `<html>` scales `vw`
+  away from the wall's pixels (a first try missed the incense tips by ~10 px). For these four
+  the overlay breathes with the wall, one keyframe pair started together, so a flame stays on its
+  wick across the whole 80 s cycle (checked at 0, 40 and 80 s). Under reduced motion the notes,
+  smoke, ripples and shooting star are left out rather than frozen mid-air.
+- **The wallpaper outside Zen.** Settings › Zen › "Show it outside Zen too" (`boardWallpaper`,
+  off by default; `js/wallboard.js`). The chosen picture lies under the frame, held still. A
+  first version frosted the whole main panel (70%, heavily blurred), and the owner's screenshot
+  showed the board still reading as its own grey ground, so the panel now paints almost nothing
+  (16% of the theme's colour) and the picture shows plainly between the columns. What carries
+  text turns to frosted glass instead: the header, the live-tabs strip, section heads and the
+  Settings index (74%), the collection columns (66%), the sidebar (58% of the frame), and in the
+  other views one soft pane behind the page (56%, lightly blurred); the dot lattice is dropped.
+  Cards and fields keep their paper. Checked in all three themes across the eight views, light
+  and dark pictures. It follows Zen's shuffle; Plain shows no picture. `boot.js` puts the last drawn scene up before first paint (`stacknest:wall`,
+  `stacknest:wallcss`), so a new tab does not flash; your own photo is too large to keep there
+  and arrives a moment later.
+- **Icons.** Shuffle: an open ensō whose end becomes an arrow, round a ridge and a sun. The
+  corner "look at the wallpaper" button: a frame left open at one corner, hills inside and the
+  crescent moon rising out of it.
+- The web bridge's `zen.wallpaper` now lists `nocturne`, `serenade`, `lotus`, `shrine`.
+
 ## StackNest on the web: one connected site can show the new tab (2026-11-17)
 
 The owner wants a future StackNest website (no domain yet) to work as a home page showing
@@ -432,6 +478,91 @@ without another release.
   reload) and the "turned off in Chrome" status. The test copy grants the origin in its
   manifest so Chrome's prompt resolves without a dialog, and records `permissions.remove`,
   which Chrome refuses for a manifest grant. `scripts/smoke-test.mjs .` is clean.
+
+## Zen, round four: a kind ending, back to the list, a painting to keep, real lo-fi (2026-11-17)
+
+The owner asked that every game end with an uplifting word and the top three to-dos (so rest
+leads back into focus), that Brush Stroke's old strokes fade, its paper look real and different
+every time, and its painting can be saved; that the lounges fill a full screen, play recorded
+open-licence lo-fi, carry far more detail, and keep the rain low; and that every wallpaper moves.
+
+- **The end card** (`js/arcade.js`), over the stage after any round: a short uplifting line (never
+  the same twice running), the round's stats, then **up to three to-dos**: open reminders and
+  unticked checklist rows, soonest due first (then pinned, then list order), each with its due
+  time. Tick one there; or follow it, and Zen opens with that row scrolled into view, glowing
+  once, its tick box focused. Games that end (Llama Trail, Brush Stroke, Pebbles) show it on
+  their own; the endless ones and the lounges have a **Done** button on the player bar.
+- **Brush Stroke.** The trace fades with age (a half-life of about 40 s toward a faint floor, so
+  the whole path stays legible). Each painting gets a fresh sheet, seeded at random from four
+  stocks (rice paper, tea-stained, old letter, kraft) with its own mottling, fibres, laid lines,
+  an occasional fold, coffee rings, water blooms, foxing and handled edges. **Save painting**
+  writes a 1600 px PNG of the sheet, trace and last stroke with a seal and a pencilled date.
+- **Lounges, redrawn as detailed pixel art** (original scenes; the owner pointed at lo-fi
+  pixel rooms for the mood). Both paint into a 320-tall buffer, scaled up in whole steps, lit
+  with short warm and cool palette ramps (dither only where steps meet).
+  - *Night Room:* a desk in perspective with lamp, lava lamp, record player, keyboard and
+    mat; a rainy neon city beyond the window with shops, traffic and umbrellas at street
+    level; the cat on the sill; a bed, nightstand, monstera, neon moon and a standing lamp at
+    the sides when wide. Most things answer a click; lifting the needle fades the music.
+  - *Pixel Café:* a window seat over a rainy street, the counter and menu board, a barista
+    who comes and goes through the kitchen curtain, a refill brought by hand, guests at
+    their own tables, a sleeping dog; weather fades between rain, snow and clear.
+- **Lounges** draw into a wide canvas in full screen, so a 16:9 screen is filled, not
+  letterboxed. Music is now four **CC0 recordings** shipped in `audio/` (two per lounge,
+  credited in `audio/CREDITS.txt` though CC0 asks for none), played as a playlist that starts at
+  random and fades with pause and the sound switch; the synthesised loops remain as the
+  fallback. The rain bed sits at a fifth of its old level.
+- **The painting carries its word.** A saved painting is inscribed along its foot with the
+  card's kind line, in a formal copperplate script: Petit Formal Script (SIL OFL, shipped
+  unmodified in `fonts/`, credited in `fonts/OFL.txt`), in iron-gall brown with a halo of the
+  paper's own colour so it reads over the trace.
+- **Forest Drive.** The car is now an open-top tourer seen from behind (the soft top folded
+  on the rear deck, the driver's hair and scarf in the wind), and about one drive in three is
+  on a motorbike instead (the rider leans into the bends; one headlamp at night). The verge
+  still only slows you, but steering on into the trees (1.8 road half-widths out) ends the
+  drive softly among ferns and falling leaves, and the card brings its own word, about the
+  journey mattering more than the destination. "Back on the road" starts a fresh journey;
+  the hour and weather carry on. Hands off the wheel, the car mostly follows the bend and
+  drifts back to its lane, so a calm, idle drive never ends in the trees by accident.
+- **Weather on Space.** Six weathers: sunny (a deeper sky, a bigger glow, slow rays), clear,
+  cloudy, rain, a thunderstorm (darker light, harder slanting rain, forked lightning that
+  lights the whole scene, thunder a moment later), and snow. Space deals the next from a
+  shuffled deck, so each comes round before any repeats, and the change arrives in a few
+  seconds with its name shown; left alone the weather still drifts by itself. Rain and storms
+  now have their own soft rain sound under the Canon, at the lounges' lowered level.
+- **Llama Trail, remade as a downhill ride.** The owner asked for the feel of the endless
+  snowboarding genre (Alto's Adventure was the reference); the mechanics are the genre's, the
+  look, characters and music are StackNest's own. The llama rides a red sled down an endless
+  mountainside (swells, crests that throw it into the air, the odd kicker). A tap jumps;
+  holding on in the air flips it backwards; landing level with the snow keeps the flow and
+  each flip adds speed. Rocks are hopped, apples hang in arcs to jump for, and a bad landing
+  or a rock is a tumble into soft snow, then the card. The sky turns through dawn, day, gold,
+  dusk and a starry night over three parallax ranges; snow sprays and the sled leaves a track.
+- **Your own wallpapers, a small gallery.** Up to six of your own images (resized to about
+  1.6 MB each so they fit the storage quota), each with a × on its swatch to remove it; the
+  one in use is the gallery's `active` and the setting stays `custom`, so a single image saved
+  before the gallery carries straight over (and the web bridge still reads it). Removing the
+  one in use hands over to the next of yours, or back to Mist when none are left. The picker
+  rereads the gallery before every change, since Zen's shuffle can switch the active image.
+- **The wallpaper button shuffles.** In Zen the picture button no longer leaves for Settings:
+  each press deals the next scene from a shuffled deck (your own image too, if set), the old
+  one crossfading away and the new one's name shown a moment. Shift-click or right-click
+  still opens every wallpaper in Settings. Its icon is a small picture inside a ring of two
+  arrows (`wallShuffle` in `js/ui.js`), and the ring turns half a circle on each press.
+- **Panes fold.** Collection, To-do and Pinned each have a chevron beside the drag grip that
+  folds the pane to its header (title, count and picker stay), like the calendar; the fold is
+  kept in the Zen layout (`folded`). Going to a to-do from an end-of-round card opens the panes
+  it could be in first, so the row can be found and lit.
+- **A peek at the wallpaper.** A round button in Zen's bottom-right corner fades the whole
+  page (header, clock and calendar, panes, page switch) to 20% and lifts the contrast veil, so
+  the picture can be seen; the faded page is inert, and only the button stays lit, in the
+  accent, with a brief "Esc to come back". Esc or the button brings it back (Esc only leaves
+  Zen once the page is back); changing to the arcade or leaving Zen ends a peek too.
+- **Every wallpaper moves.** The three that only breathed now have motion of their own: leaf
+  shade swaying over the Garden's gravel with the odd leaf falling, dust turning in a shaft of
+  light across the Ensō paper, sand wisps blowing over the Dunes under a shimmering sun. A
+  person's own photo gets drifting soft light (bokeh), and the plain theme ground, which had
+  nothing, gets slow accent-tinted glows. Reduced motion and the Settings switch still stop it all.
 
 ## Zen, round three: the arcade, the lounge, reminders with a chime, more wallpapers (2026-11-17)
 

@@ -10,6 +10,10 @@ try {
     ? t
     : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   root.dataset.zen = localStorage.getItem('stacknest:zen') === 'on' ? 'on' : 'off';   // ZEN_KEY in zen.js
+  // the wallpaper behind the board (WALL_HINT / WALL_CSS in wallboard.js, which corrects it after)
+  root.dataset.wall = localStorage.getItem('stacknest:wall') === 'on' ? 'on' : 'off';
+  const wallCss = root.dataset.wall === 'on' && localStorage.getItem('stacknest:wallcss');
+  if (wallCss) root.style.setProperty('--board-wall', wallCss);
 
   // Settings → New tab off: this page was opened as a new tab, so hand the tab to Chrome's own
   // new tab page. StackNest itself is opened from the toolbar (or a notification) with a query

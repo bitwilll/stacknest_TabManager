@@ -178,7 +178,8 @@ its items, its count, its PIN and whether one is set are never sent.
 ```js
 {
   collection: 'collection id' | null,               // the one collection Zen shows; null or unknown = the active space's first
-  wallpaper: 'mist' | 'lake' | 'sand' | 'enso' | 'bamboo' | 'sakura' | 'dunes' | 'ocean' | 'dusk' | 'forest' | 'night' | 'aurora' | 'theme' | 'custom' | null,
+  wallpaper: 'mist' | 'lake' | 'sand' | 'enso' | 'bamboo' | 'sakura' | 'dunes' | 'ocean' | 'dusk' | 'forest' | 'night' | 'aurora'
+    | 'nocturne' | 'serenade' | 'lotus' | 'shrine' | 'theme' | 'custom' | null,
   motion: true, eyeRest: true, chime: true,
   pins: [ { id, kind: 'link', url, title, from, at } | { id, kind: 'folder', bmId, title, from, at } ],   // bmId is a Library folder's id
   layout: { panes: ['col', 'todo', 'pinned'], order: { [pane]: ['item key', …] }, cal: true },

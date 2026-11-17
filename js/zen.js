@@ -17,11 +17,11 @@
 // (Settings → Zen), so it travels with a backup; a custom image stays on this device.
 
 import { el, icon, tile, domainOf } from './ui.js';
-import { getKey, update } from './store.js';
+import { getKey, setKey, update } from './store.js';
 import { SPACES_KEY, ACTIVE_WS_KEY, WORKSPACES_KEY, loadActiveSpaces } from './spacesStore.js';
 import { NOTES_KEY, loadNotes, toggleNoteDone, addQuickReminder, setNotePinned } from './notes.js';
 import { SETTINGS_KEY, loadSettings, saveSettings } from './settings.js';
-import { WALLPAPER_KEY, wallpaperFor } from './wallpapers.js';
+import { WALLPAPERS, WALLPAPER_KEY, wallpaperFor, ownWallpapers } from './wallpapers.js';
 import { ZENPINS_KEY, ZENLAYOUT_KEY, loadZenPins, unpinZenItem, zenPinBtn } from './zenpins.js';
 import { createCalendar } from './zencal.js';
 import { createEyeRest } from './zenrest.js';
@@ -35,7 +35,7 @@ const PANES = ['col', 'todo', 'pinned'];
 const ZEN_MIME = 'text/x-stacknest-zen';
 
 let root, shell = null, clockTimer = null, renderTimer = null, lastFocus = null;
-let layout = { panes: [...PANES], order: {}, cal: true };
+let layout = { panes: [...PANES], order: {}, cal: true, folded: [] };
 let thoughtOffset = 0;
 let thoughtPrefs = { fav: [], only: false };
 let chimeOn = true;
@@ -51,7 +51,8 @@ function normalizeLayout(raw) {
       if (Array.isArray(v)) order[String(k).slice(0, 120)] = v.filter((x) => typeof x === 'string').slice(0, 500).map((x) => x.slice(0, 4100));
     }
   }
-  return { panes, order, cal: raw?.cal !== false };
+  const folded = Array.isArray(raw?.folded) ? PANES.filter((p) => raw.folded.includes(p)) : [];   // panes folded to their header
+  return { panes, order, cal: raw?.cal !== false, folded };
 }
 const saveLayout = (patch) => update(ZENLAYOUT_KEY, null, (cur) => {
   const base = normalizeLayout(cur);
@@ -66,6 +67,7 @@ export function initZen({ root: r, openSettings }) {
   document.addEventListener('keydown', (e) => {
     if (!isOn() || e.key !== 'Escape') return;
     if (shell.rest.isShowing()) { e.preventDefault(); shell.rest.skip(); return; }   // Esc ends the pause, not Zen
+    if (root.classList.contains('is-peek')) { e.preventDefault(); setPeek(false); return; }   // and brings the page back from a peek
     if (root.dataset.page === 'arcade' && !/^(input|textarea|select)$/i.test(document.activeElement?.tagName || '')) {
       e.preventDefault();
       if (!shell.arcade.escape()) setPage('home');     // a game goes back to the shelf, the shelf back to Zen
@@ -106,6 +108,7 @@ export function setZen(on, { persist = true, focus = true } = {}) {
     if (focus) requestAnimationFrame(() => shell.exit.focus({ preventScroll: true }));
   } else {
     shell.rest.stop();
+    setPeek(false, { focus: false });
     setPage('home', { focus: false });
     if (focus) (lastFocus?.isConnected ? lastFocus : document.getElementById('zen-btn'))?.focus?.({ preventScroll: true });
   }
@@ -139,8 +142,13 @@ function buildShell(openSettings) {
 
   const exit = el('button', { class: 'zen-btn-pill', type: 'button', title: 'Leave Zen (Esc)', onclick: () => setZen(false) },
     icon('close', 14), el('span', { text: 'Leave zen' }));
-  const wallBtn = el('button', { class: 'zen-icb', type: 'button', title: 'Choose wallpaper', 'aria-label': 'Choose wallpaper',
-    onclick: () => { setZen(false); openSettings('set-zen'); } }, icon('image', 16));
+  // the wallpaper button shuffles: each press the next scene from a shuffled deck (and your own
+  // image, if you set one), crossfading, its name shown a moment. Shift-click or right-click
+  // opens every wallpaper in Settings.
+  const wallName = el('span', { class: 'zen-wall-name', 'aria-live': 'polite' });
+  const wallBtn = el('button', { class: 'zen-icb zen-wall-btn', type: 'button', title: 'Next wallpaper (Shift-click for all)', 'aria-label': 'Next wallpaper',
+    onclick: (e) => { if (e.shiftKey) { setZen(false); openSettings('set-zen'); return; } const b = e.currentTarget; b.classList.remove('is-spin'); void b.offsetWidth; b.classList.add('is-spin'); shuffleWallpaper(wallName); },
+    oncontextmenu: (e) => { e.preventDefault(); setZen(false); openSettings('set-zen'); } }, icon('wallShuffle', 19), wallName);
   // eye rest: the pill is itself the switch: eye icon, what it is doing (minutes to the next
   // pause, or off) and a little track whose knob slides over when it is on
   const eyeLabel = el('span', { class: 'zen-eye-label', text: 'Eye rest' });
@@ -190,8 +198,13 @@ function buildShell(openSettings) {
 
   const grip = (name) => el('button', { class: 'zen-grip', type: 'button', title: `Drag to move ${name} (or arrow keys)`,
     'aria-label': `Move the ${name} pane with the arrow keys` }, icon('grip', 13));
+  // each pane folds to its header (like the calendar), remembered in the Zen layout
+  const fold = (id, name) => el('button', { class: 'zen-fold', type: 'button', 'aria-expanded': 'true', 'aria-controls': `zen-pane-${id}-body`,
+    title: `Fold ${name}`, 'aria-label': `Fold the ${name} pane`,
+    onclick: () => saveLayout({ folded: layout.folded.includes(id) ? layout.folded.filter((x) => x !== id) : [...layout.folded, id] }).then(paintFolds) }, icon('chevron', 13));
   const pane = (id, name, head, ...body) => el('section', { class: `zen-pane zen-${id}`, dataset: { key: id }, 'aria-label': name },
-    el('header', { class: 'zen-pane-head' }, el('span', { class: 'zen-cap' }, el('span', { text: name.toLowerCase() }), grip(name)), ...head), ...body);
+    el('header', { class: 'zen-pane-head' }, el('span', { class: 'zen-cap' }, el('span', { text: name.toLowerCase() }), el('span', { class: 'zen-cap-acts' }, fold(id, name), grip(name))), ...head),
+    el('div', { class: 'zen-pane-body', id: `zen-pane-${id}-body` }, ...body));
   const panes = {
     col: pane('col', 'Collection', [pick, colCount, openAll], colBody),
     todo: pane('todo', 'To-do', [el('h2', { class: 'zen-h', text: 'To-do' }), todoCount], el('div', { class: 'zen-addrow' }, icon('plus', 15), add), todoBody),
@@ -209,7 +222,11 @@ function buildShell(openSettings) {
   });
 
   // page two: a blank Zen page with a clock, Leave zen and the arcade frame
-  const arcade = createArcade({ isPaused: () => !isOn() || root.dataset.page !== 'arcade' || document.hidden || rest.isShowing(), onShelf: () => shell && paintPager() });
+  const arcade = createArcade({
+    isPaused: () => !isOn() || root.dataset.page !== 'arcade' || document.hidden || rest.isShowing(),
+    onShelf: () => shell && paintPager(),
+    todos: { list: topTodos, tick: (it) => toggleNoteDone(it.id, it.rowId || null, true).then(render), focus: focusTodo },
+  });
   const aTime = el('div', { class: 'zen-a-time' });
   const aDate = el('div', { class: 'zen-a-date' });
   // the same calendar sits beside the games (a second view of it; folding either folds both)
@@ -239,6 +256,12 @@ function buildShell(openSettings) {
     fx.append(el('i', { style: `--x:${(r(1) * 100).toFixed(1)}%;--y:${(r(2) * 100).toFixed(1)}%;--d:${(-r(3) * 20).toFixed(1)}s;--t:${(14 + r(4) * 14).toFixed(1)}s;--s:${(0.6 + r(5) * 0.9).toFixed(2)}` }));
   }
 
+  // the corner button: everything else fades to a fifth so the wallpaper can be seen; Esc (or the
+  // button again) brings it all back
+  const peekHint = el('span', { class: 'zen-peek-hint', 'aria-hidden': 'true', text: 'Esc to come back' });
+  const peekBtn = el('button', { class: 'zen-icb zen-peek', type: 'button', 'aria-pressed': 'false', title: 'Look at the wallpaper', 'aria-label': 'Look at the wallpaper',
+    onclick: () => setPeek(!root.classList.contains('is-peek')) }, icon('wallWindow', 19), peekHint);
+
   root.replaceChildren(
     el('div', { class: 'zen-wall', 'aria-hidden': 'true' }),
     fx,
@@ -251,6 +274,7 @@ function buildShell(openSettings) {
       grid),
     arcadePage,
     pager,
+    peekBtn,
     rest.node,
   );
 
@@ -260,9 +284,35 @@ function buildShell(openSettings) {
   sortable(todoBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { todo: keys } }) });
   sortable(pinBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { pinned: keys } }) });
 
-  shell = { cal2, arcade, aTime, aDate, pager, time, date, greet, exit, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, thoughtBy, thoughtStar, thoughtOnly, grid, panes, cal, rest, colKey: null };
+  shell = { peekBtn, cal2, arcade, aTime, aDate, pager, time, date, greet, exit, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, thoughtBy, thoughtStar, thoughtOnly, grid, panes, cal, rest, colKey: null };
   paintThought();
   setPage('home', { focus: false });
+}
+
+// a peek at the wallpaper: the page fades to 20% and can't be clicked or tabbed into; only the
+// corner button stays lit (and keeps focus)
+function setPeek(on, { focus = true } = {}) {
+  if (!shell?.peekBtn) return;
+  const b = shell.peekBtn;
+  root.classList.toggle('is-peek', on);
+  for (const n of root.querySelectorAll(':scope > .zen-bar, :scope > .zen-stage, :scope > .zen-pager')) n.inert = on;
+  b.setAttribute('aria-pressed', String(on));
+  b.title = on ? 'Back to Zen (Esc)' : 'Look at the wallpaper';
+  b.setAttribute('aria-label', on ? 'Back to Zen' : 'Look at the wallpaper');
+  if (on && focus) b.focus({ preventScroll: true });
+}
+
+// the fold state of each pane, from the layout
+function paintFolds() {
+  for (const [id, node] of Object.entries(shell?.panes || {})) {
+    const folded = layout.folded.includes(id);
+    node.classList.toggle('is-folded', folded);
+    node.querySelector(':scope > .zen-pane-body').hidden = folded;
+    const b = node.querySelector('.zen-fold'), name = node.getAttribute('aria-label');
+    b.setAttribute('aria-expanded', String(!folded));
+    b.title = folded ? `Unfold ${name}` : `Fold ${name}`;
+    b.setAttribute('aria-label', `${folded ? 'Unfold' : 'Fold'} the ${name} pane`);
+  }
 }
 
 function paintPager() {
@@ -272,6 +322,7 @@ function paintPager() {
 
 function setPage(page, { focus = true } = {}) {
   const was = root.dataset.page;
+  if (page !== 'home') setPeek(false, { focus: false });
   root.dataset.page = page;
   paintPager();
   if (page !== 'arcade') shell.arcade.stop();
@@ -311,6 +362,109 @@ function tick() {
   shell.aDate.textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   shell.greet.textContent = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 22 ? 'Good evening' : 'Good night';
   if (d.toDateString() !== thoughtDay) { thoughtOffset = 0; paintThought(); }   // a new day brings a new thought
+}
+
+/* ————————————————————————— the next thing to do —————————————————————————
+   After a game the arcade offers the top of the list: open reminders and unticked checklist
+   rows, soonest due first, then pinned, then in the list's own order. Choosing one comes back
+   here, to the home page, with that item lit up and its tick box focused. */
+
+// the words as Zen itself shows them: rendered by the same inline renderer, then read back as text
+// (links keep their label, <u> and emphasis drop their marks, a # or a bracket stays put)
+const plainText = (s) => {
+  const t = document.createElement('template');
+  t.innerHTML = renderInline(String(s || ''));
+  return t.content.textContent.replace(/\s+/g, ' ').trim();
+};
+function fmtDue(at) {
+  const d = new Date(at), now = new Date();
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return at < now.getTime() ? `overdue · ${time}` : `today ${time}`;
+  const tmw = new Date(now); tmw.setDate(now.getDate() + 1);
+  if (d.toDateString() === tmw.toDateString()) return `tomorrow ${time}`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + (at < now.getTime() ? ' · overdue' : '');
+}
+async function topTodos() {
+  const items = await loadNotes();
+  const now = Date.now();
+  const out = [];
+  items.forEach((it, order) => {
+    const t = it.reminder?.at ? Date.parse(it.reminder.at) : NaN;
+    const at = Number.isFinite(t) ? t : null;   // an unreadable date ('tomorrow' from an import) sorts as undated
+    if (it.kind === 'reminder' && !it.done) out.push({ id: it.id, rowId: null, text: plainText(it.text) || 'Reminder', at, pinned: !!it.pinned, order });
+    if (it.kind === 'todo') {
+      (it.list || []).forEach((r, k) => {
+        if (!r.done && plainText(r.text)) out.push({ id: it.id, rowId: r.id, text: plainText(r.text), from: plainText(it.title) || 'List', at, pinned: !!it.pinned, order: order + k / 1000 });
+      });
+    }
+  });
+  out.sort((a, b) => ((a.at ?? Infinity) - (b.at ?? Infinity)) || (Number(b.pinned) - Number(a.pinned)) || (a.order - b.order));
+  return out.map((x) => ({ ...x, due: Number.isFinite(x.at) ? fmtDue(x.at) : '', overdue: Number.isFinite(x.at) && x.at < now }));
+}
+async function focusTodo(item) {
+  const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  setPage('home', { focus: false });
+  // the item has to be seen: open the panes it could be in
+  const want = item ? ['todo', 'pinned'] : ['todo'];
+  if (want.some((p) => layout.folded.includes(p))) await saveLayout({ folded: layout.folded.filter((p) => !want.includes(p)) });
+  await render();
+  let target = null;
+  if (item) {
+    const card = shell.pinBody.querySelector(`[data-key="n:${CSS.escape(item.id)}"]`) || shell.todoBody.querySelector(`[data-key="${CSS.escape(item.id)}"]`);
+    target = (item.rowId && card?.querySelector(`[data-row="${CSS.escape(item.rowId)}"]`)) || card;
+  }
+  if (!target) {   // nothing to point at (or asked for a new one): the add box
+    const add = shell.panes.todo.querySelector('.zen-add');
+    shell.panes.todo.scrollIntoView({ block: 'nearest', behavior });
+    flash(shell.panes.todo);
+    add?.focus({ preventScroll: true });
+    return;
+  }
+  target.scrollIntoView({ block: 'center', behavior });
+  flash(target);
+  (target.querySelector('.zen-check') || target).focus?.({ preventScroll: true });
+}
+let wallDeck = [], wallNameTimer = null;
+async function shuffleWallpaper(nameEl) {
+  const [settings, raw] = await Promise.all([loadSettings(), getKey(WALLPAPER_KEY, null)]);
+  const own = ownWallpapers(raw);
+  const ids = [...WALLPAPERS.map((w) => w.id), ...own.images.map((x) => `own:${x.id}`)];
+  const now = settings.zenWallpaper === 'custom' ? `own:${own.active}` : settings.zenWallpaper;
+  wallDeck = wallDeck.filter((id) => ids.includes(id));   // an image removed since stays out
+  if (!wallDeck.length) wallDeck = ids.filter((id) => id !== now).sort(() => Math.random() - 0.5);
+  const next = wallDeck.pop();
+  if (!next) return;
+  // the old scene fades away over the new one
+  const old = root.querySelector('.zen-wall');
+  if (old && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const ghost = old.cloneNode();
+    const cs = getComputedStyle(old);
+    ghost.style.background = cs.background;
+    ghost.style.transform = cs.transform;   // where its slow breathing had got to
+    ghost.classList.add('zen-wall-ghost');
+    old.after(ghost);
+    ghost.addEventListener('animationend', () => ghost.remove());
+    setTimeout(() => ghost.remove(), 1400);
+  }
+  if (next.startsWith('own:')) {   // one of your own: make it the active one, then show it
+    const id = next.slice(4);
+    if (own.active !== id) await setKey(WALLPAPER_KEY, { ...own, active: id });
+    await saveSettings({ zenWallpaper: 'custom' });
+    const n = own.images.findIndex((x) => x.id === id) + 1;
+    nameEl.textContent = own.images.length > 1 ? `Yours ${n}` : 'Your image';
+  } else {
+    await saveSettings({ zenWallpaper: next });
+    nameEl.textContent = WALLPAPERS.find((w) => w.id === next)?.label || '';
+  }
+  nameEl.classList.add('is-on');
+  clearTimeout(wallNameTimer);
+  wallNameTimer = setTimeout(() => nameEl.classList.remove('is-on'), 1600);
+}
+function flash(node) {
+  node.classList.remove('zen-flash');
+  void node.offsetWidth;   // restart the animation
+  node.classList.add('zen-flash');
+  setTimeout(() => node.classList.remove('zen-flash'), 2600);
 }
 
 /* ————————————————————————— drag to arrange ————————————————————————— */
@@ -400,6 +554,7 @@ export async function render() {
   thoughtPrefs = normalizeThoughts(rawThoughts);
   paintThought();
   layout = normalizeLayout(rawLayout);
+  paintFolds();
 
   // wallpaper + the ink that reads on it
   const wp = wallpaperFor(settings.zenWallpaper, custom);
@@ -504,7 +659,7 @@ function listCard(it, { key = null, pinnedCard = false } = {}) {
     ...rows.map((r) => {
       const text = el('span', { class: 'zen-row-text' });
       text.innerHTML = renderInline(r.text || 'Item');
-      return el('div', { class: `zen-row${r.done ? ' is-done' : ''}` }, check(r.done, r.text || 'Item', () => toggleNoteDone(it.id, r.id)), text);
+      return el('div', { class: `zen-row${r.done ? ' is-done' : ''}`, dataset: { row: r.id } }, check(r.done, r.text || 'Item', () => toggleNoteDone(it.id, r.id)), text);
     }));
 }
 

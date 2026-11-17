@@ -86,6 +86,12 @@ const ICONS = {
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   quote:    '<path d="M10 8.5C7.5 9 6 10.8 6 13.5V17h4v-4H7.6"/><path d="M18 8.5c-2.5.5-4 2.3-4 5V17h4v-4h-2.4"/>',
   image:    '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="m20.5 16-5-5-9.5 8.5"/>',
+  // an open ensō whose brush end turns into an arrow, round a ridge and a sun: the next wallpaper
+  // (Zen's shuffle button)
+  wallShuffle: '<path d="M20 9.1A8.5 8.5 0 1 1 14.2 3.8"/><path d="M11.2 5.2 14.2 3.8 12.2 1.1"/><path d="M7.6 15.4c1.2-1.7 1.9-2.5 2.7-2.5.7 0 1.1.9 1.7.9.8 0 1.3-1.9 2.4-1.9.9 0 1.5 1.4 2.1 3.5"/><circle cx="10.6" cy="9.4" r="1.15" fill="currentColor" stroke="none"/>',
+  // a frame left open at one corner, hills inside and the crescent moon rising out of it: look at
+  // the wallpaper itself (Zen's corner button)
+  wallWindow: '<path d="M14.6 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5.4"/><path d="M4.5 16.4c2.4-2.6 4.4-3 6.6-1.2 1.8-2.2 4.3-2.7 8.4-.4"/><path d="M16.65 4.73A2.3 2.3 0 1 0 19.16 7.8 2 2 0 0 1 16.65 4.73z" fill="currentColor" stroke="none"/>',
   swap:     '<path d="M4 8h13m0 0-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7m0 0 3.5 3.5M7 16l3.5-3.5"/>',
 };
 

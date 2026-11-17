@@ -253,13 +253,16 @@ const findItem = (d, id) => d.items.find((x) => x.id === id);
    unpin. Every write goes through mutate(), so queued keystrokes flush first and the Notes
    view repaints itself the next time it is opened. */
 export async function loadNotes() { return (await load()).items; }
-export async function toggleNoteDone(cardId, rowId = null) {
+// `to` (true / false) sets the state outright instead of flipping it, for a tick that must never
+// undo itself (a double click, or a card showing an item already ticked elsewhere)
+export async function toggleNoteDone(cardId, rowId = null, to = null) {
   let item = null;
+  const next = (was) => (typeof to === 'boolean' ? to : !was);
   await mutate((d) => {
     const x = findItem(d, cardId);
     if (!x) return;
-    if (rowId) { const r = x.list?.find((y) => y.id === rowId); if (r) r.done = !r.done; x.updatedAt = now(); }
-    else if (x.kind === 'reminder') x.done = !x.done;
+    if (rowId) { const r = x.list?.find((y) => y.id === rowId); if (r) r.done = next(r.done); x.updatedAt = now(); }
+    else if (x.kind === 'reminder') x.done = next(x.done);
     item = { ...x };
   });
   if (item?.kind === 'reminder') {

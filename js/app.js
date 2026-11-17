@@ -20,9 +20,11 @@ async function main() {
   const { initTicker } = await import('./ticker.js');
   const { initZen } = await import('./zen.js');
   const { initZenPins } = await import('./zenpins.js');
+  const { initBoardWallpaper } = await import('./wallboard.js');
 
   // apply saved typography before first paint; guarantee a default space exists
   applySettings(await loadSettings());
+  initBoardWallpaper();   // the Zen wallpaper behind the board, when Settings asks for it
   await ensureWorkspaces();
   await initZenPins();   // pin buttons on link cards read this as they render
 

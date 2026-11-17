@@ -6,7 +6,7 @@
 import { el, icon, toast, confirmDialog, secGroup, sectionHead, pickFile } from './ui.js';
 import { getKey, setKey, update } from './store.js';
 import { playChime } from './chime.js';
-import { WALLPAPERS, WALLPAPER_IDS, WALLPAPER_KEY, DEFAULT_WALLPAPER, prepareWallpaper, wallpaperFor } from './wallpapers.js';
+import { WALLPAPERS, WALLPAPER_IDS, WALLPAPER_KEY, DEFAULT_WALLPAPER, MAX_OWN, prepareWallpaper, wallpaperFor, ownWallpapers } from './wallpapers.js';
 import { exportBackup, importFlow } from './backup.js';
 import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
 import { LOCK_KEY, loadLock, hasPin, setPin, clearPin, verifyPin, validatePin,
@@ -84,6 +84,7 @@ export const DEFAULT_SETTINGS = {
   zenWallpaper: DEFAULT_WALLPAPER, zenCollection: '',   // Zen mode (js/zen.js)
   zenEyeRest: true,                                      // a 30-second pause every 30 min in Zen (js/zenrest.js)
   zenMotion: true,                                       // the wallpaper's slow animation in Zen
+  boardWallpaper: false,                                 // the Zen wallpaper behind the board too, still (js/wallboard.js)
   reminderChime: true,                                   // a soft chime with reminder notifications (js/chime.js)
   newTab: true,                                          // StackNest replaces Chrome's new tab page (boot.js)
 };
@@ -155,6 +156,7 @@ function normalize(raw) {
     zenEyeRest: m.zenEyeRest !== false,
     reminderChime: m.reminderChime !== false,
     zenMotion: m.zenMotion !== false,
+    boardWallpaper: m.boardWallpaper === true,
     newTab: m.newTab !== false,
   };
 }
@@ -658,56 +660,95 @@ function tickerPlate(s, st) {
 
 /* ——— 05 Zen: the wallpaper behind the uncluttered page ——— */
 async function zenPlate(s, st) {
-  let custom = await getKey(WALLPAPER_KEY, null);
+  // your own pictures: a small gallery (up to MAX_OWN). 'custom' is the setting for "one of
+  // mine"; which one is the gallery's `active`. Each has a × to remove it.
+  let own = ownWallpapers(await getKey(WALLPAPER_KEY, null));
   let current = s.zenWallpaper;
   const grid = el('div', { class: 'wall-grid', role: 'radiogroup', 'aria-label': 'Zen wallpaper' });
-  const removeBtn = el('button', { class: 'btnx ghosty sm', type: 'button', dataset: { key: 'wall-remove' } }, icon('trash', 13), el('span', { text: 'Remove image' }));
+  const ownKey = (id) => `own:${id}`;
+  const isOn = (key) => (key.startsWith('own:') ? current === 'custom' && own.active === key.slice(4) : current === key);
 
-  const choose = (id) => {
-    current = id;
-    for (const b of grid.children) { const on = b.dataset.wall === id; b.classList.toggle('is-active', on); b.setAttribute('aria-checked', String(on)); }
-    saveSettings({ zenWallpaper: id });
+  const paint = () => { for (const w of grid.querySelectorAll('.wall-sw')) { const on = isOn(w.dataset.wall); w.classList.toggle('is-active', on); w.setAttribute('aria-checked', String(on)); } };
+  const keep = async (next) => {
+    try { await setKey(WALLPAPER_KEY, next.images.length ? next : null); own = next; return true; }
+    catch { toast('Not enough room on this device: remove one of your images first'); return false; }
+  };
+  // the images can change elsewhere (Zen's shuffle picks which of yours shows): read them fresh
+  // before any change here, and redraw when they change
+  const fresh = async () => { own = ownWallpapers(await getKey(WALLPAPER_KEY, null)); };
+  try {
+    chrome.storage.onChanged.addListener((ch, area) => {
+      if (area !== 'local' || !(WALLPAPER_KEY in ch)) return;
+      own = ownWallpapers(ch[WALLPAPER_KEY].newValue ?? null);
+      draw();
+    });
+  } catch { /* no storage events here */ }
+  const choose = async (key) => {
+    if (key.startsWith('own:')) {
+      await fresh();
+      const id = key.slice(4);
+      if (own.active !== id && !(await keep({ ...own, active: id }))) return;
+      key = 'custom';
+    }
+    current = key;
+    paint();
+    saveSettings({ zenWallpaper: key });
   };
   const upload = withBusy(async () => {
+    await fresh();
+    if (own.images.length >= MAX_OWN) { toast(`Up to ${MAX_OWN} of your own images: remove one to add another`); return; }
     const file = await pickFile('image/*');
     if (!file) return;
     const img = await prepareWallpaper(file);
-    await setKey(WALLPAPER_KEY, img);
-    custom = img;
+    await fresh();
+    const id = `own${Date.now().toString(36)}`;
+    if (!(await keep({ images: [...own.images, { id, ...img }], active: id }))) return;
     draw();
-    choose('custom');
-    toast('Wallpaper set');
+    choose(ownKey(id));
+    toast('Wallpaper added');
   });
-  removeBtn.addEventListener('click', withBusy(async () => {
-    await setKey(WALLPAPER_KEY, null);
-    custom = null;
-    if (current === 'custom') choose(DEFAULT_WALLPAPER);
+  const remove = async (id) => {
+    await fresh();
+    const images = own.images.filter((x) => x.id !== id);
+    const wasShowing = current === 'custom' && own.active === id;
+    if (!(await keep({ images, active: own.active === id ? images[0]?.id || null : own.active }))) return;
+    if (wasShowing && !images.length) choose(DEFAULT_WALLPAPER);
+    else if (wasShowing) saveSettings({ zenWallpaper: 'custom' });   // the next of yours takes its place
     draw();
     toast('Image removed');
-  }));
+  };
 
-  const swatch = (id, label, css, extra = null) => {
-    const b = el('button', { class: `wall-sw${id === current ? ' is-active' : ''}`, type: 'button', role: 'radio', 'aria-checked': String(id === current),
-      dataset: { wall: id, key: `wall-${id}` } },
-      el('span', { class: `wall-thumb${id === 'theme' ? ' is-theme' : ''}`, style: css ? `background:${css}` : null }, extra),
+  const swatch = (key, label, css, extra = null) => {
+    const b = el('button', { class: `wall-sw${isOn(key) ? ' is-active' : ''}`, type: 'button', role: 'radio', 'aria-checked': String(isOn(key)),
+      dataset: { wall: key, key: `wall-${key}` } },
+      el('span', { class: `wall-thumb${key === 'theme' ? ' is-theme' : ''}`, style: css ? `background:${css}` : null }, extra),
       el('span', { class: 'wall-name', text: label }));
-    b.addEventListener('click', () => (id === 'custom' && !custom ? upload(null, b) : choose(id)));
+    b.addEventListener('click', () => (key === 'add' ? upload() : choose(key)));
     return b;
   };
+  // one of yours: the swatch, with a small × beside it (a sibling, not inside the button)
+  const ownSwatch = (img, n) => el('div', { class: 'wall-own' },
+    swatch(ownKey(img.id), own.images.length > 1 ? `Yours ${n}` : 'Your image', `url("${img.dataUrl}") center / cover no-repeat`),
+    el('button', { class: 'wall-own-x', type: 'button', title: 'Remove this image', 'aria-label': `Remove your image${own.images.length > 1 ? ` ${n}` : ''}`,
+      dataset: { key: `wall-remove-${img.id}` }, onclick: () => remove(img.id) }, icon('close', 11)));
   function draw() {
     grid.replaceChildren(
       ...WALLPAPERS.map((w) => swatch(w.id, w.label, wallpaperFor(w.id).css)),
       swatch('theme', 'Plain', null),
-      swatch('custom', custom ? 'Your image' : 'Upload…', custom ? wallpaperFor('custom', custom).css : null, custom ? null : icon('upload', 18)),
+      ...own.images.map((img, i) => ownSwatch(img, i + 1)),
+      ...(own.images.length < MAX_OWN ? [swatch('add', own.images.length ? 'Add image…' : 'Upload…', null, icon('upload', 18))] : []),
     );
-    removeBtn.hidden = !custom;
   }
   draw();
 
   const motionSw = switchCtl('set-zen-motion', 'Animate the wallpaper', s.zenMotion, 'zen-motion', (on) => saveSettings({ zenMotion: on })
     .then(() => toast(on ? 'Wallpaper animation on' : 'Wallpaper animation off')));
   onSettingsChange(motionSw, (next) => { motionSw.checked = next.zenMotion; });
-  const replaceBtn = el('button', { class: 'btnx soft sm', type: 'button', dataset: { key: 'wall-upload' }, onclick: upload }, icon('image', 13), el('span', { text: 'Use my own image…' }));
+  // the same picture behind the board, still (js/wallboard.js paints it)
+  const boardSw = switchCtl('set-board-wall', 'Show the wallpaper outside Zen', s.boardWallpaper, 'board-wall', (on) => saveSettings({ boardWallpaper: on })
+    .then(() => toast(on ? 'Wallpaper shown behind the board' : 'Wallpaper only in Zen')));
+  onSettingsChange(boardSw, (next) => { boardSw.checked = next.boardWallpaper; });
+  const replaceBtn = el('button', { class: 'btnx soft sm', type: 'button', dataset: { key: 'wall-upload' }, onclick: upload }, icon('image', 13), el('span', { text: 'Add my own image…' }));
   const openBtn = el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'zen-open' },
     onclick: () => document.getElementById('zen-btn')?.click() }, icon('zen', 14), el('span', { text: 'Enter zen' }));
 
@@ -725,10 +766,12 @@ async function zenPlate(s, st) {
       help: 'After every 30 minutes of screen time in Zen, a 30-second pause to look into the distance. Five minutes away from the screen starts the count again.' }),
       setRow({ label: 'Chime with reminders', forId: 'set-chime', control: [hear, chimeSw],
         help: 'A soft bell when a reminder’s notification appears, and when an eye-rest pause ends. Add a timed reminder from the calendar in Zen.' })),
-    secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn, removeBtn) }, grid,
+    secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn) }, grid,
       setRow({ label: 'Animate the wallpaper', forId: 'set-zen-motion', control: motionSw,
-        help: 'A slow drift, with mist, petals, leaves, fireflies or stars to suit each picture. Off when your system asks for reduced motion.' })),
-  ], [callout('Your own image is resized and kept on this device only — it is not part of a backup file or a Drive sync. Plain uses the current theme’s background.')]);
+        help: 'A slow drift, with mist, petals, leaves, fireflies or stars to suit each picture. Off when your system asks for reduced motion.' }),
+      setRow({ label: 'Show it outside Zen too', forId: 'set-board-wall', control: boardSw,
+        help: 'The same picture behind the board and every view, held still, with the sidebar and panels turned to frosted glass over it. Plain shows no picture.' })),
+  ], [callout(`Add up to ${MAX_OWN} of your own images; the × on one removes it. They are resized and kept on this device only — not in a backup file or a Drive sync. Plain uses the current theme’s background. In Zen, the picture button shuffles through them all.`)]);
 }
 
 /* ——— 06 New tab: whether StackNest takes over Chrome's new tab page ——— */
