@@ -3285,7 +3285,7 @@ kbd {
 
 /* ——— Zen's two pages: the little switch at the bottom centre, and the arcade page ——— */
 .zen-pager {
-  position: fixed; left: 50%; bottom: 18px; z-index: 3; transform: translateX(-50%);
+  position: fixed; left: 22px; bottom: 18px; z-index: 3;   /* the bottom-left corner, mirroring the peek button on the right */
   display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pill);
   background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
   -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
@@ -3347,23 +3347,45 @@ kbd {
 .arc-tab[aria-pressed='true'] { background: var(--text-strong); color: var(--bg-card); }
 .arc-tab svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .arc-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.arc-shelf.is-lounge { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .arc-cap { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); }
 .arc-h { margin: 0; font: 700 var(--t7)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
 .arc-sub { margin: 0; font: 500 var(--t3)/1.45 var(--grot); color: var(--text-soft); }
-.arc-shelf { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: start; }
-.arc-card-k { margin-top: auto; }
-@media (max-width: 640px) { .arc-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.arc-card {
-  display: flex; flex-direction: column; gap: 4px; padding: 8px 8px 12px; border-radius: 18px; text-align: left;
-  background: var(--bg-card); border: 1px solid var(--card-line); transition: transform .18s ease, border-color .15s, box-shadow .18s;
+/* the shelf: a mosaic of picture tiles. Rows are a quarter of the shelf's width (half on a
+   narrow screen), so square tiles are square and the big, wide and tall ones keep true shapes */
+.arc-menu { container-type: inline-size; }
+.arc-shelf {
+  --gap: 10px; flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(calc((100cqw - 3 * var(--gap)) / 4), 1fr);   /* at least square; rows share any height left in the frame */
+  grid-auto-flow: dense; gap: var(--gap); align-content: stretch;
 }
-.arc-card:hover { transform: translateY(-2px); border-color: var(--hovbr); box-shadow: 0 18px 30px -22px rgba(0, 0, 0, 0.5); }
-.arc-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.arc-thumb { width: 100%; aspect-ratio: 1; height: auto; border-radius: 12px; margin-bottom: 6px; background: var(--bg-inset); }
-.arc-card-t { padding: 0 4px; font: 700 var(--t4)/1.25 var(--grot); color: var(--text-strong); }
-.arc-card-s { padding: 0 4px; font: 500 var(--t2)/1.4 var(--grot); color: var(--text-soft); }
-.arc-card-k { padding: 2px 4px 0; font: 500 var(--t1) var(--mono); color: var(--text-mut); }
+@container (max-width: 520px) { .arc-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(calc((100cqw - var(--gap)) / 2), 1fr); } }
+.arc-card {
+  position: relative; display: block; padding: 0; overflow: hidden; border-radius: 18px; text-align: left; isolation: isolate;
+  background: var(--bg-inset); border: 1px solid var(--card-line); box-shadow: 0 14px 28px -24px rgba(0, 0, 0, 0.6);
+  transition: transform .25s cubic-bezier(.22, .8, .24, 1), box-shadow .25s ease;
+}
+.arc-card.is-big { grid-column: span 2; grid-row: span 2; }
+.arc-card.is-wide { grid-column: span 2; }
+.arc-card.is-tall { grid-row: span 2; }
+.arc-card.is-banner { grid-column: 1 / -1; }
+.arc-card:hover { transform: translateY(-2px); box-shadow: 0 22px 36px -24px rgba(0, 0, 0, 0.65); }
+.arc-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.arc-thumb { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.22, .8, .24, 1); }
+.arc-card:hover .arc-thumb, .arc-card:focus-visible .arc-thumb { transform: scale(1.05); }
+.arc-card-cap {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 3px; padding: 36px 14px 12px;
+  background: linear-gradient(180deg, rgba(10, 10, 16, 0), rgba(10, 10, 16, 0.42) 38%, rgba(10, 10, 16, 0.78));
+}
+.arc-card-t { font: 700 var(--t4)/1.2 var(--grot); color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4); }
+.arc-card.is-big .arc-card-t { font-size: var(--t6); }
+.arc-card-s { font: 500 var(--t2)/1.35 var(--grot); color: rgba(255, 255, 255, 0.86); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.arc-card.is-sq .arc-card-s, .arc-card.is-tall .arc-card-s { display: none; }
+.arc-card-k { font: 500 var(--t1)/1.35 var(--mono); color: rgba(255, 255, 255, 0.72); max-height: 0; opacity: 0; overflow: hidden; transition: max-height .3s ease, opacity .25s ease; }
+.arc-card:hover .arc-card-k, .arc-card:focus-visible .arc-card-k { max-height: 3em; opacity: 1; }
+.arc-card:is(.is-sq, .is-tall):is(:hover, :focus-visible) .arc-card-s { display: -webkit-box; }
+/* the picture growing from its tile into the square as the piece opens */
+.arc-zoom { position: fixed; z-index: 60; pointer-events: none; transform-origin: 50% 50%; border-radius: 16px; will-change: transform, clip-path, opacity; }
+@media (prefers-reduced-motion: reduce) { .arc-card, .arc-thumb, .arc-card-k { transition: none; } .arc-card:hover .arc-thumb { transform: none; } }
 
 .arc-play { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .arc-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
@@ -3461,6 +3483,7 @@ kbd {
 .arc-over-switch[aria-checked='true'] .arc-over-switch-knob { transform: translateX(12px); }
 
 /* the meditation timer (Temple lounge): its bar button, the panel, and the quiet dial while sitting */
+.arc-med[hidden] { display: none; }   /* .arc-btn's own display would otherwise show it on every piece */
 .arc-med.is-on { border-color: var(--accent); color: var(--accent-text); }
 .med { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .med > * { pointer-events: auto; }
@@ -3481,7 +3504,7 @@ kbd {
 .med-quiet { color: var(--accent-text); }
 .med-today[hidden], .med-quiet[hidden] { display: none; }
 .med-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.med-chip { height: 34px; border-radius: 12px; border: 1px solid var(--card-line-2); font: 600 var(--t3) var(--grot); color: var(--text-strong); background: transparent; }
+.med-chip { height: 34px; text-align: center; border-radius: 12px; border: 1px solid var(--card-line-2); font: 600 var(--t3) var(--grot); color: var(--text-strong); background: transparent; }
 .med-chip:hover { background: var(--hov); }
 .med-chip[aria-checked='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 .med-chip:focus-visible, .med-start:focus-visible, .med-ctl:focus-visible, .med-x:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

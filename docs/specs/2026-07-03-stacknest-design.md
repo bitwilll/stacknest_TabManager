@@ -431,6 +431,24 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
 - **The gong** is synthesised: seven inharmonic partials, each a pair of tones detuned a
   fraction of a hertz (the slow beating is its shimmer), a padded mallet thump, a faint settle
   in pitch, and a ten-second fade. Rendered offline: peak 0.35, silent by 12 s.
+- **Temple at Dusk** (`js/lounge-temple.js`): an Indian Buddhist shrine hall at dusk in the
+  spirit of the great pilgrimage temples, original and drawn with care for dignity. A gilded
+  seated Buddha (lowered eyes, hands in the lap, thumbs touching) in a red niche with a halo,
+  butter lamps, marigolds and water bowls; incense rising in slow ribbons; monks (Tibetan and
+  Theravada) chanting at low tables, the eldest sounding a singing bowl; barefoot pilgrims (an
+  elderly woman with beads, a family, a full prostration on a board, walkers turning the prayer
+  wheels); the bronze bell; the Bodhi tree and a brick spire under prayer flags through the
+  arches; dusk to night to dawn. The critic's dignity notes (the first face read as a grin, the
+  hands as a block, a prostration as a fall) were all fixed before it went on the shelf. The
+  meditation timer's gong button appears on the bar here only.
+- **The shelf as a mosaic.** Games and lounges are picture tiles in a few sizes (big, wide,
+  square, a full-width banner), laid out for how many there are so the rows always fill the
+  frame; the title and a line sit over a soft shade, the controls slide up on hover or focus.
+  Choosing one, the picture grows out of its tile into the square (kept in proportion: a square
+  copy scaled to cover the tile and clipped to its shape, easing out together) and gives way
+  to the live piece; back on the shelf it eases in. Reduced motion skips it. The interface-size
+  zoom on the root is divided out of the measurements so the picture lands exactly.
+- **The page switch moves to the bottom-left corner**, mirroring the peek button on the right.
 - **Koi Garden** (`js/lounge-garden.js`): a garden seen from a wooden veranda in late
   afternoon, the sun sinking to evening over ten minutes. A koi pond (six koi, nine when wide)
   with reflections, lily pads, a lotus and a frog; a stone lantern, a red arched bridge, a red

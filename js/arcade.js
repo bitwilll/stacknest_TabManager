@@ -17,14 +17,23 @@ import * as room from './lounge-room.js';
 import * as cafe from './lounge-cafe.js';
 import * as garden from './lounge-garden.js';
 import * as train from './lounge-train.js';
+import * as temple from './lounge-temple.js';
 
 const SHELVES = {
   games: { list: [llama, drive, lantern, ripples, brush, pebbles], label: 'Games', h: 'A quiet corner',
     sub: 'Small, slow games for a pause. No timers, no losing streaks — soft music on the trail, the drive and the brush.' },
-  lounge: { list: [room, cafe, garden, train], label: 'Lounge', h: 'Somewhere to sit',
+  lounge: { list: [room, cafe, garden, train, temple], label: 'Lounge', h: 'Somewhere to sit',
     sub: 'Nothing to win. Rain on the window, a little music, things to touch. Stay as long as you like.' },
 };
 const SHELF_KEY = 'stacknest:arcade-shelf';
+// the shelf's mosaic on a 4-column grid: tile sizes chosen for how many pieces there are, so every
+// shelf fills its rows exactly (big 2×2, wide 2×1, sq 1×1, banner 4×1); longer shelves repeat
+const MOSAICS = {
+  1: ['banner'], 2: ['wide', 'wide'], 3: ['big', 'wide', 'wide'], 4: ['big', 'wide', 'sq', 'sq'],
+  5: ['big', 'wide', 'sq', 'sq', 'banner'], 6: ['big', 'wide', 'sq', 'sq', 'wide', 'wide'],
+  7: ['big', 'wide', 'sq', 'sq', 'wide', 'sq', 'sq'], 8: ['big', 'wide', 'sq', 'sq', 'wide', 'wide', 'wide', 'wide'],
+};
+const mosaicFor = (n) => MOSAICS[n] || Array.from({ length: n }, (_, i) => MOSAICS[8][i % 8]);
 
 // a few kind words for the end of a round (written for StackNest)
 const UPLIFT = [
@@ -253,19 +262,58 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
     heading.textContent = S.h;
     sub.textContent = S.sub;
     shelf.classList.toggle('is-lounge', id === 'lounge');
-    shelf.replaceChildren(...S.list.map((g) => {
-      const thumb = el('canvas', { class: 'arc-thumb', width: '480', height: '480', 'aria-hidden': 'true' });
-      const card = el('button', { class: 'arc-card', type: 'button', role: 'listitem', onclick: () => launch(g) },
-        thumb, el('span', { class: 'arc-card-t', text: g.meta.title }), el('span', { class: 'arc-card-s', text: g.meta.blurb }),
-        el('span', { class: 'arc-card-k', text: g.meta.keys }));
+    // a mosaic: each piece a tile of its own picture, in a few sizes, packed densely
+    const sizes = mosaicFor(S.list.length);
+    shelf.replaceChildren(...S.list.map((g, i) => {
+      const size = sizes[i];
+      const px = size === 'big' ? 960 : 640;   // sharp at the size it is shown
+      const thumb = el('canvas', { class: 'arc-thumb', width: String(px), height: String(px), 'aria-hidden': 'true' });
+      const card = el('button', { class: `arc-card is-${size}`, type: 'button', role: 'listitem', 'aria-label': `${g.meta.title}. ${g.meta.blurb} ${g.meta.keys}.`,
+        onclick: () => zoomLaunch(g, thumb) },
+        thumb,
+        el('span', { class: 'arc-card-cap', 'aria-hidden': 'true' },
+          el('span', { class: 'arc-card-t', text: g.meta.title }), el('span', { class: 'arc-card-s', text: g.meta.blurb }),
+          el('span', { class: 'arc-card-k', text: g.meta.keys })));
       requestAnimationFrame(() => {
         const c = thumb.getContext('2d');
-        c.setTransform(0.75, 0, 0, 0.75, 0, 0);
-        try { g.preview(c); } catch { /* a still that fails to draw leaves the card plain */ }
+        c.setTransform(px / 640, 0, 0, px / 640, 0, 0);
+        try { g.preview(c); } catch { /* a still that fails to draw leaves the tile plain */ }
       });
       return card;
     }));
     if (focus) requestAnimationFrame(() => tabs.querySelector(`[data-shelf="${id}"]`)?.focus({ preventScroll: true }));
+  }
+
+  // choosing a tile: its picture grows out of the tile into the square, then gives way to the
+  // live piece. The picture keeps its proportions the whole way: a square copy of it is scaled to
+  // cover the tile and clipped to the tile's shape, then both ease out to the full square.
+  function zoomLaunch(g, thumb) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const from = { ...thumb.getBoundingClientRect().toJSON() };
+    if (reduce || !from.width) { launch(g); return; }
+    const ghost = el('canvas', { class: 'arc-zoom', width: String(thumb.width), height: String(thumb.height), 'aria-hidden': 'true' });
+    ghost.getContext('2d').drawImage(thumb, 0, 0);
+    launch(g);
+    // the interface size is a CSS zoom on the root: measured rects come back zoomed, while the
+    // lengths set on the ghost get zoomed again, so measure in the root's own units
+    const z = parseFloat(document.documentElement.style.zoom) || 1;
+    const scaled = (r) => ({ left: r.left / z, top: r.top / z, width: r.width / z, height: r.height / z });
+    const to = scaled(canvas.getBoundingClientRect());
+    if (!to.width) return;
+    Object.assign(from, scaled(from));
+    Object.assign(ghost.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` });
+    document.body.append(ghost);
+    const k = Math.max(from.width, from.height) / to.width;          // the square scaled to cover the tile
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2), dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    const ix = Math.max(0, (to.width - from.width / k) / 2), iy = Math.max(0, (to.height - from.height / k) / 2);
+    const anim = ghost.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(${k})`, clipPath: `inset(${iy}px ${ix}px round ${18 / k}px)`, opacity: 1 },
+      { transform: 'translate(0, 0) scale(1)', clipPath: 'inset(0px 0px round 16px)', opacity: 1, offset: 0.78 },
+      { transform: 'translate(0, 0) scale(1)', clipPath: 'inset(0px 0px round 16px)', opacity: 0 },
+    ], { duration: 620, easing: 'cubic-bezier(.22, .8, .24, 1)' });
+    play.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, delay: 160, easing: 'ease', fill: 'backwards' });
+    const done = () => ghost.remove();
+    anim.finished.then(done, done);
   }
 
   function launch(g) {
@@ -306,6 +354,7 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
     current = null;
     play.hidden = true;
     menu.hidden = false;
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) shelf.animate([{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.22, .8, .24, 1)' });
     score.textContent = '';
     const i = SHELVES[shelfId].list.indexOf(was);
     requestAnimationFrame(() => (shelf.children[Math.max(0, i)])?.focus({ preventScroll: true }));
