@@ -31,8 +31,36 @@ const DAY = 300;   // seconds for a whole day
 
 // deterministic per-segment noise: the same forest every time you pass that way
 const hash = (i, k = 0) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
-const curveAt = (i) => Math.sin(i * 0.011) * 2.4 + Math.sin(i * 0.031 + 1.3) * 1.3;
-const hillAt = (i) => Math.sin(i * 0.013) * 520 + Math.sin(i * 0.041 + 2) * 170;
+
+/* ——— the route: a new road and a new forest on every drive ———
+   A seed picks the road's bends and hills, which trees line it (pines or broadleaves, how many
+   birches, how many ferns, how thick), and the land's season. The shelf's still keeps one route. */
+const SEASONS = {
+  summer: { name: 'a summer road', base: {} },
+  autumn: { name: 'an autumn road', base: { leaf: '#c8742f', leaf2: '#e5a23c', grassA: '#86983f', grassB: '#7d8f38', fern: '#a8793a', pine2: '#45704a' }, hills: [[176, 162, 120], [150, 128, 92]] },
+  spring: { name: 'a spring road', base: { leaf: '#77c457', leaf2: '#f3bccb', grassA: '#6cb24f', grassB: '#62a947', fern: '#6fbd5a' }, hills: [[160, 196, 162], [128, 176, 128]] },
+  golden: { name: 'a late-summer road', base: { leaf: '#6f9c3a', leaf2: '#a3b347', grassA: '#9aa64a', grassB: '#909c42', fern: '#8ea545' }, hills: [[188, 186, 140], [158, 160, 112]] },
+  conifer: { name: 'a deep pine valley', base: { pine: '#24583c', pine2: '#2f6a47', grassA: '#4f8a44', grassB: '#47813d', fern: '#4c9450' }, hills: [[128, 164, 152], [96, 140, 120]] },
+};
+function seededRandom(seed) { let s = Math.floor(seed * 2147483646) + 1; return () => ((s = (s * 16807) % 2147483647) / 2147483647); }
+function makeRoute(seed) {
+  const r = seededRandom(seed);
+  const season = Object.keys(SEASONS)[Math.floor(r() * 5)];
+  return {
+    season, name: SEASONS[season].name, off: Math.floor(r() * 90000),
+    c1: 0.008 + r() * 0.007, c2: 0.024 + r() * 0.014, ca1: 1.8 + r() * 1.4, ca2: 0.7 + r() * 1.1, cp: r() * 6.28,
+    h1: 0.009 + r() * 0.007, h2: 0.032 + r() * 0.016, ha1: 260 + r() * 460, ha2: 80 + r() * 170, hp: r() * 6.28,
+    pine: season === 'conifer' ? 0.82 + r() * 0.12 : 0.3 + r() * 0.45, birch: r() * 0.16,
+    fern: 0.25 + r() * 0.5, thick: r(),
+    base: Object.fromEntries(Object.entries({ ...BASE, ...SEASONS[season].base }).map(([k, v]) => [k, rgbOf(v)])),
+    hills: SEASONS[season].hills || [[150, 186, 168], [118, 164, 132]],
+  };
+}
+const PREVIEW_ROUTE_SEED = 0.4242;
+let R = null;   // set below, once BASE exists
+const curveAt = (i) => Math.sin(i * R.c1 + R.cp) * R.ca1 + Math.sin(i * R.c2 + 1.3 + R.cp) * R.ca2;
+const hillAt = (i) => Math.sin(i * R.h1 + R.hp) * R.ha1 + Math.sin(i * R.h2 + 2 + R.hp) * R.ha2;
+const thash = (i, k) => hash(i + R.off, k);   // the trees of this route
 
 /* ——— colour ——— */
 const rgbOf = (c) => [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16));
@@ -63,14 +91,14 @@ const BASE = {
   grassA: '#5c9a48', grassB: '#53913f', road: '#6e6c68', road2: '#696762', rumbleA: '#ede6d3', rumbleB: '#c8bfa8', lane: '#f1ebdc',
   pine: '#2f6b47', pine2: '#3d7d54', leaf: '#4f9a4a', leaf2: '#64ad55', trunk: '#6b4a32', fern: '#5aa457', birch: '#e9e4d8',
 };
-const BASE_RGB = Object.fromEntries(Object.entries(BASE).map(([k, v]) => [k, rgbOf(v)]));
+R = makeRoute(PREVIEW_ROUTE_SEED);
 const BANDS = 8;
 const SNOWY = new Set(['grassA', 'grassB', 'pine', 'pine2', 'leaf', 'leaf2', 'fern', 'rumbleA', 'rumbleB']);
 
 // every frame: the whole palette, lit for the hour, dusted with snow, faded a little with distance
 function palette(env) {
   const out = {};
-  for (const [k, rgb] of Object.entries(BASE_RGB)) {
+  for (const [k, rgb] of Object.entries(R.base)) {
     let c = rgb;
     if (env.snow > 0 && SNOWY.has(k)) c = mixRgb(c, [236, 242, 246], env.snow * (k.startsWith('grass') ? 0.75 : 0.4));
     if (env.wet > 0 && (k === 'road' || k === 'road2')) c = mixRgb(c, [70, 76, 86], env.wet * 0.5);
@@ -171,7 +199,7 @@ function sky(ctx, env, sway, t, W) {
     ctx.restore();
   }
   // far hills, sliding with the road's bends
-  for (const [base, amp, col, k] of [[HORIZON - 40, 50, [150, 186, 168], 0.15], [HORIZON - 14, 40, [118, 164, 132], 0.3]]) {
+  for (const [base, amp, col, k] of [[HORIZON - 40, 50, R.hills[0], 0.15], [HORIZON - 14, 40, R.hills[1], 0.3]]) {
     const c = mixRgb(mixRgb(col, [236, 242, 246], env.snow * 0.6).map((v) => v * (0.25 + 0.75 * env.light)), env.fog, 0.3);
     ctx.fillStyle = css(c);
     // the same ridge line as in the square, carried on either side (x relative to the square)
@@ -203,8 +231,10 @@ function fern(ctx, P, x, y, h, band) {
   ctx.beginPath(); ctx.ellipse(x, y - h * 0.3, h * 0.7, h * 0.32, 0, Math.PI, 0); ctx.fill();
 }
 
-// the beams ahead after dark: two from the car, one from the bike
-function headlights(ctx, env, steer, cx, cy, kind) {
+// the beams ahead after dark: two from the car, one from the bike. They point where the road
+// goes (aim: the road's centre a little way ahead, on screen), leading a touch into the turn
+// you're steering, so they sweep into a bend rather than away from it.
+function headlights(ctx, env, steer, cx, cy, kind, aim = null) {
   const night = clamp((0.7 - env.light) / 0.35, 0, 1);
   if (night <= 0.02) return night;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -213,8 +243,10 @@ function headlights(ctx, env, steer, cx, cy, kind) {
     g.addColorStop(0, `rgba(255,240,200,${(kind === 'bike' ? 0.26 : 0.22) * night})`); g.addColorStop(1, 'rgba(255,240,200,0)');
     ctx.fillStyle = g;
     const a = side * 40, b = kind === 'bike' ? 26 : 30;
-    ctx.beginPath(); ctx.moveTo(cx + a - b, cy - 18); ctx.lineTo(cx + a + b - steer * 30, cy - 18);
-    ctx.lineTo(cx + side * 110 + 70 - steer * 120, HORIZON + 50); ctx.lineTo(cx + side * 110 - 70 - steer * 120, HORIZON + 50); ctx.fill();
+    const fx = (aim ? aim.x : cx) + steer * 46, fy = aim ? clamp(aim.y, HORIZON + 6, HORIZON + 90) : HORIZON + 50;
+    const spread = kind === 'bike' ? 62 : 54;   // the far ends of the two beams overlap a little on the road
+    ctx.beginPath(); ctx.moveTo(cx + a - b, cy - 18); ctx.lineTo(cx + a + b, cy - 18);
+    ctx.lineTo(fx + side * 44 + spread, fy); ctx.lineTo(fx + side * 44 - spread, fy); ctx.fill();
   }
   ctx.restore();
   return night;
@@ -234,9 +266,9 @@ function scarf(ctx, x, y, t, len, col) {
 
 // an open-top car seen from behind: a folded soft top on the rear deck, two seats, the driver
 // (hair and scarf in the wind), the windscreen's frame beyond
-function car(ctx, env, steer, bump, t, crash, W) {
+function car(ctx, env, steer, bump, t, crash, W, aim) {
   const cx = W / 2, cy = H - 70 + bump;
-  const night = headlights(ctx, env, steer, cx, cy, 'car');
+  const night = headlights(ctx, env, steer, cx, cy, 'car', aim);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(steer * 0.04 + crash * 0.05);
@@ -283,9 +315,9 @@ function car(ctx, env, steer, bump, t, crash, W) {
 
 // a motorbike seen from behind, leaning into the turns: rider in a jacket and helmet, mirrors
 // on their stalks, one tail light, a scarf streaming
-function bike(ctx, env, steer, bump, t, crash, W) {
+function bike(ctx, env, steer, bump, t, crash, W, aim) {
   const cx = W / 2, cy = H - 70 + bump;
-  const night = headlights(ctx, env, steer, cx, cy, 'bike');
+  const night = headlights(ctx, env, steer, cx, cy, 'bike', aim);
   const shade = (c) => css(rgbOf(c).map((v) => v * (0.35 + 0.65 * env.light)));
   ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(cx, cy + 34, 42, 9, 0, 0, Math.PI * 2); ctx.fill();
   ctx.save();
@@ -405,19 +437,19 @@ function render(ctx, st) {
   for (let k = proj.length - 1; k >= 3; k--) {
     const { i, n, p1, s1, band, clip } = proj[k];
     if (p1.sy > clip + 2) continue;
-    const per = n > 90 ? 2 : 3 + Math.floor(hash(i, 9) * 3);
+    const per = n > 90 ? 2 : 2 + Math.floor(thash(i, 9) * (2 + R.thick * 2.4));
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, W, clip); ctx.clip();
     for (const side of [-1, 1]) {
       for (let j = per - 1; j >= 0; j--) {
-        const off = side * (1.25 + j * 0.85 + hash(i, j * 2 + (side > 0 ? 1 : 0)) * 0.7);
+        const off = side * (1.25 + j * 0.85 + thash(i, j * 2 + (side > 0 ? 1 : 0)) * 0.7);
         const sx = p1.sx + s1 * off * ROAD * H / 2;
-        const kind = hash(i, j + 17 + side);
-        const hgt = Math.min(H * 1.05, s1 * (kind < 0.55 ? 2600 + hash(i, j + 3) * 1400 : 2000 + hash(i, j + 5) * 1000) * H / 2);
+        const kind = thash(i, j + 17 + side), isPine = kind < R.pine;
+        const hgt = Math.min(H * 1.05, s1 * (isPine ? 2600 + thash(i, j + 3) * 1400 : 2000 + thash(i, j + 5) * 1000) * H / 2);
         if (sx < -hgt || sx > W + hgt || hgt < 2) continue;
-        if (j === 0 && hash(i, 31 + side) < 0.45) fern(ctx, P, p1.sx + s1 * side * 1.12 * ROAD * H / 2, p1.sy, s1 * 420 * H / 2, band);
-        if (kind < 0.55) pine(ctx, P, sx, p1.sy, hgt, band, kind < 0.25);
-        else broadleaf(ctx, P, sx, p1.sy, hgt, band, kind > 0.92);
+        if (j === 0 && thash(i, 31 + side) < R.fern) fern(ctx, P, p1.sx + s1 * side * 1.12 * ROAD * H / 2, p1.sy, s1 * 420 * H / 2, band);
+        if (isPine) pine(ctx, P, sx, p1.sy, hgt, band, kind < R.pine * 0.45);
+        else broadleaf(ctx, P, sx, p1.sy, hgt, band, kind > 1 - R.birch);
       }
     }
     ctx.restore();
@@ -436,7 +468,12 @@ function render(ctx, st) {
     for (const f of st.flakes) { if (f.k > env.snowfall) continue; ctx.beginPath(); ctx.arc(ox + f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); }
   }
   const bump = Math.sin(t * 18) * Math.min(1.5, speed / 2400) + (Math.abs(playerX) > 1 ? Math.sin(t * 40) * 1.5 * Math.min(1, speed / 900) : 0);
-  (st.vehicle === 'bike' ? bike : car)(ctx, env, steer, bump, t, st.crash ? Math.sign(playerX) * Math.min(1, st.crash * 2) : 0, W);
+  // where the headlights point: the road's centre well ahead, the farthest stretch still in view
+  // within about 40 segments (over a rise, the last one before it), so the beams reach down the
+  // road and swing with its bends
+  let aim = null;
+  for (let k = 40; k >= 6 && !aim; k--) { const q = proj[k]; if (q && q.p1.sy <= q.clip + 1) aim = { x: q.p1.sx, y: q.p1.sy }; }
+  (st.vehicle === 'bike' ? bike : car)(ctx, env, steer, bump, t, st.crash ? Math.sign(playerX) * Math.min(1, st.crash * 2) : 0, W, aim);
   woods(ctx, st, W);
   if (env.flash > 0.01) { ctx.fillStyle = `rgba(232,238,255,${env.flash * 0.32})`; ctx.fillRect(0, 0, W, H); }   // the lightning lights everything
 }
@@ -472,7 +509,13 @@ const HOUR_NAME = (d) => (d < 0.2 ? 'night' : d < 0.3 ? 'sunrise' : d < 0.66 ? '
 
 // a still of any hour and weather (the shelf's thumbnail uses a sunset)
 // (W: the view's width, the square by default; rain, snow and a bolt are relative to the square)
+const PREVIEW_ROUTE = R;   // the route drawn for the shelf's still, the same every time
 export function still(ctx, dayT, w = {}, W = SIZE) {
+  const was = R;
+  R = PREVIEW_ROUTE;
+  try { stillOn(ctx, dayT, w, W); } finally { R = was; }
+}
+function stillOn(ctx, dayT, w, W) {
   const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0, storm: 0, sun: 0, ...w };
   const lo = -(W - SIZE) / 2;
   const drops = Array.from({ length: Math.round(160 * W / SIZE) }, (_, i) => ({ x: lo + hash(i, 21) * W, y: hash(i, 22) * H, k: hash(i, 23) }));
@@ -490,9 +533,16 @@ export function start(canvas, { setScore, isPaused, finish }) {
   // the day's ride, chosen at random (about one drive in three is on two wheels)
   const pick = () => (Math.random() < 0.35 ? 'bike' : 'car');
   let vehicle = pick(), crash = 0, carded = false, leaves = [], journeyAt = Math.floor(Math.random() * JOURNEY.length);
-  let dayT = 0.27, wIdx = 0, wNext = 50 + Math.random() * 30, want = 'sunny', quick = 0, banner = null;
+  // a new road every drive: its bends, hills, trees and season, and the hour and weather it starts in
+  R = makeRoute(Math.random());
+  const warm = R.season !== 'autumn' && R.season !== 'conifer';   // no snow to start a summer or spring drive
+  const starts = warm ? ['sunny', 'clear', 'cloudy', 'rain', 'clear'] : ['clear', 'cloudy', 'rain', 'snow', 'sunny'];
+  let dayT = [0.27, 0.36, 0.5, 0.63, 0.7][Math.floor(Math.random() * 5)], wIdx = 0, wNext = 50 + Math.random() * 30;
+  let want = starts[Math.floor(Math.random() * starts.length)], quick = 0, banner = null;
   let bag = [], strikeIn = 3, thunderAt = Infinity, flicker = Infinity;
-  const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0, storm: 0, sun: 0, flash: 0, bolt: null };
+  const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0, storm: 0, sun: 0, flash: 0, bolt: null, ...WX_GOAL[want] };   // already in it
+  if (want === 'snow') wx.snowCover = 0.6;
+  if (want === 'rain') wx.wet = 0.7;
   // Space: the next weather from a shuffled bag (never the one already here), turning quickly
   const nextWeather = () => {
     if (!bag.length) bag = KINDS.filter((k) => k !== want).sort(() => Math.random() - 0.5);
@@ -639,7 +689,7 @@ export function start(canvas, { setScore, isPaused, finish }) {
     // the cards stay in the middle of the screen
     const shift = ox && (!started || banner);
     if (shift) { ctx.save(); ctx.translate(ox, 0); }
-    if (!started) card(ctx, [{ text: 'Forest Drive', size: 34, weight: 700 }, { text: vehicle === 'bike' ? 'Today, by motorbike' : 'Today, top down', size: 15, weight: 600 }, { text: '← → to steer, ↑ ↓ for pace — or drag', size: 17, weight: 500 }, { text: 'Space changes the weather', size: 14, weight: 500, alpha: 0.85 }], { y: 160, shadow: 'rgba(20,50,30,.5)' });
+    if (!started) card(ctx, [{ text: 'Forest Drive', size: 34, weight: 700 }, { text: `Today: ${R.name}, ${vehicle === 'bike' ? 'by motorbike' : 'top down'}`, size: 15, weight: 600 }, { text: '← → to steer, ↑ ↓ for pace — or drag', size: 17, weight: 500 }, { text: 'Space changes the weather', size: 14, weight: 500, alpha: 0.85 }], { y: 160, shadow: 'rgba(20,50,30,.5)' });
     if (banner && started) card(ctx, [{ text: banner.text, size: 26, weight: 700, alpha: Math.min(1, banner.l / 0.6) }], { y: 96, shadow: 'rgba(20,40,60,.55)' });
     if (shift) ctx.restore();
     if (!crash && Math.floor(t * 2) !== Math.floor((t - dt) * 2)) setScore(`${(pos / 20000).toFixed(1)} km · ${HOUR_NAME(dayT)} · ${WX_LABEL[want]}${offroad ? ' · on the verge' : ''}`);
@@ -649,6 +699,7 @@ export function start(canvas, { setScore, isPaused, finish }) {
     pos = 0; playerX = 0; speed = 0; steer = 0; target = CRUISE;
     crash = 0; carded = false; leaves = []; started = true;
     vehicle = pick();
+    R = makeRoute(Math.random());   // and a new road
     setScore('0.0 km');
   }
   setScore('0.0 km');

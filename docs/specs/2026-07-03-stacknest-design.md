@@ -450,6 +450,16 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
   invented title), light or dim the lamp, poke the fire, pour tea, change the rain, roll the
   ladder. It plays "Pages", the piano waltz written for it. Whole bays appear only when they
   fit, so no full-screen shape cuts a window or a desk in half.
+- **Forest Drive, a new road every time.** Each drive draws a route from a seed: the road's
+  bends and hills, which trees line it (more pine or broadleaf, how many birches, ferns, how
+  thick), and its season, one of a summer road, an autumn road (copper and amber), a spring road
+  (fresh green, blossom), a late-summer road (gold) or a deep pine valley. It starts at a random
+  hour and in a fitting weather, and the title card names the day's road; "Back on the road"
+  after a crash draws a new one. The shelf's still keeps one route.
+- **Headlights that follow the road.** The beams used to swing against a turn (they were offset
+  by minus the steering). They now aim at the farthest stretch of road in view within about 40
+  segments ahead, leading a touch into the turn being steered, so they reach down the road and
+  sweep into its bends.
 - **The shelf as a mosaic.** Games and lounges are picture tiles in a few sizes (big, wide,
   square, a full-width banner), laid out for how many there are so the rows always fill the
   frame; the title and a line sit over a soft shade, the controls slide up on hover or focus.
