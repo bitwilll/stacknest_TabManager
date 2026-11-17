@@ -1,10 +1,10 @@
-// Zen pins — the links and folders the user has pinned to Zen from Collections, the Library
-// and My Space. (Notes cards carry their own `pinned` flag in the notes store; everything
-// else lives here, because a Chrome bookmark has nowhere to keep a flag.)
+// Zen pins — the links, folders and whole collections the user has pinned to Zen from
+// Collections, the Library and My Space. (Notes cards carry their own `pinned` flag in the
+// notes store; everything else lives here, because a Chrome bookmark has nowhere to keep a flag.)
 //
 // A link is keyed by its URL, so the same page pinned from a collection and from the Library
 // is one pin, and its pin button lights up wherever that URL is shown. A Library folder is
-// keyed by its bookmark id and shows its links live in Zen.
+// keyed by its bookmark id, a collection by its own id; both show their links live in Zen.
 //
 // Every pin button on every view carries data-zenpin; when the store changes (here, in Zen,
 // in another tab) syncButtons repaints them in place — no view has to re-render.
@@ -29,16 +29,17 @@ function normalize(raw) {
   const seen = new Set();
   for (const it of items) {
     if (!it || typeof it !== 'object') continue;
-    const kind = it.kind === 'folder' ? 'folder' : 'link';
+    const kind = it.kind === 'folder' || it.kind === 'collection' ? it.kind : 'link';
     const url = kind === 'link' && typeof it.url === 'string' ? it.url.slice(0, 4000) : '';
     const bmId = kind === 'folder' && typeof it.bmId === 'string' ? it.bmId.slice(0, 64) : '';
-    if (kind === 'link' ? !url : !bmId) continue;
-    const key = kind === 'link' ? `u:${url}` : `f:${bmId}`;
-    if (seen.has(key)) continue;                          // one pin per URL / folder
+    const colId = kind === 'collection' && typeof it.colId === 'string' ? it.colId.slice(0, 80) : '';
+    if (!(url || bmId || colId)) continue;
+    const key = pinKey({ kind, url, bmId, colId });
+    if (seen.has(key)) continue;                          // one pin per URL / folder / collection
     seen.add(key);
     out.push({
       id: typeof it.id === 'string' && it.id ? it.id.slice(0, 80) : uid(),
-      kind, url, bmId,
+      kind, url, bmId, colId,
       title: typeof it.title === 'string' ? it.title.slice(0, 500) : '',
       from: FROM.includes(it.from) ? it.from : 'collection',
       at: Number.isFinite(it.at) ? it.at : Date.now(),
@@ -50,8 +51,10 @@ function normalize(raw) {
 
 let cache = { v: 1, items: [] };
 let keys = new Set();
-const keyOf = (ref) => (ref.folderId ? `f:${ref.folderId}` : `u:${ref.url}`);
-const reindex = () => { keys = new Set(cache.items.map((p) => (p.kind === 'folder' ? `f:${p.bmId}` : `u:${p.url}`))); };
+// a stored pin's key, and the same key from a pin button's ref
+function pinKey(p) { return p.kind === 'folder' ? `f:${p.bmId}` : p.kind === 'collection' ? `c:${p.colId}` : `u:${p.url}`; }
+const keyOf = (ref) => (ref.folderId ? `f:${ref.folderId}` : ref.collectionId ? `c:${ref.collectionId}` : `u:${ref.url}`);
+const reindex = () => { keys = new Set(cache.items.map(pinKey)); };
 
 export async function loadZenPins() {
   cache = normalize(await queued(() => getKey(ZENPINS_KEY, null)));
@@ -61,16 +64,18 @@ export async function loadZenPins() {
 
 export const isZenPinned = (ref) => keys.has(keyOf(ref));
 
-// ref: { url, title, from } for a link · { folderId, title, from } for a Library folder
+// ref: { url, title, from } for a link · { folderId, title, from } for a Library folder ·
+// { collectionId, title } for a whole collection
 export async function setZenPin(ref, on) {
   const k = keyOf(ref);
   await update(ZENPINS_KEY, null, (cur) => {
     const d = normalize(cur);
-    d.items = d.items.filter((p) => (p.kind === 'folder' ? `f:${p.bmId}` : `u:${p.url}`) !== k);
+    d.items = d.items.filter((p) => pinKey(p) !== k);
     if (on) {
-      d.items.unshift(ref.folderId
-        ? { id: uid(), kind: 'folder', bmId: ref.folderId, url: '', title: ref.title || '', from: ref.from || 'library', at: Date.now() }
-        : { id: uid(), kind: 'link', url: ref.url, bmId: '', title: ref.title || '', from: ref.from || 'collection', at: Date.now() });
+      const base = { id: uid(), url: '', bmId: '', colId: '', title: ref.title || '', at: Date.now() };
+      d.items.unshift(ref.folderId ? { ...base, kind: 'folder', bmId: ref.folderId, from: ref.from || 'library' }
+        : ref.collectionId ? { ...base, kind: 'collection', colId: ref.collectionId, from: 'collection' }
+          : { ...base, kind: 'link', url: ref.url, from: ref.from || 'collection' });
     }
     cache = normalize(d);
     return cache;
@@ -100,7 +105,7 @@ export function initZenPins() {
   return loadZenPins().then(syncButtons);
 }
 
-/* ——— the pin button every link and folder card carries ——— */
+/* ——— the pin button every link, folder and collection carries ——— */
 
 const refs = new WeakMap();
 function paint(btn) {

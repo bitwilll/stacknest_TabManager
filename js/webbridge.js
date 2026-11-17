@@ -313,10 +313,12 @@ function zenOut(raw, vault) {
     eyeRest: s.zenEyeRest !== false,
     chime: s.reminderChime !== false,
     pins: arr(raw[K.zenPins]?.items).filter(isObj)
-      .filter((p) => !(p.kind !== 'folder' && inVault(vault, str(p.url))))
+      .filter((p) => !(p.kind === 'link' || !p.kind) || !inVault(vault, str(p.url)))
       .map((p) => (p.kind === 'folder'
         ? { id: str(p.id, 80), kind: 'folder', bmId: str(p.bmId, 64), title: str(p.title, 500), from: str(p.from, 20), at: num(p.at) }
-        : { id: str(p.id, 80), kind: 'link', url: str(p.url), title: str(p.title, 500), from: str(p.from, 20), at: num(p.at) })),
+        : p.kind === 'collection'
+          ? { id: str(p.id, 80), kind: 'collection', colId: str(p.colId, 80), title: str(p.title, 500), from: str(p.from, 20), at: num(p.at) }
+          : { id: str(p.id, 80), kind: 'link', url: str(p.url), title: str(p.title, 500), from: str(p.from, 20), at: num(p.at) })),
     layout: { panes: arr(layout.panes).filter((x) => typeof x === 'string').slice(0, 10), order, cal: layout.cal !== false },
     thoughts: { starred: arr(th.fav).filter((x) => typeof x === 'string').slice(0, 500).map((x) => x.slice(0, 1000)), only: !!th.only },
   };

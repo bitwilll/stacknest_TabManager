@@ -3232,6 +3232,7 @@ kbd {
 .zen-folder .zen-link { padding: 6px 4px; }
 .zen-folder-ic { display: inline-flex; color: var(--text-mut); }
 .zen-folder-ic svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-col-dot { flex: none; width: 10px; height: 10px; margin: 0 2px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 8%, transparent); }
 .zen-more { margin: 4px 6px 2px; font: 500 var(--t2) var(--mono); color: var(--text-mut); }
 .zen-todos > .zen-row { padding: 6px 8px; }
 .zen-todos > .zen-row:hover { background: var(--hov); }

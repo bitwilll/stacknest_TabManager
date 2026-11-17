@@ -1,7 +1,7 @@
 {
   ".claude/launch.json": {
-    "mtime": 1794872675.304321,
-    "seen": 1794875002.9608572,
+    "mtime": 1794912650.555537,
+    "seen": 1794912676.2609558,
     "ast_hash": "b94df032cc965c7445484ca9644c4580",
     "semantic_hash": ""
   },
@@ -12,15 +12,15 @@
     "semantic_hash": ""
   },
   "js/auth.js": {
-    "mtime": 1784882445.0,
-    "seen": 1792838297.648619,
-    "ast_hash": "7b449ed27da33dc4af72a910429f0db6",
+    "mtime": 1794912519.1438885,
+    "seen": 1794912676.260962,
+    "ast_hash": "98c71f9f29ac4f2b010129d36be8aea5",
     "semantic_hash": ""
   },
   "js/authConfig.js": {
-    "mtime": 1784882386.0,
-    "seen": 1792838297.6486201,
-    "ast_hash": "7458bc1a745098f015fd7c8332bc5e49",
+    "mtime": 1794912513.9583316,
+    "seen": 1794912676.260963,
+    "ast_hash": "dde04a93af1041e48348a35eb6250838",
     "semantic_hash": ""
   },
   "js/backup.js": {
@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "js/drive.js": {
-    "mtime": 1792003063.6953518,
-    "seen": 1792838297.648623,
-    "ast_hash": "721bf1f4da98fc14cf0255f67a33206d",
+    "mtime": 1794912579.6233385,
+    "seen": 1794912676.260967,
+    "ast_hash": "160307c165e2c8dc672ba30b501b40ad",
     "semantic_hash": ""
   },
   "js/duplicates.js": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "js/spaces.js": {
-    "mtime": 1794870695.4354677,
-    "seen": 1794870948.74077,
-    "ast_hash": "be8d078cd6689e8a66e1864d0205a9ce",
+    "mtime": 1794912568.7963808,
+    "seen": 1794912676.2609851,
+    "ast_hash": "c3ef8175dba9997a042092bcc2b8e215",
     "semantic_hash": ""
   },
   "js/spacesStore.js": {
@@ -144,9 +144,9 @@
     "semantic_hash": ""
   },
   "js/ui.js": {
-    "mtime": 1794884464.5370452,
-    "seen": 1794884742.548397,
-    "ast_hash": "72537a7baff36a3d3236dc71b1e845b3",
+    "mtime": 1794912581.2341862,
+    "seen": 1794912676.261004,
+    "ast_hash": "196ee570c6543a5356f06429d9c4c55a",
     "semantic_hash": ""
   },
   "manifest.json": {
@@ -162,9 +162,9 @@
     "semantic_hash": ""
   },
   "scripts/package.sh": {
-    "mtime": 1794876019.9831119,
-    "seen": 1794880769.842106,
-    "ast_hash": "9c028c1c3bb9e00f92e1ffa088e6419e",
+    "mtime": 1794912651.954993,
+    "seen": 1794912676.261011,
+    "ast_hash": "3180fdbfb962673a616e2a06039c6a2b",
     "semantic_hash": ""
   },
   "scripts/render-icons.mjs": {
@@ -174,9 +174,9 @@
     "semantic_hash": ""
   },
   "scripts/smoke-test.mjs": {
-    "mtime": 1791501322.7816412,
-    "seen": 1792838297.648633,
-    "ast_hash": "f965e44de69198787dc54a1c8d36ee15",
+    "mtime": 1794912632.135435,
+    "seen": 1794912676.261012,
+    "ast_hash": "ce7762449a6b17d571d1c8b1a67c8ab7",
     "semantic_hash": ""
   },
   "scripts/store-assets.mjs": {
@@ -198,21 +198,21 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1791501443.705159,
-    "seen": 1792838297.648635,
-    "ast_hash": "8751cd42348591f1acf6acaa5ac719bf",
+    "mtime": 1794912759.2576942,
+    "seen": 1794912774.7693162,
+    "ast_hash": "9f2dd3b832e1131f0178c144a565462a",
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794895341.428583,
-    "seen": 1794895346.896266,
-    "ast_hash": "2e42bcd466a64705e9f6a3e5eda5ee2d",
+    "mtime": 1794912749.1293554,
+    "seen": 1794912774.7693172,
+    "ast_hash": "d4de4ae76910b81ea60e5642432695a1",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {
-    "mtime": 1792004569.8856997,
-    "seen": 1792838297.6486359,
-    "ast_hash": "f0cec74341cf71d00638c80eb8ed0537",
+    "mtime": 1794912763.4548354,
+    "seen": 1794912774.7693179,
+    "ast_hash": "37fe8da0a00e41cc0a9c7ddd9a3b40e4",
     "semantic_hash": ""
   },
   "docs/store/listing.md": {
@@ -360,9 +360,9 @@
     "semantic_hash": ""
   },
   "js/zen.js": {
-    "mtime": 1794883512.3308306,
-    "seen": 1794883592.416805,
-    "ast_hash": "9ecd0a05f17846413081fa609e9ea2e4",
+    "mtime": 1794912568.7966821,
+    "seen": 1794912676.261007,
+    "ast_hash": "9541a15460f76fe1a12c068528ea7323",
     "semantic_hash": ""
   },
   "js/thoughts.js": {
@@ -378,9 +378,9 @@
     "semantic_hash": ""
   },
   "js/zenpins.js": {
-    "mtime": 1794870489.8378375,
-    "seen": 1794870948.740778,
-    "ast_hash": "aff29d784cf575f7ed1a21e4b15e0b6b",
+    "mtime": 1794912541.8019123,
+    "seen": 1794912676.2610078,
+    "ast_hash": "b835208adfaf2b36000dc1236cc937ff",
     "semantic_hash": ""
   },
   "js/zenrest.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "js/webbridge.js": {
-    "mtime": 1794881329.9388514,
-    "seen": 1794881574.4370801,
-    "ast_hash": "0c0a13a2835c55190a8ca8b58b2a9b2b",
+    "mtime": 1794912580.3604171,
+    "seen": 1794912676.261006,
+    "ast_hash": "0227025854133f57594f12ec01f32cf4",
     "semantic_hash": ""
   },
   "audio/CREDITS.txt": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/specs/stacknest-web-bridge.md": {
-    "mtime": 1794883128.983926,
-    "seen": 1794883592.416814,
-    "ast_hash": "2ede182418209714ccf4af791399ead9",
+    "mtime": 1794912580.360606,
+    "seen": 1794912676.2610161,
+    "ast_hash": "914dab7d0664ec7fe83fdd00424b1c7c",
     "semantic_hash": ""
   },
   "audio/cafe-lofi-hip-hop-loop.ogg": {

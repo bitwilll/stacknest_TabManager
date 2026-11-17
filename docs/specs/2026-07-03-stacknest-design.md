@@ -431,6 +431,25 @@ Verified: `sh scripts/package.sh` builds both zips, and the install manifest giv
 (random ID `jmdh…`, guard message shown, no Google page), on the install build and on the dev
 folder (both `jcmh…`), with 0 exceptions and 0 console errors.
 
+## Collections can be pinned to Zen (2026-11-17)
+
+Links, Library folders and Notes cards could already be pinned to Zen; a whole collection could
+not. Every collection header now carries the same pin, right after "Open all in a new window"
+(the main action first, then the quiet toggles). It lights up like every other pin, and a pin
+made or removed in Zen, on the board or in another tab repaints in place (js/zenpins.js
+syncButtons).
+
+- **Store.** A pin is `{ kind: 'collection', colId, title }` in `stacknest:zenpins`, keyed
+  `c:<colId>`, one per collection. It goes into backups with the other pins, and the web bridge
+  sends it as its own kind (docs/specs/stacknest-web-bridge.md).
+- **In Zen.** The Pinned pane shows it as a live card: the collection's own colour dot, its name,
+  the link count, "open all in background tabs" and unpin. The first eight links show, then
+  "+ N more in the collection". It reads from every Space, so a collection pinned in Work still
+  shows while Personal is active. Like the other pinned cards, it can be dragged into any order.
+- **Deleted.** A collection that is deleted keeps its pin and says "This collection is no
+  longer here". Undo brings the card straight back, which dropping the pin on delete would
+  break.
+
 ## Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17)
 
 The owner asked for five lucky lotto numbers and a valid BIP-39 seed phrase on the saved

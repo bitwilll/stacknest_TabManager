@@ -5,8 +5,8 @@
 //   the clock and the date      on the side, with a month calendar under them (folds away)
 //   one collection              chosen right here, remembered in settings (zenCollection)
 //   To-do                       open reminders and unfinished checklists — tick, or add one
-//   Pinned                      anything pinned to Zen: Notes cards, plus links and folders from
-//                               Collections, the Library and My Space (js/zenpins.js)
+//   Pinned                      anything pinned to Zen: Notes cards, whole collections, plus links
+//                               and folders from Collections, the Library and My Space (js/zenpins.js)
 //
 // The three panes, and the items inside each, can be dragged into any order (or moved with
 // Alt+arrow keys); the arrangement is saved under ZENLAYOUT_KEY. An eye-rest pause runs on
@@ -18,7 +18,7 @@
 
 import { el, icon, tile, domainOf } from './ui.js';
 import { getKey, setKey, update } from './store.js';
-import { SPACES_KEY, ACTIVE_WS_KEY, WORKSPACES_KEY, loadActiveSpaces } from './spacesStore.js';
+import { SPACES_KEY, ACTIVE_WS_KEY, WORKSPACES_KEY, DOT_COLORS, loadSpaces, loadActiveSpaces } from './spacesStore.js';
 import { NOTES_KEY, loadNotes, toggleNoteDone, addQuickReminder, setNotePinned } from './notes.js';
 import { SETTINGS_KEY, loadSettings, saveSettings } from './settings.js';
 import { WALLPAPERS, WALLPAPER_KEY, wallpaperFor, ownWallpapers } from './wallpapers.js';
@@ -549,8 +549,8 @@ function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(
 export async function render() {
   if (!shell || !isOn()) return;
   if (drag) { scheduleRender(); return; }   // never rebuild a list under a drag
-  const [settings, spaces, items, custom, pins, rawLayout, rawThoughts] = await Promise.all([
-    loadSettings(), loadActiveSpaces(), loadNotes(), getKey(WALLPAPER_KEY, null), loadZenPins(), getKey(ZENLAYOUT_KEY, null), getKey(THOUGHTS_KEY, null)]);
+  const [settings, spaces, items, custom, pins, rawLayout, rawThoughts, allSpaces] = await Promise.all([
+    loadSettings(), loadActiveSpaces(), loadNotes(), getKey(WALLPAPER_KEY, null), loadZenPins(), getKey(ZENLAYOUT_KEY, null), getKey(THOUGHTS_KEY, null), loadSpaces()]);
   thoughtPrefs = normalizeThoughts(rawThoughts);
   paintThought();
   layout = normalizeLayout(rawLayout);
@@ -588,9 +588,12 @@ export async function render() {
     ...pins.map((p) => ({ key: `z:${p.id}`, pin: p })),
   ], (x) => x.key, layout.order.pinned, true);
   shell.pinCount.textContent = pinned.length ? String(pinned.length) : '';
-  const cards = await Promise.all(pinned.map((x) => (x.note ? pinCard(x.note, x.key) : x.pin.kind === 'folder' ? folderPin(x.pin, x.key) : linkPin(x.pin, x.key))));
+  const cards = await Promise.all(pinned.map((x) => (x.note ? pinCard(x.note, x.key)
+    : x.pin.kind === 'folder' ? folderPin(x.pin, x.key)
+      : x.pin.kind === 'collection' ? collectionPin(x.pin, x.key, allSpaces, spaces)
+        : linkPin(x.pin, x.key))));
   shell.pinBody.replaceChildren(...(cards.length ? cards
-    : [quiet('Pin anything here: the pin on a Notes card, or on any link in Collections, the Library or My Space. Links in the collection pane have one too.')]));
+    : [quiet('Pin anything here: the pin on a Notes card, on a collection, or on any link in Collections, the Library or My Space. Links in the collection pane have one too.')]));
 }
 
 function renderCollection(spaces, wantedId) {
@@ -689,6 +692,32 @@ function linkPin(p, key) {
 }
 
 const FOLDER_SHOW = 8;
+
+// a whole collection, live: its links as they are now, from whichever Space it lives in.
+// A deleted collection keeps its pin (so Undo brings the card back) and says it has gone.
+function collectionPin(p, key, allSpaces, activeSpaces) {
+  const s = allSpaces.find((x) => x.id === p.colId) || null;
+  const links = (s?.tabs || []).filter((t) => t?.url);
+  const title = s ? (s.title || 'Untitled collection') : (p.title || 'Collection');
+  // the same colour the board paints it: its own, or the palette slot it sits in
+  const at = activeSpaces.findIndex((x) => x.id === p.colId);
+  const color = s?.color || DOT_COLORS[(at < 0 ? 0 : at) % DOT_COLORS.length];
+  const head = el('div', { class: 'zen-list-head', title: s ? 'Pinned collection' : '' },
+    el('span', { class: 'zen-col-dot', style: `background:${color}`, 'aria-hidden': 'true' }),
+    el('span', { class: 'zen-list-title', text: title }),
+    links.length ? el('span', { class: 'zen-list-n', text: String(links.length) }) : null,
+    links.length > 1 ? el('button', { class: 'zen-unpin', type: 'button', title: 'Open all in background tabs', 'aria-label': 'Open all in background tabs',
+      onclick: async () => { for (const t of links) await chrome.tabs.create({ url: t.url, active: false }); } }, icon('external', 13)) : null,
+    unpinBtn(title, () => unpinZenItem(p.id)));
+  const body = !s
+    ? [quiet('This collection is no longer here.')]
+    : links.length
+      ? [...links.slice(0, FOLDER_SHOW).map((t) => linkRow(t)),
+        links.length > FOLDER_SHOW ? el('p', { class: 'zen-more', text: `+ ${links.length - FOLDER_SHOW} more in the collection` }) : null]
+      : [quiet('This collection is empty.')];
+  return el('div', { class: 'zen-list zen-folder zen-colpin', draggable: 'true', dataset: { key } }, head, ...body);
+}
+
 async function folderPin(p, key) {
   let node = null;
   try { [node] = await chrome.bookmarks.getSubTree(p.bmId); } catch { node = null; }

@@ -522,6 +522,7 @@ function column(space, index, q, tagsMap) {
   // R7 order: the main action, quiet edits, then (6px apart, in CSS) the armed delete
   const acts = el('span', { class: 'acts' },
     actionBtn('window', 'Open all in a new window', () => revive(space)),
+    zenPinBtn({ collectionId: space.id, title: space.title || 'Untitled collection' }),
     actionBtn('rename', 'Rename collection', () => startColRename(name, space)),
     actionBtn('download', 'Export this collection', () => exportCollections([space])),
     deleteBtn(space),
