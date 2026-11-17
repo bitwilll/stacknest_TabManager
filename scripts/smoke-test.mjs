@@ -5,12 +5,18 @@
 //
 //   sh scripts/package.sh && node scripts/smoke-test.mjs            (tests dist/stacknest-<version>)
 //   node scripts/smoke-test.mjs .                                    (tests the dev folder)
+//   node scripts/smoke-test.mjs dist/stacknest-<version>-install     (tests the hand-install build)
+//
+// It also guards Google sign-in: the manifest key must give an ID that js/authConfig.js ›
+// OAUTH_EXTENSION_IDS lists, and on the key-less store build (a random ID) Connect must explain
+// how to reinstall instead of opening Google's "Access blocked" page.
 //
 // Uses the DevTools protocol over --remote-debugging-pipe and Extensions.loadUnpacked (branded
 // Chrome no longer honours --load-extension). Nothing touches your real profile. Exit code 1 on
 // any error, so it can gate a release.
 
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -54,13 +60,29 @@ function cdp(profile) {
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Chrome's extension ID for a manifest "key": the first 32 hex digits of SHA-256 over the DER
+// public key, each digit 0-f spelled a-p
+const idForKey = (key) => [...createHash('sha256').update(Buffer.from(key, 'base64')).digest('hex').slice(0, 32)]
+  .map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
+
 const dir = await target();
 if (!existsSync(join(dir, 'manifest.json'))) { console.error(`smoke: no extension at ${dir} — run sh scripts/package.sh first`); process.exit(1); }
+const problems = [];
+
+// Google signs in only the extension IDs js/authConfig.js lists. The dev key must produce one
+// of them, or every hand install would hit "Access blocked: … request is invalid" on Connect.
+const devKey = JSON.parse(await readFile(join(ROOT, 'manifest.json'), 'utf8')).key;
+const builtKey = JSON.parse(await readFile(join(dir, 'manifest.json'), 'utf8')).key;
+const idList = ((await readFile(join(dir, 'js', 'authConfig.js'), 'utf8')).match(/OAUTH_EXTENSION_IDS\s*=\s*\[([^\]]*)\]/) || [])[1] || '';
+const signInIds = [...idList.matchAll(/['"]([a-p]{32})['"]/g)].map((x) => x[1]);
+if (!devKey) problems.push('manifest.json has no "key": hand installs would get a random ID that Google won\'t sign in');
+else if (!signInIds.includes(idForKey(devKey))) problems.push(`the manifest key gives ID ${idForKey(devKey)}, which OAUTH_EXTENSION_IDS in js/authConfig.js doesn't list`);
+
 const profile = await mkdtemp(join(tmpdir(), 'stacknest-smoke-'));
 const { proc, send, on } = cdp(profile);
-const problems = [];
 try {
   const { id } = await send('Extensions.loadUnpacked', { path: dir });
+  if (builtKey && id !== idForKey(builtKey)) problems.push(`Chrome loaded the build as ${id}, not the key's ID ${idForKey(builtKey)}`);
   const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
   const { sessionId: s } = await send('Target.attachToTarget', { targetId, flatten: true });
   on((m) => {
@@ -87,7 +109,22 @@ try {
     }
   }
   for (const side of ['rail', 'full']) { await evaluate(`document.querySelector('#side-collapse').click()`); await pause(200); }
-  console.log(`smoke: ${dir}\n  extension id ${id}\n  ${VIEWS.length} views × 3 themes, rail toggled`);
+  // A build without the key runs under a random ID (here, as anywhere it's hand-installed).
+  // Connect must explain how to reinstall and must not open Google's "Access blocked" page.
+  let guard = '';
+  if (!signInIds.includes(id)) {
+    await evaluate(`document.querySelector('#nav-settings').click()`);
+    await pause(400);
+    const clicked = await evaluate(`(() => { const b = document.querySelector('[data-key="drive-connect"]'); b?.click(); return !!b; })()`);
+    await pause(800);
+    const said = await evaluate(`document.getElementById('toast')?.textContent || ''`);
+    const google = (await send('Target.getTargets')).targetInfos.filter((t) => /accounts\.google\.com/.test(t.url));
+    if (!clicked) problems.push('key-less build: Settings has no Connect button for Google Drive');
+    else if (!/can.t sign in this copy/.test(said)) problems.push(`key-less build: Connect said "${said}" instead of the reinstall advice`);
+    if (google.length) problems.push('key-less build: Connect opened a Google sign-in page');
+    guard = `\n  key-less build: Connect explains the reinstall and opens no Google page`;
+  }
+  console.log(`smoke: ${dir}\n  extension id ${id}${signInIds.includes(id) ? ' (registered for Google sign-in)' : ''}\n  ${VIEWS.length} views × 3 themes, rail toggled${guard}`);
 } catch (e) {
   problems.push(`harness: ${e.message}`);
 } finally {

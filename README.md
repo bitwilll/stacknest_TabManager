@@ -15,6 +15,29 @@ Requires **Chrome 128 or later**.
 
 > Chrome will ask to confirm the new-tab replacement the first time. Click **Keep it**.
 
+### Installing on another computer
+
+Google Drive backup only works for StackNest's own extension ID. The `"key"` in `manifest.json`
+fixes that ID, so install a build that **keeps the key**:
+
+- **From GitHub:** Code › **Download ZIP**, unzip, then **Load unpacked** on the unzipped folder.
+- **From a build:** `sh scripts/package.sh` writes `dist/stacknest-<version>-install.zip`. Share
+  that file, unzip it, then **Load unpacked**.
+
+**Don't hand-install `dist/stacknest-<version>.zip`.** That one is the Chrome Web Store upload,
+and the store requires it without a key. Installed by hand, it gets a random ID. Older copies
+(before October 2026) used a sign-in client that no longer works. In both cases Connect now says
+*"Google can't sign in this copy of StackNest"*. Older copies show Google's *"Access blocked: …
+request is invalid (Error 400)"* instead. To fix either:
+
+1. In the old copy: Settings › Backup & sync › **Export backup** (if it holds anything you want).
+2. `chrome://extensions` › remove the old StackNest.
+3. Install the latest StackNest, as above.
+4. Settings › **Import backup…**, then **Connect** Google Drive.
+
+The export and import step matters because Chrome keeps each extension's data under its ID, so
+a copy with a new ID starts empty.
+
 ### Use it in incognito
 
 The manifest declares `"incognito": "spanning"`, so StackNest can run in incognito windows with
@@ -334,7 +357,10 @@ whole flow without Google).
    - **Credentials → Create credentials → OAuth client ID → Application type: Chrome Extension**,
      and paste the extension **ID** from step 1/2.
 4. **Wire it in.** Put the generated client ID into `manifest.json` → `oauth2.client_id` (replacing
-   the `REPLACE_WITH_…` placeholder). It must end in `.apps.googleusercontent.com`.
+   the `REPLACE_WITH_…` placeholder). It must end in `.apps.googleusercontent.com`. Put the
+   extension ID into `js/authConfig.js` → `OAUTH_EXTENSION_IDS`. Sign-in refuses any other ID with
+   plain advice instead of Google's "Access blocked" page, and `node scripts/smoke-test.mjs` fails
+   if the manifest key's ID isn't listed there.
 5. **Reload the extension.** Settings → Backup & sync now shows **Connect** → sign in →
    **Back up now / Restore latest**. The backup lives in Drive's private `appDataFolder`
    (invisible in your Drive UI). **Disconnect** revokes the grant, not just the local token cache.

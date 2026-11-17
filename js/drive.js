@@ -18,7 +18,7 @@
 
 import { getKey, setKey } from './store.js';
 import { buildBackup, applyBackup } from './backup.js';
-import { mintToken, forgetToken, forgetAllTokens, canChooseAccount } from './auth.js';
+import { mintToken, forgetToken, forgetAllTokens, canChooseAccount, idRegistered, WRONG_ID } from './auth.js';
 
 export const CLOUD_KEY = 'stacknest:cloud'; // { connected, email, lastBackupAt, lastRestoreAt }
 const DEV_FILE_KEY = 'stacknest:cloud:devfile'; // preview-only simulated Drive file
@@ -77,8 +77,16 @@ async function getToken(interactive, { chooseAccount = false } = {}) {
   }
 }
 // turn Chrome's raw OAuth lastError into a message a person can act on
+// The advice for a copy Google won't sign in because of its extension ID: either it was
+// installed from a build without StackNest's ID key (auth.js stops before asking Google), or
+// it's an old build whose sign-in client has since changed (Google says invalid_request).
+// README › "Installing on another computer" has the full steps.
+const REINSTALL = 'Google can’t sign in this copy of StackNest: it’s an old build, or it was installed without its ID key. '
+  + 'Export a backup, install the latest StackNest, import the backup and connect again.';
+
 function authError(raw, interactive) {
   const m = (raw || '').toLowerCase();
+  if (m.startsWith(WRONG_ID) || m.includes('invalid_request') || m.includes('bad client')) return new Error(REINSTALL);
   // Google reports a blocked account ("Access blocked: … has not completed the Google
   // verification process", Error 403 access_denied) the same way as a closed window:
   // getAuthToken says "did not approve", the web flow says access_denied. Say both, so a
@@ -87,7 +95,7 @@ function authError(raw, interactive) {
     return new Error('Google didn’t grant access. If you closed the sign-in window, press Connect again. If Google said “Access blocked”, this Google account can’t connect to StackNest yet.');
   }
   if (m.includes('cancel')) return new Error('Google sign-in was cancelled.');
-  if (m.includes('invalid_client') || m.includes('bad client') || m.includes('not granted') || m.includes('revoked')) {
+  if (m.includes('invalid_client') || m.includes('not granted') || m.includes('revoked')) {
     return new Error("Google Drive sign-in isn't available right now. Please try again later.");
   }
   if (!interactive) return new Error('Your Google Drive session expired — reconnect in Settings.');
@@ -201,6 +209,7 @@ export function getAccount(state) { return state?.email || (state?.connected ? '
 export async function connect({ chooseAccount = false } = {}) {
   if (isLive()) {
     if (!isConfigured()) throw NOT_CONFIGURED();
+    if (!idRegistered()) throw new Error(REINSTALL);       // never open Google's "Access blocked" page
     const token = await getToken(true, { chooseAccount }); // first sign-in: interactive consent
     const email = await fetchEmail(token);
     return patchState({ connected: true, email });

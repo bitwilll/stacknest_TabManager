@@ -118,6 +118,13 @@ one ID for both dev and store:
 - [ ] Google Auth Platform › **Clients** › *StackNest extension*: set **Item ID** to the store's
       Item ID. The client ID string doesn't change, so `oauth2.client_id` stays as it is and
       nothing needs re-uploading.
+- [ ] `js/authConfig.js` › `OAUTH_EXTENSION_IDS`: replace `jcmh…` with the store's Item ID, and
+      re-upload. Sign-in refuses IDs that aren't listed (it tells the person to reinstall rather
+      than opening Google's "Access blocked" page). `node scripts/smoke-test.mjs` fails until the
+      manifest key, this list and the client's Item ID agree.
+- Until then, share `dist/stacknest-<ver>-install.zip` (which keeps the dev key) with anyone
+  installing by hand, never the store zip. A key-less install gets a random ID, and Google
+  rejects it with *"Access blocked: … request is invalid (Error 400: invalid_request)"*.
 - [x] **Branding** (2026-10-15): app name *StackNest*, support and developer email, home page
       `https://github.com/bitwilll/stacknest_TabManager`, privacy policy `…/blob/design-refresh/PRIVACY.md`,
       authorized domain `github.com`. **After merging to `main`, change the privacy policy link to

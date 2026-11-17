@@ -328,7 +328,8 @@ export function toast(message) {
   node.textContent = message;
   node.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.remove('show'), 2400);
+  // long messages (instructions, not confirmations) stay up long enough to read
+  toastTimer = setTimeout(() => node.classList.remove('show'), Math.min(12000, Math.max(2400, String(message).length * 55)));
 }
 
 export function faviconUrl(pageUrl, size = 32) {

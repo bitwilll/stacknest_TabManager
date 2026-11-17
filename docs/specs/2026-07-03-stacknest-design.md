@@ -381,6 +381,56 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Google sign-in: one extension ID everywhere, and a plain answer when it isn't (2026-11-17)
+
+**Report.** Connect on another computer showed Google's *"Access blocked: LifeManager's request
+is invalid — Error 400: invalid_request"*. This Mac was fine: its copy uses StackNest's own OAuth
+client (`1020230466744-gi8j…`, project `stacknest-511618`, since `28c898a` on 2026-10-15) and had
+backed up to Drive that same morning.
+
+**Cause.** The other computer ran a build from before `28c898a`. Every earlier build, and `main`
+until the 2026-10-30 merge, carried LifeManager's client, which explains the name on the page.
+*invalid_request* is what Google says when the extension ID doesn't match the client's registered
+Item ID. A Chrome Extension client is registered to exactly one ID, and the ID comes from the
+manifest `"key"`. `scripts/package.sh` strips the key, because the store refuses it, so anyone
+hand-installing that zip got a random ID. The current zip would have failed the same way, just
+with StackNest's name on the page.
+
+**Fix, in three layers.**
+- **One ID for every hand install.** `package.sh` now also writes
+  `dist/stacknest-<ver>-install.zip` (with its unzipped folder), the same files with the key put
+  back. That is the build to share. The store zip stays key-less. Packaging refuses to finish if
+  the key's ID isn't one Google signs in.
+- **A guard before Google.** `js/authConfig.js › OAUTH_EXTENSION_IDS` lists the IDs the client
+  is registered to (today `jcmh…`). `auth.js › mintToken` checks `chrome.runtime.id` against it
+  first, and so does `drive.js › connect`. This covers the page and the incognito worker path
+  alike. A copy under any other ID never opens Google's page. Instead it says *"Google can't sign
+  in this copy of StackNest: it's an old build, or it was installed without its ID key. Export a
+  backup, install the latest StackNest, import the backup and connect again."* Google's own
+  `invalid_request` / `bad client id` errors map to the same advice. The old wording, "isn't
+  available right now", read like an outage.
+- **A test that can't drift.** `scripts/smoke-test.mjs` derives the ID from the manifest key and
+  fails if `OAUTH_EXTENSION_IDS` doesn't list it. Derivation: SHA-256 of the DER key, first 32 hex
+  digits, each spelled a–p. It also checks that Chrome loads a keyed build under that ID. On the
+  key-less store build it presses Connect and asserts the reinstall advice appears and no
+  `accounts.google.com` target opens.
+
+Toasts now stay up in proportion to their length, from 2.4 s up to 12 s at 55 ms per character,
+so a two-line instruction can actually be read. Short confirmations are unchanged.
+
+`package.sh`'s stylesheet check also stopped misreading `url(%23b)` inside an inline SVG
+`data:` URI (the Zen smoke filter) as a missing file. Quoted `data:` URIs are dropped before the
+`url()` scan.
+
+**When the store listing exists** (launch checklist §C): the store's public key replaces the dev
+key, the client's Item ID becomes the store ID, and that ID replaces `jcmh…` in
+`OAUTH_EXTENSION_IDS`. The smoke test fails until all three agree.
+
+Verified: `sh scripts/package.sh` builds both zips, and the install manifest gives
+`jcmhhjnegjiejjjcppfkejnclbljnldm`. `node scripts/smoke-test.mjs` passes on the store build
+(random ID `jmdh…`, guard message shown, no Google page), on the install build and on the dev
+folder (both `jcmh…`), with 0 exceptions and 0 console errors.
+
 ## Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17)
 
 The owner asked for five lucky lotto numbers and a valid BIP-39 seed phrase on the saved

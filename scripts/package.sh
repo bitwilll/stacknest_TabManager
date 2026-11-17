@@ -1,16 +1,24 @@
 #!/bin/sh
-# Builds the Chrome Web Store upload: dist/stacknest-<version>.zip
+# Builds two packages from the same files:
+#
+#   dist/stacknest-<version>.zip           the Chrome Web Store upload (no "key")
+#   dist/stacknest-<version>-install.zip   for installing by hand: unzip, then Load unpacked
+#                                          (keeps the "key"; unzipped copy: dist/stacknest-<version>-install/)
 #
 #   sh scripts/package.sh
 #
-# The zip is an allowlist, never a copy of the folder. It carries only what the extension
-# runs: manifest.json (minus the dev "key"), newtab.html, css/, js/ (minus the dev-only
-# js/mock.js), fonts/, audio/ and icons/*.png. Personal backups, docs, the "new design" sketches,
-# .git and .DS_Store can't reach the store, because nothing outside the list is copied.
-# Upload only the zip this prints, never an older hand-made one.
+# Both are an allowlist, never a copy of the folder. They carry only what the extension
+# runs: manifest.json, newtab.html, css/, js/ (minus the dev-only js/mock.js), fonts/, audio/
+# and icons/*.png. Personal backups, docs, the "new design" sketches, .git and .DS_Store
+# can't get in, because nothing outside the list is copied. Upload only the store zip this
+# prints, never an older hand-made one.
 #
-# Why "key" is stripped: it pins the unpacked dev build to the extension ID the OAuth client
-# was registered with. The store assigns its own ID and rejects packages that carry a key.
+# Why the two differ only in "key": the key fixes the extension ID, and Google sign-in (Drive
+# backup) works only for the ID its OAuth client is registered to (js/authConfig.js ›
+# OAUTH_EXTENSION_IDS). The store assigns its own ID and rejects packages that carry a key, so
+# the store zip has none. A copy installed by hand WITHOUT the key gets a random ID, and
+# Google answers Connect with "Access blocked: … request is invalid (Error 400)". So never
+# share the store zip for a hand install; share the -install zip.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -24,7 +32,9 @@ case "$VER" in
 esac
 OUT="dist/stacknest-$VER"
 ZIP="dist/stacknest-$VER.zip"
-rm -rf "$OUT" "$ZIP"
+INST="dist/stacknest-$VER-install"
+IZIP="dist/stacknest-$VER-install.zip"
+rm -rf "$OUT" "$ZIP" "$INST" "$IZIP"
 mkdir -p "$OUT/js" "$OUT/icons"
 
 # ——— 1. the allowlist ———
@@ -98,7 +108,8 @@ for (const f of fs.readdirSync(path.join(out, 'js')).filter((n) => n.endsWith('.
 }
 // stylesheet url()s resolve inside the package
 for (const f of fs.readdirSync(path.join(out, 'css')).filter((n) => n.endsWith('.css'))) {
-  const rel = `css/${f}`, src = fs.readFileSync(path.join(out, rel), 'utf8');
+  // drop quoted data: URIs first — an inline SVG can hold its own url(#id) references
+  const rel = `css/${f}`, src = fs.readFileSync(path.join(out, rel), 'utf8').replace(/url\(\s*(["'])data:[\s\S]*?\1\s*\)/g, '');
   for (const [, u] of src.matchAll(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g)) {
     if (/^(data:|#)/.test(u)) continue;
     if (/^[a-z]+:|^\/\//i.test(u)) problems.push(`${rel} loads a remote file: ${u}`);
@@ -122,7 +133,31 @@ if [ -n "$BAD" ]; then
 fi
 if unzip -p "$ZIP" manifest.json | grep -q '"key"'; then echo "package: the packaged manifest still has a key" >&2; exit 1; fi
 
+# ——— 5. the hand-install build: the same files, with the key put back ———
+# The key must produce an ID Google signs in (js/authConfig.js › OAUTH_EXTENSION_IDS), or
+# every hand install would hit "Access blocked" on Connect. Refuse to build otherwise.
+cp -R "$OUT" "$INST"
+node - "$INST" <<'JS'
+const fs = require('fs'), path = require('path'), crypto = require('crypto');
+const inst = process.argv[2];
+const fail = (m) => { console.error(`package: ${m}`); process.exit(1); };
+const { key } = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+if (!key) fail('manifest.json has no "key", so a hand install would get a random extension ID and Google sign-in would fail');
+// Chrome's ID: the first 32 hex digits of SHA-256 over the DER public key, each digit 0-f spelled a-p
+const hex = crypto.createHash('sha256').update(Buffer.from(key, 'base64')).digest('hex').slice(0, 32);
+const id = [...hex].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
+const list = (fs.readFileSync('js/authConfig.js', 'utf8').match(/OAUTH_EXTENSION_IDS\s*=\s*\[([^\]]*)\]/) || [])[1] || '';
+const ids = [...list.matchAll(/['"]([a-p]{32})['"]/g)].map((x) => x[1]);
+if (!ids.includes(id)) fail(`the manifest key gives extension ID ${id}, which js/authConfig.js › OAUTH_EXTENSION_IDS doesn't list (${ids.join(', ') || 'empty'}); Google sign-in would refuse it`);
+const { manifest_version, ...rest } = JSON.parse(fs.readFileSync(path.join(inst, 'manifest.json'), 'utf8'));
+fs.writeFileSync(path.join(inst, 'manifest.json'), JSON.stringify({ manifest_version, key, ...rest }, null, 2) + '\n');
+console.log(`install   key kept, extension ID ${id} (registered for Google sign-in)`);
+JS
+(cd "$INST" && zip -qrXD "../stacknest-$VER-install.zip" .)
+unzip -p "$IZIP" manifest.json | grep -q '"key"' || { echo "package: the install zip lost its key" >&2; exit 1; }
+
 echo
 unzip -l "$ZIP"
 echo
-echo "$ZIP"
+echo "store upload:   $ZIP"
+echo "hand install:   $IZIP   (unzip it, then chrome://extensions › Load unpacked)"
