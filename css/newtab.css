@@ -3448,6 +3448,66 @@ kbd {
 .arc-over-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .arc-done svg { stroke: currentColor; fill: none; stroke-width: 2; }
 .arc-btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+
+/* the painting's side of the card: Save, and (Brush Stroke) whether the black stroke is in it */
+.arc-over-artside { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.arc-over-switch { display: inline-flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: var(--pill); font: 500 var(--t2) var(--grot); color: var(--text-mut); }
+.arc-over-switch:hover { color: var(--text-strong); }
+.arc-over-switch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.arc-over-switch-track { position: relative; width: 30px; height: 18px; flex: none; border-radius: 999px; background: color-mix(in srgb, var(--text-mut) 30%, transparent); transition: background .2s ease; }
+.arc-over-switch-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg-card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform .22s cubic-bezier(.3, 1.4, .5, 1); }
+.arc-over-switch[aria-checked='true'] { color: var(--text-strong); }
+.arc-over-switch[aria-checked='true'] .arc-over-switch-track { background: var(--accent); }
+.arc-over-switch[aria-checked='true'] .arc-over-switch-knob { transform: translateX(12px); }
+
+/* the meditation timer (Temple lounge): its bar button, the panel, and the quiet dial while sitting */
+.arc-med.is-on { border-color: var(--accent); color: var(--accent-text); }
+.med { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.med > * { pointer-events: auto; }
+.med-panel {
+  position: absolute; top: 14px; right: 14px; width: min(320px, calc(100% - 28px)); display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 16px 14px; border-radius: 20px; background: color-mix(in srgb, var(--bg-card) 92%, transparent); border: 1px solid var(--card-line-2);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: var(--text); box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.6);
+  animation: arc-card-in .35s cubic-bezier(.2, .9, .3, 1.1) both;
+}
+.med-panel[hidden], .med-hud[hidden] { display: none; }
+.med-head { display: flex; align-items: center; justify-content: space-between; }
+.med-cap { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--accent-text); }
+.med-x { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--text-mut); }
+.med-x:hover { background: var(--hov); color: var(--text-strong); }
+.med-x svg, .med-start svg, .med-ctl svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.med-h { margin: 0; font: 700 var(--t6)/1.2 var(--grot); letter-spacing: -0.015em; color: var(--text-strong); }
+.med-sub, .med-today, .med-quiet { margin: 0; font: 500 var(--t2)/1.45 var(--grot); color: var(--text-mut); }
+.med-quiet { color: var(--accent-text); }
+.med-today[hidden], .med-quiet[hidden] { display: none; }
+.med-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.med-chip { height: 34px; border-radius: 12px; border: 1px solid var(--card-line-2); font: 600 var(--t3) var(--grot); color: var(--text-strong); background: transparent; }
+.med-chip:hover { background: var(--hov); }
+.med-chip[aria-checked='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.med-chip:focus-visible, .med-start:focus-visible, .med-ctl:focus-visible, .med-x:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.med-every { display: flex; align-items: center; gap: 8px; font: 500 var(--t2) var(--grot); color: var(--text); cursor: pointer; }
+.med-every-box { accent-color: var(--accent); width: 15px; height: 15px; }
+.med-start { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; border-radius: var(--pill); background: var(--accent); color: var(--accent-contrast); font: 600 var(--t3) var(--grot); }
+.med-start:hover { filter: brightness(1.07); }
+.med-hud {
+  position: absolute; top: 14px; right: 14px; display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 999px;
+  background: color-mix(in srgb, #0c0c12 42%, transparent); border: 1px solid rgba(255, 255, 255, 0.14); color: #f4f1ea;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: .78; transition: opacity .3s ease;
+}
+.med-hud:hover, .med-hud:focus-within, .med-hud.is-done { opacity: 1; }
+.med-dial { position: relative; width: 48px; height: 48px; display: grid; place-items: center; }
+.med-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.med-ring-track { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 3; }
+.med-ring-prog { fill: none; stroke: #f2c46d; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset .25s linear; }
+.med-time { position: relative; font: 600 12px var(--mono); font-variant-numeric: tabular-nums; }
+.med-side { display: flex; flex-direction: column; gap: 4px; }
+.med-label { font: 500 12px var(--grot); color: rgba(244, 241, 234, 0.85); white-space: nowrap; }
+.med-ctls { display: flex; gap: 4px; }
+.med-ctl { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #f4f1ea; background: rgba(255, 255, 255, 0.08); }
+.med-ctl:hover { background: rgba(255, 255, 255, 0.2); }
+.med-hud.is-done .med-ctls { display: none; }
+.med-hud.is-paused .med-ring-prog { stroke: rgba(242, 196, 109, 0.5); }
+@media (prefers-reduced-motion: reduce) { .med-panel { animation: none; } .med-ring-prog, .med-hud, .arc-over-switch-knob, .arc-over-switch-track { transition: none; } }
 @media (max-width: 640px) { .arc-done span { display: none; } }
 
 /* coming back from the arcade to a to-do: it glows once, gently */

@@ -381,6 +381,27 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Zen, round six: a temple to sit in, a gong to sit by, games to the edges (2026-11-17)
+
+The owner asked for a Buddhist temple lounge with incense, monks and pilgrims and slow sitar and
+tabla, a meditation timer with a soft gong in it, games that fill the whole screen in full
+screen, and a choice to leave Brush Stroke's black stroke out of a saved painting.
+
+- **Meditation timer** (`js/meditate.js`). In the Temple lounge a gong button sits on the
+  player bar. Its panel offers 3, 5, 10, 15, 20 or 30 minutes (arrow keys move along them) and
+  an optional gong every five minutes; Begin strikes one gong, and three close the sit. Every
+  gong of the sit is scheduled on the audio clock when it starts, so the ending is on time even
+  with the tab hidden; pausing or ending cancels them. While sitting, a quiet dial in the top
+  corner shows the time left (pause and end on hover or focus); the lounge plays on around it.
+  Today's minutes and the last choice are kept on this device. Esc closes the panel first;
+  leaving the lounge ends the sit. The arcade's sound switch is respected.
+- **The gong** is synthesised: seven inharmonic partials, each a pair of tones detuned a
+  fraction of a hertz (the slow beating is its shimmer), a padded mallet thump, a faint settle
+  in pitch, and a ten-second fade. Rendered offline: peak 0.35, silent by 12 s.
+- **Brush Stroke, with or without the stroke.** The end card's painting has a switch, "Brush
+  stroke shown / hidden": hidden saves the paper, the trace and the inscription without the
+  black stroke. The thumbnail redraws as it flips; the choice is remembered.
+
 ## Zen, round five: music and the Buddha, motion tied to the picture, the wallpaper on the board (2026-11-17)
 
 The owner asked that every wallpaper visibly move, for two musical and two Buddha scenes, for the

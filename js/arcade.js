@@ -6,6 +6,7 @@
 
 import { el, icon } from './ui.js';
 import { soundOn, setSound } from './arcade-kit.js';
+import { createMeditation } from './meditate.js';
 import * as llama from './game-llama.js';
 import * as lantern from './game-lantern.js';
 import * as ripples from './game-ripples.js';
@@ -46,6 +47,10 @@ const CAPS = ['well played', 'nicely done', 'lovely', 'that was nice', 'good pau
 // — Zen's list, so the end-of-round card can offer the next thing to do
 export function createArcade({ isPaused, onShelf, todos = null }) {
   let stopGame = null, current = null, upliftAt = 0;
+  const med = createMeditation();   // the Temple lounge's meditation timer (its button sits on the bar)
+  const STROKE_KEY = 'stacknest:arcade-art-stroke';
+  const readStroke = () => { try { return localStorage.getItem(STROKE_KEY) !== 'off'; } catch { return true; } };
+  const writeStroke = (on) => { try { localStorage.setItem(STROKE_KEY, on ? 'on' : 'off'); } catch { /* this session only */ } };
   let shelfId = 'games';
   try { if (localStorage.getItem(SHELF_KEY) === 'lounge') shelfId = 'lounge'; } catch { /* default */ }
 
@@ -175,14 +180,38 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
     cardArt.replaceChildren();
     if (summary.artwork) {
       try {
-        const art = summary.artwork({ quote: cardMsg.textContent });   // the kind word, inscribed on the sheet
-        // the thumbnail from a small copy: encoding the full 1600 px sheet just to show 84 px stalls
-        const small = el('canvas', { width: '168', height: '168' });
-        small.getContext('2d').drawImage(art, 0, 0, 168, 168);
-        const thumb = el('img', { class: 'arc-over-thumb', alt: 'Your painting', src: small.toDataURL('image/png') });
+        // the painting, with the kind word inscribed on the sheet; a game that offers it can leave
+        // its stroke out (Brush Stroke: the trace alone), remembered for next time
+        let withStroke = summary.strokeToggle ? readStroke() : true;
+        let art = null;
+        const thumb = el('img', { class: 'arc-over-thumb', alt: 'Your painting' });
+        const draw = () => {
+          art = summary.artwork({ quote: cardMsg.textContent, stroke: withStroke });
+          // the thumbnail from a small copy: encoding the full 1600 px sheet just to show 84 px stalls
+          const small = el('canvas', { width: '168', height: '168' });
+          small.getContext('2d').drawImage(art, 0, 0, 168, 168);
+          thumb.src = small.toDataURL('image/png');
+        };
+        draw();
         const save = el('button', { class: 'arc-over-btn is-save', type: 'button', onclick: () => saveCanvas(art, summary.artworkName || 'stacknest-artwork.png', save) },
           icon('download', 13), el('span', { text: 'Save painting' }));
-        cardArt.append(thumb, save);
+        const side = el('div', { class: 'arc-over-artside' }, save);
+        if (summary.strokeToggle) {
+          const sw = el('button', { class: 'arc-over-switch', type: 'button', role: 'switch' });
+          const paintSw = () => {
+            sw.setAttribute('aria-checked', String(withStroke));
+            sw.replaceChildren(el('span', { class: 'arc-over-switch-track', 'aria-hidden': 'true' }, el('span', { class: 'arc-over-switch-knob' })),
+              el('span', { text: withStroke ? 'Brush stroke shown' : 'Brush stroke hidden' }));
+            sw.title = withStroke ? 'Leave the black stroke out of the saved painting' : 'Show the black stroke in the saved painting';
+          };
+          sw.addEventListener('click', () => {
+            withStroke = !withStroke; writeStroke(withStroke); paintSw(); draw();
+            save.replaceChildren(icon('download', 13), el('span', { text: 'Save painting' })); save.classList.remove('is-saved');
+          });
+          paintSw();
+          side.append(sw);
+        }
+        cardArt.append(thumb, side);
       } catch { /* no painting this time */ }
     }
     over.hidden = false;
@@ -208,7 +237,7 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
   }
 
   const play = el('div', { class: 'arc-play', hidden: '' },
-    el('div', { class: 'arc-bar' }, back, title, score, doneBtn, fsBtn, soundBtn), el('div', { class: 'arc-stage' }, canvas, over));
+    el('div', { class: 'arc-bar' }, back, title, score, med.button, doneBtn, fsBtn, soundBtn), el('div', { class: 'arc-stage' }, canvas, med.node, over));
   paintFs();
 
   const node = el('div', { class: 'arc-frame' }, menu, play);
@@ -247,7 +276,8 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
     canvas.setAttribute('aria-label', `${g.meta.title}. ${g.meta.keys}.`);
     paintSound();
     score.textContent = '';
-    canvas.classList.toggle('is-wide', !!g.meta.lounge);
+    canvas.classList.toggle('is-wide', !!(g.meta.lounge || g.meta.wide));   // fills the screen in full screen
+    med.setAvailable(!!(g.meta.timer || g.meta.id === 'temple'));
     hideCard();
     stopGame = g.start(canvas, {
       setScore: (s) => { score.textContent = s; },
@@ -264,6 +294,7 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
 
   function showMenu() {
     const was = current;
+    med.setAvailable(false);
     if (document.fullscreenElement === play) document.exitFullscreen().catch(() => {});
     hideCard();
     stop();
@@ -280,7 +311,7 @@ export function createArcade({ isPaused, onShelf, todos = null }) {
   return {
     node,
     // Esc inside a game goes back to its shelf; on the shelf it is the page's to use
-    escape() { if (current) { showMenu(); return true; } return false; },
+    escape() { if (med.escape()) return true; if (current) { showMenu(); return true; } return false; },
     get playing() { return !!current; },
     focus() { (current ? canvas : shelf.children[0])?.focus({ preventScroll: true }); },
     stop() { if (current) showMenu(); },

@@ -85,6 +85,9 @@ const ICONS = {
   eye:      '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   quote:    '<path d="M10 8.5C7.5 9 6 10.8 6 13.5V17h4v-4H7.6"/><path d="M18 8.5c-2.5.5-4 2.3-4 5V17h4v-4h-2.4"/>',
+  // a gong on its stand (the meditation timer), and pause
+  gong:     '<path d="M4 20.5V6M20 20.5V6M2.5 5.5h19"/><path d="M12 5.5v2.2"/><circle cx="12" cy="13" r="5.2"/><circle cx="12" cy="13" r="1.4"/>',
+  pause:    '<path d="M9 6v12M15 6v12"/>',
   image:    '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="m20.5 16-5-5-9.5 8.5"/>',
   // an open ensō whose brush end turns into an arrow, round a ridge and a sun: the next wallpaper
   // (Zen's shuffle button)

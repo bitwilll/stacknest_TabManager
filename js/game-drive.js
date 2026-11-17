@@ -7,10 +7,12 @@
 // Some days it's an open-top car, some days a motorbike. The verge only slows you down; steer
 // deep into the trees and the journey ends there, kindly, with a word about journeys.
 // Pachelbel's Canon plays softly underneath.
+// In full screen the canvas is wide (640 high, wider than 640): the road stays centred at the
+// same size and the forest, verges, sky and weather simply carry on out to the screen's edges.
 
 import { SIZE, setupCanvas, runLoop, card, clamp, playMusic, playAmbience, CANON, pointIn, swish, rumble } from './arcade-kit.js';
 
-export const meta = { id: 'drive', title: 'Forest Drive', blurb: 'Open-top car or motorbike, an endless road through deep forest: day, night and weather.', keys: '← → to steer, ↑ ↓ for pace, Space for weather' };
+export const meta = { id: 'drive', wide: true, title: 'Forest Drive', blurb: 'Open-top car or motorbike, an endless road through deep forest: day, night and weather.', keys: '← → to steer, ↑ ↓ for pace, Space for weather' };
 
 // when a drive ends in the trees: it was never about getting somewhere
 const JOURNEY = [
@@ -23,7 +25,7 @@ const JOURNEY = [
 ];
 const CRASH_AT = 1.8;   // how far past the road's edge (in road half-widths) the trees take you
 
-const W = SIZE, H = SIZE, HORIZON = H / 2;
+const H = SIZE, HORIZON = H / 2;   // the view is H high and W wide (W = SIZE in the square frame)
 const SEG = 200, ROAD = 2000, CAM_H = 900, DEPTH = 0.84, DRAW = 140, LANES = 2;
 const DAY = 300;   // seconds for a whole day
 
@@ -79,21 +81,39 @@ function palette(env) {
 }
 
 /* ——— drawing ——— */
-const STARS = Array.from({ length: 120 }, (_, i) => ({ x: hash(i, 1) * W, y: hash(i, 2) * (HORIZON - 30), p: hash(i, 3) * 6, r: 0.6 + hash(i, 4) * 1.2 }));
+const STARS = Array.from({ length: 120 }, (_, i) => ({ x: hash(i, 1) * SIZE, y: hash(i, 2) * (HORIZON - 30), p: hash(i, 3) * 6, r: 0.6 + hash(i, 4) * 1.2 }));
+// more sky either side of the square for a wide view, as densely starred (x relative to the square)
+// (Array.from passes only (value, index) to its map function, so the count is named first)
+const SIDE = 1400, SIDE_N = 2 * Math.round(120 * SIDE / SIZE), SIDE_STARS = Array.from({ length: SIDE_N }, (_, i) => ({
+  x: i < SIDE_N / 2 ? -hash(i, 51) * SIDE : SIZE + hash(i, 51) * SIDE, y: hash(i, 52) * (HORIZON - 30), p: hash(i, 53) * 6, r: 0.6 + hash(i, 54) * 1.2,
+}));
+let starsW = SIZE, starsIn = STARS;
+function starsFor(W) {   // the stars across a view W wide, rebuilt only when the width changes
+  if (W === SIZE) return STARS;
+  if (W !== starsW) {
+    const ox = (W - SIZE) / 2;
+    starsW = W;
+    starsIn = [...STARS, ...SIDE_STARS].map((s) => ({ ...s, x: s.x + ox })).filter((s) => s.x > -3 && s.x < W + 3);
+  }
+  return starsIn;
+}
 const CLOUDS = Array.from({ length: 9 }, (_, i) => ({ x: hash(i, 11) * 1400, y: 40 + hash(i, 12) * 180, s: 0.7 + hash(i, 13) * 0.9 }));
 
-function sky(ctx, env, sway, t) {
+function sky(ctx, env, sway, t, W) {
+  const ox = (W - SIZE) / 2;   // where the square's left edge sits in a wide view (0 in the square)
+  // the sun and moon cross the whole width, keeping the square's margins at either end
+  const kx = (W - 180) / (SIZE - 180), across = (x) => (W === SIZE ? x : W / 2 + (x - SIZE / 2) * kx);
   const g = ctx.createLinearGradient(0, 0, 0, HORIZON + 30);
   g.addColorStop(0, css(env.skyTop)); g.addColorStop(1, css(env.skyBot));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, HORIZON + 40);
   // stars come out as the light goes
   const starA = clamp((0.62 - env.light) / 0.3, 0, 1) * (1 - env.cloud);
-  if (starA > 0.02) for (const s of STARS) { ctx.globalAlpha = starA * (0.5 + 0.5 * Math.sin(t * 1.5 + s.p)); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); }
+  if (starA > 0.02) for (const s of starsFor(W)) { ctx.globalAlpha = starA * (0.5 + 0.5 * Math.sin(t * 1.5 + s.p)); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); }
   ctx.globalAlpha = 1;
   // the sun crosses from sunrise (0.22) to sunset (0.72); the moon has the night
   const sunA = (env.dayT - 0.22) / 0.5;
   if (sunA > -0.05 && sunA < 1.05) {
-    const th = clamp(sunA, 0, 1) * Math.PI, sx = 90 + sunA * 460 - sway * 0.08, sy = HORIZON + 10 - Math.sin(th) * 250;
+    const th = clamp(sunA, 0, 1) * Math.PI, sx = across(90 + sunA * 460) - sway * 0.08, sy = HORIZON + 10 - Math.sin(th) * 250;
     const low = 1 - Math.sin(th);
     const col = mixRgb([255, 248, 225], [255, 160, 90], low);
     const rgb = col.map(Math.round).join(',');
@@ -115,7 +135,7 @@ function sky(ctx, env, sway, t) {
   }
   const moonA = ((env.dayT + 0.28) % 1) / 0.5;   // up from 0.72 through 0.22
   if (moonA > 0 && moonA < 1 && env.light < 0.8) {
-    const th = moonA * Math.PI, mx = 520 - moonA * 420 - sway * 0.06, my = HORIZON - Math.sin(th) * 230;
+    const th = moonA * Math.PI, mx = across(520 - moonA * 420) - sway * 0.06, my = HORIZON - Math.sin(th) * 230;
     ctx.globalAlpha = (1 - env.cloud * 0.8) * clamp((0.8 - env.light) / 0.3, 0, 1);
     ctx.fillStyle = 'rgba(235,240,255,.15)'; ctx.beginPath(); ctx.arc(mx, my, 44, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#eef1fb'; ctx.beginPath(); ctx.arc(mx, my, 17, 0, Math.PI * 2); ctx.fill();
@@ -126,16 +146,23 @@ function sky(ctx, env, sway, t) {
   if (env.cloud > 0.02) {
     const cc = mixRgb([200, 206, 214], env.skyBot, 0.35).map((v) => v * (0.45 + 0.55 * env.light));
     ctx.fillStyle = css(cc);
+    const reach = Math.ceil((ox + 400) / 1500);
     for (const c of CLOUDS) {
-      const x = ((c.x - sway * 0.15 - t * 6) % 1500 + 1500) % 1500 - 300;
+      const x0 = ((c.x - sway * 0.15 - t * 6) % 1500 + 1500) % 1500 - 300;
       ctx.globalAlpha = env.cloud * 0.9;
-      for (const [dx, dy, r] of [[0, 0, 40], [46, -14, 50], [96, 0, 42], [140, 6, 30]]) { ctx.beginPath(); ctx.ellipse(x + dx * c.s, c.y + dy * c.s, r * c.s * 1.3, r * c.s * 0.8, 0, 0, Math.PI * 2); ctx.fill(); }
+      // the clouds come round every 1500px; a wide view sees the turns either side as well
+      for (let k = -reach; k <= reach; k++) {
+        const x = ox + x0 + k * 1500;
+        if (k && (x + 300 < 0 || x - 100 > W)) continue;
+        for (const [dx, dy, r] of [[0, 0, 40], [46, -14, 50], [96, 0, 42], [140, 6, 30]]) { ctx.beginPath(); ctx.ellipse(x + dx * c.s, c.y + dy * c.s, r * c.s * 1.3, r * c.s * 0.8, 0, 0, Math.PI * 2); ctx.fill(); }
+      }
     }
     ctx.globalAlpha = 1;
   }
   // a fork of lightning against the clouds
   if (env.bolt && env.flash > 0.05) {
     ctx.save();
+    if (ox) ctx.translate(ox, 0);   // the bolt is kept relative to the square
     ctx.strokeStyle = `rgba(245,247,255,${Math.min(1, env.flash * 1.2)})`; ctx.lineWidth = 2.6; ctx.lineJoin = 'round';
     ctx.shadowColor = 'rgba(200,210,255,.9)'; ctx.shadowBlur = 14;
     ctx.beginPath(); env.bolt.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
@@ -147,8 +174,10 @@ function sky(ctx, env, sway, t) {
   for (const [base, amp, col, k] of [[HORIZON - 40, 50, [150, 186, 168], 0.15], [HORIZON - 14, 40, [118, 164, 132], 0.3]]) {
     const c = mixRgb(mixRgb(col, [236, 242, 246], env.snow * 0.6).map((v) => v * (0.25 + 0.75 * env.light)), env.fog, 0.3);
     ctx.fillStyle = css(c);
+    // the same ridge line as in the square, carried on either side (x relative to the square)
+    const x0 = -Math.ceil(ox / 8) * 8, x1 = W - ox + (W > SIZE ? 8 : 0);
     ctx.beginPath(); ctx.moveTo(0, HORIZON + 60);
-    for (let x = 0; x <= W; x += 8) { const wx = x + sway * k; ctx.lineTo(x, base - Math.abs(Math.sin(wx * 0.006)) * amp - Math.sin(wx * 0.017) * amp * 0.3); }
+    for (let x = x0; x <= x1; x += 8) { const wx = x + sway * k; ctx.lineTo(ox + x, base - Math.abs(Math.sin(wx * 0.006)) * amp - Math.sin(wx * 0.017) * amp * 0.3); }
     ctx.lineTo(W, HORIZON + 60); ctx.fill();
   }
 }
@@ -205,7 +234,7 @@ function scarf(ctx, x, y, t, len, col) {
 
 // an open-top car seen from behind: a folded soft top on the rear deck, two seats, the driver
 // (hair and scarf in the wind), the windscreen's frame beyond
-function car(ctx, env, steer, bump, t, crash) {
+function car(ctx, env, steer, bump, t, crash, W) {
   const cx = W / 2, cy = H - 70 + bump;
   const night = headlights(ctx, env, steer, cx, cy, 'car');
   ctx.save();
@@ -254,7 +283,7 @@ function car(ctx, env, steer, bump, t, crash) {
 
 // a motorbike seen from behind, leaning into the turns: rider in a jacket and helmet, mirrors
 // on their stalks, one tail light, a scarf streaming
-function bike(ctx, env, steer, bump, t, crash) {
+function bike(ctx, env, steer, bump, t, crash, W) {
   const cx = W / 2, cy = H - 70 + bump;
   const night = headlights(ctx, env, steer, cx, cy, 'bike');
   const shade = (c) => css(rgbOf(c).map((v) => v * (0.35 + 0.65 * env.light)));
@@ -298,13 +327,16 @@ function bike(ctx, env, steer, bump, t, crash) {
 }
 
 // into the trees: ferns and leaves close in around the vehicle, a few leaves shaken loose
-function woods(ctx, st) {
+function woods(ctx, st, W) {
   const { crash, leaves, env } = st;
   if (!crash) return;
   const k = Math.min(1, crash * 1.6), dark = 0.35 + 0.65 * env.light;
   const P = (c, a = 1) => `rgba(${rgbOf(c).map((v) => Math.round(v * dark)).join(',')},${a})`;
-  for (let i = 0; i < 9; i++) {
-    const x = (i + 0.5) * (W / 9) + Math.sin(i * 7.1) * 24, h = (70 + hash(i, 41) * 90) * k;
+  // nine clumps across the square; a wide view has more of them on out to its edges
+  const ox = (W - SIZE) / 2, gap = SIZE / 9;
+  const i0 = W > SIZE ? Math.floor(-ox / gap) - 1 : 0, i1 = W > SIZE ? Math.ceil((W - ox) / gap) : 8;
+  for (let i = i0; i <= i1; i++) {
+    const x = ox + (i + 0.5) * gap + Math.sin(i * 7.1) * 24, h = (70 + hash(i, 41) * 90) * k;
     ctx.fillStyle = P(i % 2 ? '#2f6a3a' : '#3c7d44', 0.95);
     for (let f = -3; f <= 3; f++) {
       const a = -Math.PI / 2 + f * 0.32 + Math.sin(st.t * 1.6 + i) * 0.04;
@@ -312,7 +344,7 @@ function woods(ctx, st) {
     }
   }
   for (const l of leaves) {
-    ctx.save(); ctx.translate(l.x, l.y); ctx.rotate(l.rot);
+    ctx.save(); ctx.translate(ox + l.x, l.y); ctx.rotate(l.rot);
     ctx.fillStyle = P(l.col, Math.min(1, l.life)); ctx.beginPath(); ctx.ellipse(0, 0, l.r, l.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
@@ -320,12 +352,14 @@ function woods(ctx, st) {
 
 function render(ctx, st) {
   const { pos, playerX, steer, t, speed, env } = st;
+  // a wide view keeps the square's scale (H / 2 per unit) with the road centred: it just sees more
+  const W = st.W || SIZE, ox = (W - SIZE) / 2;
   const P = palette(env);
   const base = Math.floor(pos / SEG), pct = (pos % SEG) / SEG;
   const camY = CAM_H + hillAt(base) + (hillAt(base + 1) - hillAt(base)) * pct;
   let sway = 0;
   for (let i = 0; i < 40; i++) sway += curveAt(base + i);
-  sky(ctx, env, sway * 60 + pos * 0.002, t);
+  sky(ctx, env, sway * 60 + pos * 0.002, t, W);
 
   let x = 0, dx = -curveAt(base) * pct, maxy = H;
   const proj = [], strips = [];
@@ -335,8 +369,8 @@ function render(ctx, st) {
     const s1 = DEPTH / Math.max(z1, 30), s2 = DEPTH / z2;
     const x1 = x, x2 = x + dx;
     x += dx; dx += curveAt(i);
-    const p1 = { sx: W / 2 + s1 * (x1 - playerX * ROAD) * W / 2, sy: HORIZON - s1 * (hillAt(i) - camY) * H / 2, w: s1 * ROAD * W / 2 };
-    const p2 = { sx: W / 2 + s2 * (x2 - playerX * ROAD) * W / 2, sy: HORIZON - s2 * (hillAt(i + 1) - camY) * H / 2, w: s2 * ROAD * W / 2 };
+    const p1 = { sx: W / 2 + s1 * (x1 - playerX * ROAD) * H / 2, sy: HORIZON - s1 * (hillAt(i) - camY) * H / 2, w: s1 * ROAD * H / 2 };
+    const p2 = { sx: W / 2 + s2 * (x2 - playerX * ROAD) * H / 2, sy: HORIZON - s2 * (hillAt(i + 1) - camY) * H / 2, w: s2 * ROAD * H / 2 };
     const band = Math.min(BANDS - 1, Math.floor((n / DRAW) ** 0.8 * BANDS));
     proj.push({ i, n, p1, s1, band, clip: maxy });
     if (p2.sy >= maxy || p2.sy >= p1.sy) continue;   // hidden behind a rise
@@ -377,11 +411,11 @@ function render(ctx, st) {
     for (const side of [-1, 1]) {
       for (let j = per - 1; j >= 0; j--) {
         const off = side * (1.25 + j * 0.85 + hash(i, j * 2 + (side > 0 ? 1 : 0)) * 0.7);
-        const sx = p1.sx + s1 * off * ROAD * W / 2;
+        const sx = p1.sx + s1 * off * ROAD * H / 2;
         const kind = hash(i, j + 17 + side);
         const hgt = Math.min(H * 1.05, s1 * (kind < 0.55 ? 2600 + hash(i, j + 3) * 1400 : 2000 + hash(i, j + 5) * 1000) * H / 2);
         if (sx < -hgt || sx > W + hgt || hgt < 2) continue;
-        if (j === 0 && hash(i, 31 + side) < 0.45) fern(ctx, P, p1.sx + s1 * side * 1.12 * ROAD * W / 2, p1.sy, s1 * 420 * H / 2, band);
+        if (j === 0 && hash(i, 31 + side) < 0.45) fern(ctx, P, p1.sx + s1 * side * 1.12 * ROAD * H / 2, p1.sy, s1 * 420 * H / 2, band);
         if (kind < 0.55) pine(ctx, P, sx, p1.sy, hgt, band, kind < 0.25);
         else broadleaf(ctx, P, sx, p1.sy, hgt, band, kind > 0.92);
       }
@@ -394,16 +428,16 @@ function render(ctx, st) {
     ctx.strokeStyle = `rgba(210,222,240,${0.35 * env.rain})`; ctx.lineWidth = 1.2;
     ctx.beginPath();
     const len = 18 + env.storm * 10, lean = 4 + env.storm * 8;   // a storm drives the rain harder and slanting
-    for (const d of st.drops) { if (d.k > env.rain) continue; ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - lean - steer * 6, d.y + len); }
+    for (const d of st.drops) { if (d.k > env.rain) continue; const x = ox + d.x; ctx.moveTo(x, d.y); ctx.lineTo(x - lean - steer * 6, d.y + len); }
     ctx.stroke();
   }
   if (env.snowfall > 0.02) {
     ctx.fillStyle = 'rgba(255,255,255,.9)';
-    for (const f of st.flakes) { if (f.k > env.snowfall) continue; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); }
+    for (const f of st.flakes) { if (f.k > env.snowfall) continue; ctx.beginPath(); ctx.arc(ox + f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill(); }
   }
   const bump = Math.sin(t * 18) * Math.min(1.5, speed / 2400) + (Math.abs(playerX) > 1 ? Math.sin(t * 40) * 1.5 * Math.min(1, speed / 900) : 0);
-  (st.vehicle === 'bike' ? bike : car)(ctx, env, steer, bump, t, st.crash ? Math.sign(playerX) * Math.min(1, st.crash * 2) : 0);
-  woods(ctx, st);
+  (st.vehicle === 'bike' ? bike : car)(ctx, env, steer, bump, t, st.crash ? Math.sign(playerX) * Math.min(1, st.crash * 2) : 0, W);
+  woods(ctx, st, W);
   if (env.flash > 0.01) { ctx.fillStyle = `rgba(232,238,255,${env.flash * 0.32})`; ctx.fillRect(0, 0, W, H); }   // the lightning lights everything
 }
 
@@ -437,17 +471,22 @@ export function envFor(dayT, wx) {
 const HOUR_NAME = (d) => (d < 0.2 ? 'night' : d < 0.3 ? 'sunrise' : d < 0.66 ? 'day' : d < 0.76 ? 'sunset' : 'night');
 
 // a still of any hour and weather (the shelf's thumbnail uses a sunset)
-export function still(ctx, dayT, w = {}) {
+// (W: the view's width, the square by default; rain, snow and a bolt are relative to the square)
+export function still(ctx, dayT, w = {}, W = SIZE) {
   const wx = { cloud: 0, rain: 0, snowfall: 0, snowCover: 0, wet: 0, storm: 0, sun: 0, ...w };
-  const drops = Array.from({ length: 160 }, (_, i) => ({ x: hash(i, 21) * W, y: hash(i, 22) * H, k: hash(i, 23) }));
-  const flakes = Array.from({ length: 140 }, (_, i) => ({ x: hash(i, 31) * W, y: hash(i, 32) * H, r: 1 + hash(i, 33) * 2.4, k: hash(i, 34) }));
-  render(ctx, { pos: 5200, playerX: 0, steer: 0, t: 1, speed: 2000, env: envFor(dayT, wx), drops, flakes });
+  const lo = -(W - SIZE) / 2;
+  const drops = Array.from({ length: Math.round(160 * W / SIZE) }, (_, i) => ({ x: lo + hash(i, 21) * W, y: hash(i, 22) * H, k: hash(i, 23) }));
+  const flakes = Array.from({ length: Math.round(140 * W / SIZE) }, (_, i) => ({ x: lo + hash(i, 31) * W, y: hash(i, 32) * H, r: 1 + hash(i, 33) * 2.4, k: hash(i, 34) }));
+  render(ctx, { pos: 5200, playerX: 0, steer: 0, t: 1, speed: 2000, env: envFor(dayT, wx), drops, flakes, W });
 }
 export function preview(ctx) { still(ctx, 0.67); }
 
 export function start(canvas, { setScore, isPaused, finish }) {
-  const ctx = setupCanvas(canvas);
-  let t = 0, pos = 0, playerX = 0, speed = 0, steer = 0, left = false, right = false, up = false, down = false, started = false, pointerX = null;
+  const ctx = setupCanvas(canvas, { wide: true });
+  // the view's width: SIZE in the square frame, wider in full screen; it can change on any frame
+  const viewW = () => canvas._snW || SIZE;
+  // pointerDX: a drag's distance right of the screen's centre (null when not dragging)
+  let t = 0, pos = 0, playerX = 0, speed = 0, steer = 0, left = false, right = false, up = false, down = false, started = false, pointerDX = null;
   // the day's ride, chosen at random (about one drive in three is on two wheels)
   const pick = () => (Math.random() < 0.35 ? 'bike' : 'car');
   let vehicle = pick(), crash = 0, carded = false, leaves = [], journeyAt = Math.floor(Math.random() * JOURNEY.length);
@@ -463,8 +502,21 @@ export function start(canvas, { setScore, isPaused, finish }) {
     if (want === 'thunder') strikeIn = 1.2;
     swish(0.04);
   };
-  const drops = Array.from({ length: 160 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 900 + Math.random() * 500, k: Math.random() }));
-  const flakes = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 50 + Math.random() * 70, r: 1 + Math.random() * 2.4, p: Math.random() * 6, k: Math.random() }));
+  // rain and snow, x relative to the square's left edge; a wider view gets more of them
+  const drop = (x) => ({ x, y: Math.random() * H, v: 900 + Math.random() * 500, k: Math.random() });
+  const flake = (x) => ({ x, y: Math.random() * H, v: 50 + Math.random() * 70, r: 1 + Math.random() * 2.4, p: Math.random() * 6, k: Math.random() });
+  let drops = Array.from({ length: 160 }, () => drop(Math.random() * SIZE));
+  let flakes = Array.from({ length: 140 }, () => flake(Math.random() * SIZE));
+  let fitW = SIZE;
+  // the width changed: keep what is still in view where it is, and fill any new sky at the same density
+  const refit = (list, from, to, extra, per, make) => {
+    const lo0 = -(from - SIZE) / 2, hi0 = lo0 + from + extra, lo1 = -(to - SIZE) / 2, hi1 = lo1 + to + extra;
+    const out = list.filter((p) => p.x >= lo1 - 120 && p.x <= hi1 + 20);
+    const add = (a, b) => { for (let n = Math.round((b - a) * per); n > 0; n--) out.push(make(a + Math.random() * (b - a))); };
+    if (lo1 < lo0) add(lo1, Math.min(lo0, hi1));
+    if (hi1 > hi0) add(Math.max(hi0, lo1), hi1);
+    return out;
+  };
   const CRUISE = 2600, MAX = 4200, MIN = 1400;
   let target = CRUISE;
   const onKey = (e) => {
@@ -477,8 +529,8 @@ export function start(canvas, { setScore, isPaused, finish }) {
     else return;
     started = true;
   };
-  const onPointer = (e) => { if (e.type === 'pointerdown') canvas.focus({ preventScroll: true }); if (e.buttons || e.pointerType !== 'mouse') { pointerX = pointIn(canvas, e).x; started = true; } };
-  const onUp = () => { pointerX = null; };
+  const onPointer = (e) => { if (e.type === 'pointerdown') canvas.focus({ preventScroll: true }); if (e.buttons || e.pointerType !== 'mouse') { pointerDX = pointIn(canvas, e).x - viewW() / 2; started = true; } };
+  const onUp = () => { pointerDX = null; };
   canvas.addEventListener('keydown', onKey);
   canvas.addEventListener('keyup', onKey);
   canvas.addEventListener('pointerdown', onPointer);
@@ -487,6 +539,12 @@ export function start(canvas, { setScore, isPaused, finish }) {
   canvas.addEventListener('pointercancel', onUp);
 
   function update(dt) {
+    const W = viewW(), ox = (W - SIZE) / 2, lo = -ox;
+    if (W !== fitW) {
+      drops = refit(drops, fitW, W, 80, 160 / (SIZE + 80), drop);
+      flakes = refit(flakes, fitW, W, 0, 140 / SIZE, flake);
+      fitW = W;
+    }
     t += dt;
     dayT = (dayT + dt / DAY) % 1;
     // the weather drifts from one state to the next over several seconds
@@ -508,7 +566,7 @@ export function start(canvas, { setScore, isPaused, finish }) {
       strikeIn -= dt;
       if (strikeIn <= 0) {
         wx.flash = 1; flicker = t + 0.13; strikeIn = 4 + Math.random() * 8;
-        const pts = [[60 + Math.random() * 520, 10]];
+        const pts = [[60 - ox + Math.random() * (W - 120), 10]];   // anywhere across the sky
         while (pts[pts.length - 1][1] < HORIZON - 30) { const [x, y] = pts[pts.length - 1]; pts.push([x + (Math.random() - 0.5) * 50, y + 14 + Math.random() * 22]); }
         wx.bolt = pts;
         thunderAt = t + 0.35 + Math.random() * 1.3;
@@ -552,12 +610,12 @@ export function start(canvas, { setScore, isPaused, finish }) {
       pos += speed * dt;
       const pct = speed / MAX;
       let wantSteer = (right ? 1 : 0) - (left ? 1 : 0);
-      if (pointerX != null) wantSteer = clamp((pointerX - W / 2) / 140, -1, 1);
+      if (pointerDX != null) wantSteer = clamp(pointerDX / 140, -1, 1);
       steer += (wantSteer - steer) * Math.min(1, dt * 6);
       playerX += steer * dt * 0.95 * (0.4 + pct);
       // hands off the wheel, the car mostly follows the bend and drifts back to its lane: only
       // steering on into the trees takes you there
-      const hands = left || right || pointerX != null;
+      const hands = left || right || pointerDX != null;
       playerX -= curveAt(Math.floor(pos / SEG)) * pct * dt * 0.3 * (hands ? 1 : 0.2);
       if (!hands) playerX += (0 - playerX) * Math.min(1, dt * 0.6);
       if (!started) playerX += (0 - playerX) * dt;
@@ -565,7 +623,7 @@ export function start(canvas, { setScore, isPaused, finish }) {
       if (started && Math.abs(playerX) > CRASH_AT) {
         crash = 0.001;
         leaves = Array.from({ length: 26 }, (_, i) => ({
-          x: W / 2 + (Math.random() - 0.5) * 220, y: H - 120 - Math.random() * 90,
+          x: SIZE / 2 + (Math.random() - 0.5) * 220, y: H - 120 - Math.random() * 90,
           vx: (Math.random() - 0.5) * 220 - Math.sign(playerX) * 60, vy: -120 - Math.random() * 160,
           r: 4 + Math.random() * 5, rot: Math.random() * 6, spin: (Math.random() - 0.5) * 8, life: 1 + Math.random() * 0.8,
           col: ['#4f8a3e', '#6f9a3a', '#b58a3a', '#3c7d44'][i % 4],
@@ -574,12 +632,16 @@ export function start(canvas, { setScore, isPaused, finish }) {
         setScore(`${(pos / 20000).toFixed(1)} km · into the trees`);
       }
     }
-    for (const d of drops) { d.y += d.v * dt; d.x -= (60 + steer * 120) * dt; if (d.y > H) { d.y = -20; d.x = Math.random() * (W + 80); } }
-    for (const f of flakes) { f.y += f.v * dt; f.x += (Math.sin(t + f.p) * 18 - steer * 60) * dt; if (f.y > H) { f.y = -6; f.x = Math.random() * W; } if (f.x < -10) f.x += W + 20; if (f.x > W + 10) f.x -= W + 20; }
+    for (const d of drops) { d.y += d.v * dt; d.x -= (60 + steer * 120) * dt; if (d.y > H) { d.y = -20; d.x = lo + Math.random() * (W + 80); } }
+    for (const f of flakes) { f.y += f.v * dt; f.x += (Math.sin(t + f.p) * 18 - steer * 60) * dt; if (f.y > H) { f.y = -6; f.x = lo + Math.random() * W; } if (f.x < lo - 10) f.x += W + 20; if (f.x > lo + W + 10) f.x -= W + 20; }
 
-    render(ctx, { pos, playerX, steer, t, speed, env, drops, flakes, vehicle, crash, leaves });
+    render(ctx, { pos, playerX, steer, t, speed, env, drops, flakes, vehicle, crash, leaves, W });
+    // the cards stay in the middle of the screen
+    const shift = ox && (!started || banner);
+    if (shift) { ctx.save(); ctx.translate(ox, 0); }
     if (!started) card(ctx, [{ text: 'Forest Drive', size: 34, weight: 700 }, { text: vehicle === 'bike' ? 'Today, by motorbike' : 'Today, top down', size: 15, weight: 600 }, { text: '← → to steer, ↑ ↓ for pace — or drag', size: 17, weight: 500 }, { text: 'Space changes the weather', size: 14, weight: 500, alpha: 0.85 }], { y: 160, shadow: 'rgba(20,50,30,.5)' });
     if (banner && started) card(ctx, [{ text: banner.text, size: 26, weight: 700, alpha: Math.min(1, banner.l / 0.6) }], { y: 96, shadow: 'rgba(20,40,60,.55)' });
+    if (shift) ctx.restore();
     if (!crash && Math.floor(t * 2) !== Math.floor((t - dt) * 2)) setScore(`${(pos / 20000).toFixed(1)} km · ${HOUR_NAME(dayT)} · ${WX_LABEL[want]}${offroad ? ' · on the verge' : ''}`);
   }
   // back on the road for a new journey: the hour and the weather carry on, the ride may change

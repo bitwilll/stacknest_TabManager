@@ -166,10 +166,188 @@ function drum(kind, at, vol, bus) {
   src.connect(f).connect(g).connect(bus); src.start(at, Math.random() * 1.5); src.stop(at + len + 0.02);
 }
 
+/* ——— temple instruments: tanpura, sitar and tabla ———
+   For the Temple lounge's raga. A score event with `inst` is played by one of these instead of
+   the piano-ish voice:
+     { inst: 'tanpura', midi, dur, vol?, cents? }   one drone string, plucked and left to ring
+     { inst: 'sitar', midi, dur, vol?, slide?, glide?, chik? }   a melody stroke, damped after `dur`
+         beats; `slide` starts it that many semitones away and glides in (meend) over `glide` beats;
+         `chik` strikes the high drone strings (the note and its octave) instead
+     { inst: 'tabla', stroke, vol?, midi? }   a bol: na/ta, tin, tun on the dayan (tuned to `midi`,
+         Sa by default), ge/ghe on the bayan (its pitch bends up), ka/ke (a dry slap), and the
+         two-handed dha (na + ge) and dhin (tin + ge)
+   They sound in a small hall of their own (a generated reverb, warm rather than bright), and every
+   stroke disconnects its nodes once it has rung out. */
+let hall = null;
+function hallBus() {
+  if (hall) return hall;
+  const sr = actx.sampleRate, n = Math.floor(sr * 3.4), pre = Math.floor(sr * 0.024);
+  const ir = actx.createBuffer(2, n, sr);
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    let lp = 0;
+    for (let i = pre; i < n; i++) {
+      const t = (i - pre) / sr;
+      lp += (0.6 - 0.45 * Math.min(1, t / 2.4)) * (Math.random() * 2 - 1 - lp);   // the tail darkens as it fades
+      d[i] = lp * Math.exp(-t / 0.5);
+    }
+  }
+  const input = actx.createGain(); input.gain.value = 0.85;
+  const warm = actx.createBiquadFilter(); warm.type = 'lowpass'; warm.frequency.value = 3200; warm.Q.value = 0.5;
+  const verb = actx.createConvolver(); verb.buffer = ir;
+  const wet = actx.createGain(); wet.gain.value = 0.32;
+  input.connect(warm); warm.connect(actx.destination); warm.connect(verb); verb.connect(wet); wet.connect(actx.destination);
+  const side = (pan) => { const p = actx.createStereoPanner(); p.pan.value = pan; p.connect(input); return p; };
+  hall = { sitar: input, tabla: side(0.18), tanpura: side(-0.2) };
+  return hall;
+}
+// disconnect a stroke's nodes once every one of its sources has ended
+function letRing(sources, nodes) {
+  let left = sources.length;
+  const done = () => { if (--left === 0) for (const n of nodes) n.disconnect(); };
+  for (const s of sources) s.onended = done;
+}
+
+function tanpura(ev, at, spb, out) {
+  const f = hz(ev.midi), vol = ev.vol ?? 0.016, len = Math.max(2, (ev.dur ?? 6) * spb);
+  const body = actx.createBiquadFilter(), buzz = actx.createBiquadFilter(), swell = actx.createGain(), env = actx.createGain();
+  body.type = 'lowpass'; body.frequency.value = Math.min(1200, f * 5); body.Q.value = 0.7;
+  // the jawari: a narrow band of upper partials that blooms after the pluck and drifts back down
+  buzz.type = 'bandpass'; buzz.Q.value = 4.5;
+  buzz.frequency.setValueAtTime(Math.min(1500, f * 6), at);
+  buzz.frequency.exponentialRampToValueAtTime(Math.min(2400, f * 15), at + 1.6);
+  buzz.frequency.exponentialRampToValueAtTime(Math.min(1800, f * 8), at + len);
+  swell.gain.setValueAtTime(0.8, at);
+  swell.gain.linearRampToValueAtTime(4.5, at + 1.4);
+  swell.gain.linearRampToValueAtTime(2.4, at + len);
+  env.gain.setValueAtTime(0.0001, at);
+  env.gain.exponentialRampToValueAtTime(vol, at + 0.04);
+  env.gain.exponentialRampToValueAtTime(vol * 0.6, at + 0.6);
+  env.gain.exponentialRampToValueAtTime(vol * 0.25, at + len * 0.6);
+  env.gain.exponentialRampToValueAtTime(0.0001, at + len);
+  // the string, and a twin a few cents off that only feeds the buzz, so it shimmers
+  const oscs = [0, 3].map((c) => {
+    const o = actx.createOscillator();
+    o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = (ev.cents ?? 0) + c;
+    if (!c) o.connect(body);
+    o.connect(buzz);
+    o.start(at); o.stop(at + len + 0.05);
+    return o;
+  });
+  body.connect(env); buzz.connect(swell).connect(env); env.connect(out);
+  letRing(oscs, [...oscs, body, buzz, swell, env]);
+}
+
+function sitar(ev, at, spb, out) {
+  buffers();
+  const f = hz(ev.midi), vol = ev.vol ?? 0.05, len = Math.max(0.3, (ev.dur ?? 1) * spb), end = at + len;
+  const body = actx.createBiquadFilter(), zing = actx.createBiquadFilter(), zg = actx.createGain(), env = actx.createGain();
+  body.type = 'lowpass'; body.Q.value = 1.5;     // a bright stroke that mellows as it rings
+  body.frequency.setValueAtTime(Math.min(2600, f * 6), at);
+  body.frequency.exponentialRampToValueAtTime(Math.max(650, f * 2.5), at + 0.35);
+  body.frequency.exponentialRampToValueAtTime(Math.max(500, f * 2), at + Math.max(0.6, len + 0.2));
+  zing.type = 'bandpass'; zing.Q.value = 3.5;    // the bridge's buzz: a formant that sweeps down after the stroke
+  zing.frequency.setValueAtTime(Math.min(1800, f * 5), at);
+  zing.frequency.exponentialRampToValueAtTime(Math.min(1000, f * 2.5), at + 0.8);
+  zg.gain.value = 1.2;
+  env.gain.setValueAtTime(0.0001, at);
+  env.gain.exponentialRampToValueAtTime(vol, at + 0.005);
+  env.gain.exponentialRampToValueAtTime(vol * 0.45, at + 0.25);
+  env.gain.exponentialRampToValueAtTime(vol * 0.45 * Math.max(0.05, Math.exp(-(len - 0.25) / 1.5)), end);
+  env.gain.exponentialRampToValueAtTime(0.0001, end + 0.15);   // the next stroke damps the string
+  const srcs = (ev.chik ? [f, f * 2] : [f]).map((fr) => {
+    const o = actx.createOscillator(); o.type = 'sawtooth';
+    if (ev.slide && !ev.chik) {   // meend: start off the note and glide into it
+      const from = fr * 2 ** (ev.slide / 12), glide = Math.max(0.1, (ev.glide ?? Math.min(0.45, (ev.dur ?? 1) * 0.4)) * spb);
+      o.frequency.setValueAtTime(from, at);
+      o.frequency.setValueAtTime(from, at + 0.05);
+      o.frequency.exponentialRampToValueAtTime(fr, at + 0.05 + glide);
+    } else o.frequency.setValueAtTime(fr, at);
+    o.connect(body); o.connect(zing);
+    o.start(at); o.stop(end + 0.2);
+    return o;
+  });
+  body.connect(env); zing.connect(zg).connect(env); env.connect(out);
+  const nodes = [...srcs, body, zing, zg, env];
+  // the mizrab's little click
+  const click = actx.createBufferSource(), cf = actx.createBiquadFilter(), cg = actx.createGain();
+  click.buffer = noiseBuf; cf.type = 'bandpass'; cf.frequency.value = 1800; cf.Q.value = 1.2;
+  cg.gain.setValueAtTime(0.0001, at); cg.gain.exponentialRampToValueAtTime(vol * 0.3, at + 0.002); cg.gain.exponentialRampToValueAtTime(0.0001, at + 0.03);
+  click.connect(cf).connect(cg).connect(out); click.start(at, Math.random() * 1.5); click.stop(at + 0.04);
+  srcs.push(click); nodes.push(click, cf, cg);
+  // the sympathetic strings: the note's octave and twelfth, a little out of tune with each other,
+  // blooming just after the stroke and lingering once it is damped
+  if (!ev.chik) {
+    const sym = actx.createGain(), symEnd = end + 2.2;
+    sym.gain.setValueAtTime(0.0001, at);
+    sym.gain.exponentialRampToValueAtTime(vol * 0.1, at + 0.2);
+    sym.gain.exponentialRampToValueAtTime(vol * 0.06, at + 0.9);
+    sym.gain.exponentialRampToValueAtTime(0.0001, symEnd);
+    for (const [m, c] of f < 520 ? [[2, 3], [2, -4], [3, 2]] : [[2, 3], [2, -4]]) {   // (no twelfth up high)
+      const o = actx.createOscillator(); o.type = 'sine'; o.frequency.value = f * m; o.detune.value = c;
+      o.connect(sym); o.start(at); o.stop(symEnd + 0.05);
+      srcs.push(o); nodes.push(o);
+    }
+    sym.connect(out); nodes.push(sym);
+  }
+  letRing(srcs, nodes);
+}
+
+// the dayan's ringing strokes, as partials of its tuning: [multiple, level, ring (s)]
+const DAYAN = {
+  na: [[1, 1.25, 0.9], [2, 0.7, 0.6], [3, 0.42, 0.45], [4, 0.2, 0.3]],
+  tin: [[1, 1.25, 1], [2, 0.38, 0.5], [3, 0.12, 0.3]],
+  tun: [[1, 1.25, 1.6], [2, 0.22, 0.6]],
+};
+const BOLS = { na: ['na'], ta: ['na'], tin: ['tin'], tun: ['tun'], ge: ['ge'], ghe: ['ge'], ka: ['ka'], ke: ['ka'], dha: ['na', 'ge'], dhin: ['tin', 'ge'] };
+function tabla(ev, at, spb, out) {
+  buffers();
+  const vol = ev.vol ?? 0.03, f = hz(ev.midi ?? 62), srcs = [], nodes = [];
+  const env = (peak, atk, ring) => {
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + atk); g.gain.exponentialRampToValueAtTime(0.0001, at + ring);
+    g.connect(out); nodes.push(g);
+    return g;
+  };
+  const sine = (freq, peak, atk, ring) => {
+    const o = actx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(freq, at);
+    o.connect(env(peak, atk, ring)); o.start(at); o.stop(at + ring + 0.05);
+    srcs.push(o); nodes.push(o);
+    return o;
+  };
+  const noise = (freq, q, peak, ring) => {
+    const s = actx.createBufferSource(), b = actx.createBiquadFilter();
+    s.buffer = noiseBuf; b.type = 'bandpass'; b.frequency.value = freq; b.Q.value = q;
+    s.connect(b).connect(env(peak, 0.002, ring)); s.start(at, Math.random() * 1.5); s.stop(at + ring + 0.02);
+    srcs.push(s); nodes.push(s, b);
+  };
+  for (const part of BOLS[ev.stroke] || []) {
+    if (DAYAN[part]) {
+      for (const [m, lvl, ring] of DAYAN[part]) sine(f * m * 1.02, vol * lvl, 0.003, ring).frequency.exponentialRampToValueAtTime(f * m, at + 0.03);
+      noise(part === 'na' ? 2200 : 1700, 1.5, vol * (part === 'na' ? 0.4 : 0.22), 0.012);   // the finger's tap
+    } else if (part === 'ge') {
+      // the bayan: a round low note that bends up (to Pa) as the heel of the hand presses the skin
+      const f0 = hz(40), up = 2 ** ((ev.bend ?? 5) / 12);
+      for (const [m, lvl, ring] of [[1, 1.4, 1.1], [2, 0.35, 0.6], [3, 0.08, 0.35]]) {
+        const o = sine(f0 * m, vol * lvl, 0.006, ring);
+        o.frequency.setValueAtTime(f0 * m, at + 0.025);
+        o.frequency.exponentialRampToValueAtTime(f0 * m * up, at + 0.35);
+      }
+    } else {
+      // ka / ke: the flat hand on the bayan, dry and short
+      noise(650, 0.9, vol * 1.1, 0.07);
+      sine(170, vol * 0.5, 0.003, 0.05);
+    }
+  }
+  if (srcs.length) letRing(srcs, nodes);
+}
+const INSTRUMENTS = { tanpura, sitar, tabla };
+
 function voice(ev, at, spb) {
   const bus = musicBus();
   if (!bus) return;
   if (ev.drum) { drum(ev.drum, at, ev.vol ?? 0.05, bus); return; }
+  if (INSTRUMENTS[ev.inst]) { const h = hallBus(); INSTRUMENTS[ev.inst](ev, at, spb, h[ev.inst]); return; }
   const dur = Math.max(0.2, ev.dur * spb * 1.6);
   const vol = (ev.vol ?? 0.06);
   for (const [mult, lvl, type] of [[1, 1, ev.type || 'triangle'], [2, 0.18, 'sine'], [3, 0.05, 'sine']]) {
@@ -439,9 +617,77 @@ export const SUMI = (() => {
   return { bpm: 54, length: 32, events };
 })();
 
+// "Temple" — written for the Temple lounge: raga Yaman, an evening raga (S R G M# P D N, Sa on D),
+// on a sitar over a tanpura drone. First a slow alap, the sitar alone finding the raga from Sa up
+// to the high Sa and back; then a gentle gat in teentaal (16 beats) over a soft theka on the tabla
+// (dha dhin dhin dha …) that ends in a tihai landing on sam; then a quiet coda that settles on Sa,
+// so the loop comes round into the alap again. 160 beats at 64 bpm: two and a half minutes.
+export const TEMPLE = (() => {
+  const SA = 62;
+  const SW = { S: 0, R: 2, G: 4, M: 6, P: 7, D: 9, N: 11 };   // Yaman's Ma is the raised (tivra) one
+  const sw = (s) => SA + SW[s[0]] + (s.endsWith('.') ? -12 : s.endsWith("'") ? 12 : 0);
+  const events = [];
+  // a sitar line: [beat, swara, beats, slide in from this many semitones (meend), loudness];
+  // swara '.' is the low octave, "'" the high one; '*' strikes the chikari (the high drone strings)
+  const play = (t0, line, vol = 0.05) => {
+    for (const [t, s, d = 0.5, slide = 0, v = 1] of line) {
+      if (s === '*') { events.push({ t: t0 + t, inst: 'sitar', midi: SA + 12, dur: 0.4, vol: 0.012, chik: true }); continue; }
+      const midi = sw(s);
+      events.push({ t: t0 + t, inst: 'sitar', midi, dur: d, vol: vol * v * (midi > SA + 12 ? 0.85 : 1), slide });
+    }
+  };
+  // the tanpura, round and round all the way through: Pa, Sa', Sa' (a hair sharp), low Sa
+  for (let c = 0; c < 32; c++) {
+    for (const [m, k, v, cents] of [[SA - 17, 0, 0.016, 0], [SA - 12, 1.2, 0.013, 0], [SA - 12, 2.4, 0.013, 3], [SA - 24, 3.6, 0.02, 0]]) {
+      events.push({ t: c * 5 + k, inst: 'tanpura', midi: m, dur: 6.5, vol: v, cents });
+    }
+  }
+  // alap: Sa and the low notes; N R G; up to Pa and down; up to the high Sa and back to Pa
+  play(0, [
+    [1, 'S', 3], [4.5, 'N.', 1, -2], [5.5, 'D.', 1.25], [6.75, 'N.', 0.75], [7.5, 'R', 0.75], [8.25, 'S', 3], [11.5, '*'],
+    [12.5, 'N.', 0.75], [13.25, 'R', 0.75], [14, 'G', 2.5, -2], [16.5, 'R', 1, 2], [17.5, 'S', 3], [20.75, '*'],
+    [21.5, 'N.', 0.5], [22, 'R', 0.5], [22.5, 'G', 1], [23.5, 'M', 0.75, -2], [24.25, 'P', 3], [27.25, 'M', 0.75], [28, 'G', 1.5, 2], [29.5, 'R', 0.75], [30.25, 'S', 2.5], [33, '*'],
+    [33.75, 'G', 0.75], [34.5, 'M', 0.75], [35.25, 'D', 1.5, -2], [36.75, 'N', 1], [37.75, "S'", 2.5, -1], [40.25, 'N', 0.5], [40.75, 'D', 0.5], [41.25, 'P', 1.75], [43.25, '*'],
+  ], 0.044);
+  // gat: the mukhda (beats 12–16) leads every cycle into sam on Ga; six cycles from beat 48
+  const MUKHDA = [[12, 'N.', 0.5], [12.5, 'R', 0.5], [13, 'G', 1], [14, 'R', 0.5], [14.5, 'G', 0.5], [15, 'M', 1, -2]];
+  const CYCLES = [
+    [[0, 'G', 1.5, 2], [1.5, 'R', 0.5], [2, 'G', 1], [3, '*'], [4, 'M', 0.5], [4.5, 'D', 0.5], [5, 'N', 1.5, -2], [6.5, 'D', 0.5], [7, 'P', 1.5], [8.5, '*'], [9, 'M', 0.5], [9.5, 'G', 0.5], [10, 'R', 0.75], [10.75, 'S', 1.25]],
+    [[0, 'G', 1, 2], [1, 'M', 0.5], [1.5, 'D', 0.5], [2, 'N', 1], [3, "S'", 2, -1], [5, 'N', 0.5], [5.5, "R'", 0.5], [6, "S'", 1], [7, 'N', 0.5], [7.5, 'D', 0.5], [8, 'P', 2], [10, 'M', 0.5], [10.5, 'G', 0.5], [11, 'R', 1]],
+    [[0, 'G', 1, 2], [1, '*'], [2, 'M', 0.5], [2.5, 'D', 0.5], [3, 'N', 0.5], [3.5, "S'", 1.5], [5, "R'", 0.5], [5.5, "G'", 1, -2], [6.5, "R'", 0.5], [7, "S'", 1.5], [8.5, 'N', 0.5], [9, 'D', 1, 2], [10, 'P', 2]],
+    [[0, 'G', 1, 2], [1, 'P', 0.5], [1.5, 'M', 0.5], [2, 'G', 1], [3, 'M', 0.5], [3.5, 'D', 0.5], [4, 'N', 1], [5, "S'", 1.5], [6.5, 'N', 0.5], [7, 'D', 0.5], [7.5, 'P', 1], [8.5, 'M', 0.5], [9, 'G', 1, 2], [10, 'R', 0.5], [10.5, 'S', 1.5]],
+    [[0, 'G', 1, 2], [1, 'R', 0.5], [1.5, 'G', 0.5], [2, 'M', 0.5], [2.5, 'D', 0.5], [3, 'N', 0.5], [3.5, 'D', 0.5], [4, 'P', 1],
+      [5, 'M', 0.25], [5.25, 'D', 0.25], [5.5, 'N', 0.25], [5.75, "S'", 0.25], [6, "R'", 0.5], [6.5, "S'", 0.5], [7, 'N', 0.5], [7.5, 'D', 0.5], [8, 'P', 1.5], [9.5, 'M', 0.5], [10, 'G', 0.5], [10.5, 'R', 0.5], [11, 'S', 1]],
+    [[0, 'G', 1.5, 2], [1.5, 'R', 0.5], [2, 'G', 1], [3, '*'], [4, 'M', 0.5], [4.5, 'D', 0.5], [5, 'N', 1.5, -2], [6.5, 'D', 0.5], [7, 'P', 1.5], [8.5, 'M', 0.5], [9, 'G', 1, 2], [10, 'R', 1],
+      // tihai: G R S three times, the last Sa on sam
+      [11, 'G', 0.5], [11.5, 'R', 0.5], [12, 'S', 1], [13, 'G', 0.5], [13.5, 'R', 0.5], [14, 'S', 1], [15, 'G', 0.5], [15.5, 'R', 0.5], [16, 'S', 3.5, 0, 1.1]],
+  ];
+  play(32, MUKHDA);
+  CYCLES.forEach((line, c) => { play(48 + c * 16, line); if (c < CYCLES.length - 1) play(48 + c * 16, MUKHDA); });
+  // the tabla's theka, soft, coming in on the first sam; the khali (beats 9–12) without the bayan
+  const THEKA = ['dha', 'dhin', 'dhin', 'dha', 'dha', 'dhin', 'dhin', 'dha', 'dha', 'tin', 'tin', 'ta', 'ta', 'dhin', 'dhin', 'dha'];
+  const bol = (t, stroke, vol) => events.push({ t, inst: 'tabla', stroke, vol });
+  for (let c = 0; c < CYCLES.length; c++) {
+    const s0 = 48 + c * 16, soft = c === 0 ? 0.75 : 1, last = c === CYCLES.length - 1;
+    THEKA.forEach((b, i) => {
+      if (last && i > 10) return;                                // the tihai takes the end of the last cycle
+      const nudge = (((i * 37 + c * 11) % 7) - 3) * 0.004;       // a touch of human timing
+      bol(s0 + i + nudge, b, (i === 0 ? 0.036 : i === 8 ? 0.024 : 0.03) * soft);
+    });
+    if (last) continue;
+    bol(s0 + 15.5, 'ge', 0.018 * soft);                          // a soft ghe leading back to sam
+    if (c % 2) { bol(s0 + 7.5, 'ge', 0.014); bol(s0 + 11.5, 'ke', 0.012); }
+  }
+  // tihai: dha-ta-dha three times, the last dha on sam with the sitar's Sa
+  for (const k of [139, 141, 143]) { bol(k, 'dha', 0.03); bol(k + 0.5, 'ta', 0.022); bol(k + 1, 'dha', k === 143 ? 0.036 : 0.028); }
+  // coda: the sitar alone again, down into the low register and home to Sa
+  play(144, [[3.75, '*'], [5, 'N.', 1, -2], [6, 'D.', 1], [7, 'P.', 2.5, 2], [10, 'D.', 0.75], [10.75, 'N.', 0.75], [11.5, 'R', 0.75], [12.25, 'S', 3.75]], 0.044);
+  return { bpm: 64, length: 160, events };
+})();
+
 
 /* ——— lounge music ———
-   The lounges ask for their music by kind ('room' | 'cafe') rather than by score. Each kind
+   The lounges ask for their music by kind ('room' | 'cafe' | 'temple') rather than by score. Each kind
    has a short playlist of recorded public-domain (CC0) lo-fi tracks shipped in audio/ (credits
    in audio/CREDITS.txt). It starts on a random track, plays the rest in turn, fades in and out
    with pause and the sound switch, and falls back to the synthesised loops above if a file is
@@ -449,12 +695,13 @@ export const SUMI = (() => {
 const LOUNGE_TRACKS = {
   room: ['audio/room-chill-lofi-loop.ogg', 'audio/room-softly.ogg'],
   cafe: ['audio/cafe-lofi-hip-hop-loop.ogg', 'audio/cafe-lofi-hip-hop.ogg'],
+  temple: [],   // no recording yet, so the synthesised raga (TEMPLE) plays
 };
 const TRACK_VOL = 0.5;
 
 export function playLoungeMusic(kind, isPaused) {
   const list = LOUNGE_TRACKS[kind] || [];
-  const synth = () => playMusic(kind === 'cafe' ? BOSSA : LOFI, isPaused);
+  const synth = () => playMusic(kind === 'cafe' ? BOSSA : kind === 'temple' ? TEMPLE : LOFI, isPaused);
   if (!list.length || typeof Audio === 'undefined') return synth();
 
   const audio = new Audio();

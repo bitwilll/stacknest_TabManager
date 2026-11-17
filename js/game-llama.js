@@ -5,15 +5,22 @@
 // speed). Rocks are to be hopped; apples hang above the snow. A landing on your head or a rock
 // is a tumble into soft snow, a sit-down, and the card. The sky turns through dawn, day, gold,
 // dusk and a starry night as you go. Bach's Prelude in C plays softly underneath.
+// Full screen widens the view (the canvas keeps 640 of height): the camera sees further down the
+// slope, with the rider kept to the left third and the whole mountainside drawn to the edges.
 
 import { SIZE, setupCanvas, runLoop, note, card, clamp, playMusic, PRELUDE, swish } from './arcade-kit.js';
 
-export const meta = { id: 'llama', title: 'Llama Trail', blurb: 'Sled an endless mountainside: jump, flip, ride the snow.', keys: 'Space, ↑ or tap to jump · hold to flip' };
+export const meta = { id: 'llama', wide: true, title: 'Llama Trail', blurb: 'Sled an endless mountainside: jump, flip, ride the snow.', keys: 'Space, ↑ or tap to jump · hold to flip' };
 const BEST_KEY = 'stacknest:arcade-llama-best';
 
-const W = SIZE, H = SIZE;
+const H = SIZE;
 const G = 1350, G_AIR = 1000, DRAG = 0.42, MINV = 170, MAXV = 640, JUMP = 610, FLIP = 8.4, FLIP_AFTER = 0.16, LX = 210;   // the air is floatier than the snow
 const TAU = Math.PI * 2;
+// where the camera holds the rider on a screen W wide: (210, 380) in the square frame; on a wider
+// one a touch further left of the same proportion and a little higher, so more of the falling
+// slope ahead stays in view
+const riderX = (W) => LX + (W - SIZE) * 0.28;
+const riderY = (W) => 380 - (W - SIZE) * 0.1;
 const wrapAng = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // colours as '#rrggbb' or 'rgb(…)', blended (the day's palette is itself a blend)
 const rgbOf = (c) => (c[0] === '#' ? [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)) : c.match(/[\d.]+/g).slice(0, 3).map(Number));
@@ -49,11 +56,15 @@ function dayAt(c) {   // c in [0,1)
 
 /* ——— the ranges behind ——— */
 const peak = (u) => 1 - Math.abs(Math.sin(u));
+// A ridge never dips below base + amp/10, so on a wide screen each layer is only filled down to
+// where the next one in front always covers it (`low`): the same picture, far fewer pixels. The
+// square frame keeps its full fills, so it draws exactly as it always has.
 const RANGES = [
-  { f: 0.05, base: 340, amp: 175, w1: 260, w2: 113, w3: 47, s: 0.4, col: 2, cap: 1 },
-  { f: 0.12, base: 395, amp: 135, w1: 190, w2: 83, w3: 37, s: 1.9, col: 3, cap: 0.55 },
-  { f: 0.26, base: 450, amp: 90, w1: 150, w2: 64, w3: 29, s: 3.1, col: 4, cap: 0, trees: true },
+  { f: 0.05, base: 340, amp: 175, w1: 260, w2: 113, w3: 47, s: 0.4, col: 2, cap: 1, low: 412 },
+  { f: 0.12, base: 395, amp: 135, w1: 190, w2: 83, w3: 37, s: 1.9, col: 3, cap: 0.55, low: 462 },
+  { f: 0.26, base: 450, amp: 90, w1: 150, w2: 64, w3: 29, s: 3.1, col: 4, cap: 0, trees: true, low: SIZE },
 ];
+const SKY_LOW = 360;   // below this the far range always hides the sky (wide screens only, as above)
 const ridgeY = (x, L) => L.base - L.amp * (0.6 * peak(x / L.w1 + L.s) + 0.3 * peak(x / L.w2 + L.s * 2.1) + 0.1 * Math.sin(x / L.w3));
 
 function pine(ctx, x, base, h, color) {
@@ -68,13 +79,14 @@ function pine(ctx, x, base, h, color) {
 }
 const hash = (i, k = 0) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
 
-function sky(ctx, P, c, t, camX) {
+function sky(ctx, P, c, t, camX, W) {
+  const k = W / SIZE;   // 1 in the square frame
   const g = ctx.createLinearGradient(0, 0, 0, H * 0.75);
   g.addColorStop(0, P[0]); g.addColorStop(1, P[1]);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, W > SIZE ? SKY_LOW : H);
   const night = clamp((0.62 - P[8]) / 0.2, 0, 1);
   if (night > 0) {   // stars
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0, n = Math.round(70 * k); i < n; i++) {
       const x = ((hash(i, 1) * W * 1.4 - camX * 0.01) % W + W) % W, y = hash(i, 2) * 300;
       ctx.fillStyle = `rgba(255,255,255,${night * (0.35 + 0.6 * (0.5 + 0.5 * Math.sin(t * (1 + hash(i, 3) * 2) + i)))})`;
       ctx.fillRect(x, y, 1.6, 1.6);
@@ -83,33 +95,36 @@ function sky(ctx, P, c, t, camX) {
   // the sun climbs and sets across the day; the moon has the night
   const sunA = ((c + 0.92) % 1) / 0.78;   // up at dawn, down after dusk
   if (sunA < 1) {
-    const x = 80 + sunA * 480, y = 300 - Math.sin(sunA * Math.PI) * 230;
+    const x = (80 + sunA * 480) * k, y = 300 - Math.sin(sunA * Math.PI) * 230;
     const sg = ctx.createRadialGradient(x, y, 6, x, y, 90);
     sg.addColorStop(0, 'rgba(255,246,220,.9)'); sg.addColorStop(1, 'rgba(255,246,220,0)');
     ctx.fillStyle = sg; ctx.fillRect(x - 90, y - 90, 180, 180);
     ctx.fillStyle = '#fff7e2'; ctx.beginPath(); ctx.arc(x, y, 22, 0, TAU); ctx.fill();
   }
   if (night > 0.05) {
-    ctx.fillStyle = `rgba(244,240,226,${night})`; ctx.beginPath(); ctx.arc(470, 110, 18, 0, TAU); ctx.fill();
-    ctx.fillStyle = P[0]; ctx.beginPath(); ctx.arc(478, 104, 16, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(244,240,226,${night})`; ctx.beginPath(); ctx.arc(470 * k, 110, 18, 0, TAU); ctx.fill();
+    ctx.fillStyle = P[0]; ctx.beginPath(); ctx.arc(470 * k + 8, 104, 16, 0, TAU); ctx.fill();
   }
 }
 
-function ranges(ctx, P, camX) {
+function ranges(ctx, P, camX, W) {
+  const trim = W > SIZE;
   for (const L of RANGES) {
-    const ox = camX * L.f;
-    ctx.beginPath(); ctx.moveTo(0, H);
+    const ox = camX * L.f, low = trim ? L.low : H;
+    ctx.beginPath(); ctx.moveTo(0, low);
     for (let sx = 0; sx <= W + 8; sx += 8) ctx.lineTo(sx, ridgeY(sx + ox, L));
-    ctx.lineTo(W, H); ctx.closePath();
+    ctx.lineTo(W, low); ctx.closePath();
     ctx.fillStyle = P[L.col]; ctx.fill();
     if (L.cap) {   // snow on the high ground
       ctx.save(); ctx.clip();
       const g = ctx.createLinearGradient(0, L.base - L.amp, 0, L.base - L.amp * 0.35);
       g.addColorStop(0, `rgba(255,255,255,${0.9 * L.cap})`); g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, L.base);
+      ctx.fillStyle = g;
+      if (trim) ctx.fillRect(0, L.base - L.amp - 1, W, L.amp * 0.65 + 3);   // just the band the gradient paints
+      else ctx.fillRect(0, 0, W, L.base);
       ctx.restore();
     }
-    if (L.trees) for (let k = 0; k < 64; k++) {
+    if (L.trees) for (let k = 0, n = Math.max(64, Math.ceil(W / 12) + 2); k < n; k++) {
       const wx = Math.floor(ox / 12) * 12 + k * 12, sx = wx - ox;
       if (hash(Math.floor(wx / 12), 5) < 0.45) continue;
       pine(ctx, sx, ridgeY(wx, L) + 6, 18 + hash(Math.floor(wx / 12), 6) * 16, P[5]);
@@ -184,9 +199,9 @@ function apple(ctx, sx, sy, t) {
 // everything in one pass: sky, ranges, the near slope with its pines and track, rocks, apples,
 // spray, the rider, and any word floating up from a landing
 function scene(ctx, S) {
-  const P = dayAt(S.cycle), light = P[8];
-  sky(ctx, P, S.cycle, S.t, S.camX);
-  ranges(ctx, P, S.camX);
+  const P = dayAt(S.cycle), light = P[8], W = S.W;
+  sky(ctx, P, S.cycle, S.t, S.camX, W);
+  ranges(ctx, P, S.camX, W);
   const gy = (x) => S.ground.y(x) - S.camY;
   // pines standing on the slope behind the rider
   for (let k = Math.floor((S.camX - 80) / 230); k <= Math.floor((S.camX + W + 80) / 230); k++) {
@@ -231,7 +246,7 @@ function scene(ctx, S) {
   }
   // light snowfall over everything
   ctx.fillStyle = 'rgba(255,255,255,.75)';
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0, n = Math.round(46 * W / SIZE); i < n; i++) {
     const x = ((hash(i, 21) * W + S.t * (14 + hash(i, 22) * 20) - S.camX * 0.6) % W + W) % W;
     const y = ((hash(i, 23) * H + S.t * (40 + hash(i, 24) * 40)) % H + H) % H;
     ctx.beginPath(); ctx.arc(x, y, 1 + hash(i, 25) * 1.6, 0, TAU); ctx.fill();
@@ -241,11 +256,12 @@ function scene(ctx, S) {
 export function preview(ctx) {
   const ground = makeGround(0);
   const px = 1520, py = ground.y(px) - 70;
-  scene(ctx, { ground, camX: px - LX, camY: py - 380, cycle: 0.47, t: 1, px, py, rot: -0.9, pose: 'air', rocks: [{ x: 1700, w: 34, h: 24 }], apples: [{ x: 1610, y: ground.y(1610) - 120 }], spray: [], track: Array.from({ length: 30 }, (_, i) => [1300 + i * 7, ground.y(1300 + i * 7)]), words: [], sled: null });
+  scene(ctx, { W: SIZE, ground, camX: px - LX, camY: py - 380, cycle: 0.47, t: 1, px, py, rot: -0.9, pose: 'air', rocks: [{ x: 1700, w: 34, h: 24 }], apples: [{ x: 1610, y: ground.y(1610) - 120 }], spray: [], track: Array.from({ length: 30 }, (_, i) => [1300 + i * 7, ground.y(1300 + i * 7)]), words: [], sled: null });
 }
 
 export function start(canvas, { setScore, isPaused, finish }) {
-  const ctx = setupCanvas(canvas);
+  const ctx = setupCanvas(canvas, { wide: true });
+  let W = canvas._snW || SIZE, lx = riderX(W);   // the view's width, read every frame; the rider's place across it
   let best = 0;
   try { best = Number(localStorage.getItem(BEST_KEY)) || 0; } catch { /* none */ }
   let ground, state = 'ready', t = 0, cycle = 0.02, held = false, carded = false, restT = 0;
@@ -255,7 +271,7 @@ export function start(canvas, { setScore, isPaused, finish }) {
   const reset = () => {
     ground = makeGround(Math.random() * 1000);
     px = 0; py = ground.y(0); vx = 0; vy = 0; grounded = true; rot = ground.angle(0); spin = 0;
-    flips = 0; apples = 0; startX = px; camX = px - LX; camY = py - 380; airT = 0; endM = null;
+    flips = 0; apples = 0; startX = px; lx = riderX(W); camX = px - lx; camY = py - riderY(W); airT = 0; endM = null;
     rocks = []; fruit = []; spray = []; track = []; words = []; sled = null;
     nextRock = 1700; nextFruit = 620; trackGap = 0;   // a few calm seconds (and apples to jump for) before the first rock
   };
@@ -331,6 +347,9 @@ export function start(canvas, { setScore, isPaused, finish }) {
   }
 
   function update(dt) {
+    W = canvas._snW || SIZE;
+    const lxTo = riderX(W);   // after a resize the camera glides to the new framing
+    lx = Math.abs(lxTo - lx) < 0.5 ? lxTo : lx + (lxTo - lx) * Math.min(1, dt * 3);
     t += dt;
     cycle = (cycle + dt / 240) % 1;
     if (state === 'run') {
@@ -392,14 +411,15 @@ export function start(canvas, { setScore, isPaused, finish }) {
     words = words.filter((w) => w.l > 0);
     if (track.length > 260) track.splice(0, track.length - 260);
     // the camera keeps the rider a little left of centre, easing up and down with the slope
-    camX = px - LX;
-    camY += (py - 380 - camY) * Math.min(1, dt * 4);
+    camX = px - lx;
+    camY += (py - riderY(W) - camY) * Math.min(1, dt * 4);
     draw();
   }
 
   function draw() {
-    scene(ctx, { ground, camX, camY, cycle, t, px, py, rot, pose: state === 'rest' ? 'sit' : grounded ? 'ride' : 'air', rocks, apples: fruit, spray, track, words, sled });
-    if (state === 'ready') card(ctx, [{ text: 'Llama Trail', size: 34, weight: 700 }, { text: 'Tap to jump · hold in the air to flip', size: 18, weight: 500, alpha: 0.95 }, { text: 'Space, ↑ or tap to set off', size: 15, weight: 500, alpha: 0.8 }], { y: 150, shadow: 'rgba(30,40,80,.45)' });
+    scene(ctx, { W, ground, camX, camY, cycle, t, px, py, rot, pose: state === 'rest' ? 'sit' : grounded ? 'ride' : 'air', rocks, apples: fruit, spray, track, words, sled });
+    const cx = (W - SIZE) / 2;   // cards stay in the middle of the screen
+    if (state === 'ready') { ctx.save(); ctx.translate(cx, 0); card(ctx, [{ text: 'Llama Trail', size: 34, weight: 700 }, { text: 'Tap to jump · hold in the air to flip', size: 18, weight: 500, alpha: 0.95 }, { text: 'Space, ↑ or tap to set off', size: 15, weight: 500, alpha: 0.8 }], { y: 150, shadow: 'rgba(30,40,80,.45)' }); ctx.restore(); }
     // after a breath sitting in the snow, the round's card: a kind word, the ride, what's next
     if (state === 'rest' && restT > 1.1 && !carded && finish) {
       carded = true;
@@ -407,7 +427,7 @@ export function start(canvas, { setScore, isPaused, finish }) {
         stats: `${meters()} m down the mountain${flips ? ` · ${flips} flip${flips === 1 ? '' : 's'}` : ''}${apples ? ` · ${apples} apple${apples === 1 ? '' : 's'}` : ''}${best ? ` · best ${best} m` : ''}`,
         againLabel: 'Ride again', again: ride });
     }
-    if (state === 'rest' && !finish) card(ctx, [{ text: 'A soft landing.', size: 28, weight: 700 }, { text: restT > 0.6 ? 'Tap to ride again' : ' ', size: 16, weight: 500, alpha: 0.85 }], { y: 200 });
+    if (state === 'rest' && !finish) { ctx.save(); ctx.translate(cx, 0); card(ctx, [{ text: 'A soft landing.', size: 28, weight: 700 }, { text: restT > 0.6 ? 'Tap to ride again' : ' ', size: 16, weight: 500, alpha: 0.85 }], { y: 200 }); ctx.restore(); }
   }
 
   reset();
