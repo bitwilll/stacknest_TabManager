@@ -21,11 +21,12 @@ import * as temple from './lounge-temple.js';
 import * as reading from './lounge-reading.js';
 import * as cabin from './lounge-cabin.js';
 import * as beach from './lounge-beach.js';
+import * as woods from './lounge-woods.js';
 
 const SHELVES = {
   games: { list: [llama, drive, lantern, ripples, brush, pebbles], label: 'Games', h: 'A quiet corner',
     sub: 'Small, slow games for a pause. No timers, no losing streaks — soft music on the trail, the drive and the brush.' },
-  lounge: { list: [room, cafe, garden, train, temple, reading, cabin, beach], label: 'Lounge', h: 'Somewhere to sit',
+  lounge: { list: [room, cafe, garden, train, temple, reading, cabin, beach, woods], label: 'Lounge', h: 'Somewhere to sit',
     sub: 'Nothing to win. Rain on the window, a little music, things to touch. Stay as long as you like.' },
 };
 const SHELF_KEY = 'stacknest:arcade-shelf';
@@ -35,8 +36,9 @@ const MOSAICS = {
   1: ['banner'], 2: ['wide', 'wide'], 3: ['big', 'wide', 'wide'], 4: ['big', 'wide', 'sq', 'sq'],
   5: ['big', 'wide', 'sq', 'sq', 'banner'], 6: ['big', 'wide', 'sq', 'sq', 'wide', 'wide'],
   7: ['big', 'wide', 'sq', 'sq', 'wide', 'sq', 'sq'], 8: ['big', 'wide', 'sq', 'sq', 'wide', 'wide', 'wide', 'wide'],
+  9: ['big', 'wide', 'sq', 'sq', 'wide', 'sq', 'sq', 'wide', 'wide'], 10: ['big', 'wide', 'sq', 'sq', 'wide', 'sq', 'sq', 'wide', 'sq', 'sq'],
 };
-const mosaicFor = (n) => MOSAICS[n] || Array.from({ length: n }, (_, i) => MOSAICS[8][i % 8]);
+const mosaicFor = (n) => MOSAICS[n] || Array.from({ length: n }, (_, i) => MOSAICS[10][i % 10]);
 
 // a few kind words for the end of a round (written for StackNest)
 const UPLIFT = [

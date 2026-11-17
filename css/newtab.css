@@ -3354,11 +3354,11 @@ kbd {
    narrow screen), so square tiles are square and the big, wide and tall ones keep true shapes */
 .arc-menu { container-type: inline-size; }
 .arc-shelf {
-  --gap: 10px; flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: minmax(calc((100cqw - 3 * var(--gap)) / 4), 1fr);   /* at least square; rows share any height left in the frame */
+  --gap: 10px; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(118px, 1fr);   /* the rows share the frame's height, so a long shelf still shows every tile */
   grid-auto-flow: dense; gap: var(--gap); align-content: stretch;
 }
-@container (max-width: 520px) { .arc-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(calc((100cqw - var(--gap)) / 2), 1fr); } }
+@container (max-width: 520px) { .arc-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(118px, 1fr); } }
 .arc-card {
   position: relative; display: block; padding: 0; overflow: hidden; border-radius: 18px; text-align: left; isolation: isolate;
   background: var(--bg-inset); border: 1px solid var(--card-line); box-shadow: 0 14px 28px -24px rgba(0, 0, 0, 0.6);

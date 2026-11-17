@@ -491,6 +491,15 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
   with it). Shells to collect, a sandcastle the next wave softens, dolphins, a shooting star.
   Wide (whole bays only): a hammock, tide pools, a bonfire with friends, a lifeguard hut, dunes,
   a lighthouse. Plays warm lo-fi recordings.
+- **Forest Cabin** (`js/lounge-woods.js`): a timber A-frame in a temperate rainforest, from an
+  armchair under string lights along the rafters. A tall gabled window onto a porch puddle under
+  the eaves, a creek with stepping stones, ferns, a fallen log with mushrooms, firs fading into
+  drifting mist; a deer, an owl, a frog now and then; glowing mushrooms and fireflies at night. A
+  cast-iron stove on green tiles with a copper kettle, a record player, plants, a ginger cat on
+  the window seat. One rain level (off, soft, heavy, with a slow gathering wave) drives the
+  streaks, rivulets, rings, fireflies and the rain sound; eave drips land on their own timer with
+  a drip each. Wide: a kitchen corner, a bed nook under the eaves, the door with a yellow
+  raincoat, a woodpile. Plays soft, slow lo-fi recordings.
 - **The shelf as a mosaic.** Games and lounges are picture tiles in a few sizes (big, wide,
   square, a full-width banner), laid out for how many there are so the rows always fill the
   frame; the title and a line sit over a soft shade, the controls slide up on hover or focus.
