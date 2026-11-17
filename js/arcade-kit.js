@@ -724,6 +724,9 @@ const LOUNGE_TRACKS = {
   train: ['audio/room-chill-lofi-loop.ogg', 'audio/cafe-lofi-hip-hop-loop.ogg', 'audio/room-softly.ogg', 'audio/cafe-lofi-hip-hop.ogg'],   // all four lo-fi tracks, for a long ride
   garden: [],    // the koto-style SUMI
   reading: [],   // the piano waltz READING
+  cabin: ['audio/room-softly.ogg', 'audio/room-chill-lofi-loop.ogg'],   // the two gentlest lo-fi tracks, by the fire
+  beach: ['audio/cafe-lofi-hip-hop-loop.ogg', 'audio/room-chill-lofi-loop.ogg', 'audio/cafe-lofi-hip-hop.ogg'],   // warm, unhurried, for a sunset
+  woods: ['audio/room-softly.ogg', 'audio/cafe-lofi-hip-hop.ogg', 'audio/room-chill-lofi-loop.ogg'],   // soft and slow, under the rain
 };
 // the synthesised score for a lounge with no recordings (or when a file can't play)
 const LOUNGE_SCORES = { cafe: () => BOSSA, temple: () => TEMPLE, garden: () => SUMI, reading: () => READING };

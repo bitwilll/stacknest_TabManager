@@ -473,6 +473,15 @@ screen, and a choice to leave Brush Stroke's black stroke out of a saved paintin
   by minus the steering). They now aim at the farthest stretch of road in view within about 40
   segments ahead, leading a touch into the turn being steered, so they reach down the road and
   sweep into its bends.
+- **Mountain Cabin** (`js/lounge-cabin.js`): a log cabin high in snowy mountains at night, from a
+  rocking chair. A nine-pane window frosted at the corners onto a moonlit peak, an aurora, pine
+  slopes and a valley village, snow falling at four depths and swirling in gusts, a fox, deer or
+  owl now and then; a stone fireplace whose flames are a small rising heat field over the logs
+  (logs settle, fuel burns down, a poke flares it), the firelight blended between a low and a high
+  bake each frame so it truly moves; mittens drying, a kettle that whistles, cocoa, a husky on
+  the braided rug. Wind gusts lift the murmur layer in step with the snow. Wide: a bunk under a
+  second window, the door with a wreath, a woodpile, a reading corner. Plays the two gentlest
+  lo-fi recordings.
 - **The shelf as a mosaic.** Games and lounges are picture tiles in a few sizes (big, wide,
   square, a full-width banner), laid out for how many there are so the rows always fill the
   frame; the title and a line sit over a soft shade, the controls slide up on hover or focus.
