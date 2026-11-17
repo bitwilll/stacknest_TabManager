@@ -8,7 +8,7 @@
 #   sh scripts/package.sh
 #
 # Both are an allowlist, never a copy of the folder. They carry only what the extension
-# runs: manifest.json, newtab.html, css/, js/ (minus the dev-only js/mock.js), fonts/, audio/
+# runs: manifest.json, newtab.html, css/, js/, fonts/, audio/
 # and icons/*.png. Personal backups, docs, the "new design" sketches, .git and .DS_Store
 # can't get in, because nothing outside the list is copied. Upload only the store zip this
 # prints, never an older hand-made one.
@@ -42,9 +42,7 @@ cp newtab.html offscreen.html "$OUT/"
 cp -R css fonts "$OUT/"
 if [ -d audio ]; then cp -R audio "$OUT/"; fi   # CC0 lounge music + CREDITS.txt
 cp icons/*.png "$OUT/icons/"
-for f in js/*.js; do
-  [ "$f" = js/mock.js ] || cp "$f" "$OUT/js/"
-done
+cp js/*.js "$OUT/js/"
 
 # ——— 2. manifest: validate, check store limits, strip the dev key ———
 node - "$OUT" <<'JS'
@@ -92,13 +90,11 @@ for (const [, href] of html.matchAll(/<link\b[^>]*\bhref="([^"]+)"/g)) {
 }
 if (/\son[a-z]+="/i.test(html)) problems.push('newtab.html has an inline event handler (blocked by the extension CSP)');
 if (/<script\b(?![^>]*\bsrc=)[^>]*>\s*\S/i.test(html)) problems.push('newtab.html has an inline <script> (blocked by the extension CSP)');
-// every relative import resolves inside the package. The one allowed gap is js/mock.js,
-// and only as a dynamic import(): app.js loads it only when chrome.tabs is missing
-// (the dev preview), which never happens inside the extension.
+// every relative import resolves inside the package
 for (const f of fs.readdirSync(path.join(out, 'js')).filter((n) => n.endsWith('.js'))) {
   const rel = `js/${f}`, src = fs.readFileSync(path.join(out, rel), 'utf8');
   for (const [, spec] of src.matchAll(/\bimport\s*\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g)) {
-    if (!exists(rel, spec) && !(spec === './mock.js' && rel === 'js/app.js')) problems.push(`${rel} imports ${spec}, which is not in the package`);
+    if (!exists(rel, spec)) problems.push(`${rel} imports ${spec}, which is not in the package`);
   }
   for (const [, spec] of src.matchAll(/\b(?:from|import)\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
     if (!exists(rel, spec)) problems.push(`${rel} statically imports ${spec}, which is not in the package`);
@@ -124,8 +120,8 @@ JS
 find "$OUT" \( -name '.DS_Store' -o -name '._*' -o -name 'Thumbs.db' \) -exec rm -f {} +
 (cd "$OUT" && zip -qrXD "../stacknest-$VER.zip" .)
 unzip -Z1 "$ZIP" | grep -qx 'manifest.json' || { echo "package: manifest.json is not at the zip root" >&2; exit 1; }
-# belt and braces: no dotfiles, no dev shim, no data, keys or nested archives
-BAD=$(unzip -Z1 "$ZIP" | grep -vx 'manifest.json' | grep -E '(^|/)\.|(^|/)mock\.js$|\.(md|json|pem|crx|zip|map)$' || true)
+# belt and braces: no dotfiles, no data, keys or nested archives
+BAD=$(unzip -Z1 "$ZIP" | grep -vx 'manifest.json' | grep -E '(^|/)\.|\.(md|json|pem|crx|zip|map)$' || true)
 if [ -n "$BAD" ]; then
   echo "package: the zip holds files that must not ship:" >&2
   echo "$BAD" >&2

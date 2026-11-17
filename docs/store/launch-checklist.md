@@ -24,12 +24,11 @@ scanner reads as remote code. One of them also nests everything under a subfolde
 | Content Security Policy | Added `extension_pages` CSP: `script-src 'self'`, `object-src 'none'`, `connect-src` limited to the four API origins, `img-src 'self' data:` | 0 violations across all views, themes, rail, ticker, favicons and `chrome://newtab`. A deliberate fetch to an unlisted origin was blocked as intended. |
 | Dev `key` | Kept in `manifest.json` for unpacked dev (it pins ID `jcmhhjnegjiejjjcppfkejnclbljnldm`, which the OAuth client is registered to). Stripped from the upload by `package.sh`. | |
 | Permissions | All seven API permissions are in use (see `permissions.md`). No change. | |
-| Icons | New brand mark: Liquid Lava tile with the Dark Void bookmark glyph, matching the sidebar logo. Master in `icons/icon.svg`. PNGs at 16/32/48/128, pixel-snapped at small sizes, 128 at the store spec (96px tile with 16px transparent padding). | `node scripts/render-icons.mjs` renders and checks size, transparency, tile colour and glyph |
-| Packaging | `sh scripts/package.sh` builds `dist/stacknest-1.0.0.zip` from an allowlist: 32 files, about 586 KB unpacked, no `key`, no `js/mock.js`, `manifest.json` at the root. `dist/` is git-ignored. | The script validates the manifest with node, checks store limits, checks that every import, script and stylesheet URL resolves inside the package, and rejects `eval`/`new Function`/remote code |
-| `js/mock.js` excluded | Safe. `js/app.js:6-8` imports it only when `chrome.tabs.query` is missing, which never happens inside the extension. | Packaged build: mock.js never requested, 0 errors |
+| Icons | New brand mark: Liquid Lava tile with the Dark Void bookmark glyph, matching the sidebar logo. PNGs at 16/32/48/128, pixel-snapped at small sizes, 128 at the store spec (96px tile with 16px transparent padding). | Final images. The SVG master and the script that rendered them were removed on 2026-11-17. |
+| Packaging | `sh scripts/package.sh` builds `dist/stacknest-1.0.0.zip` from an allowlist: 32 files, about 586 KB unpacked, no `key`, `manifest.json` at the root. `dist/` is git-ignored. | The script validates the manifest with node, checks store limits, checks that every import, script and stylesheet URL resolves inside the package, and rejects `eval`/`new Function`/remote code |
 | Privacy policy | `PRIVACY.md`, written from the code | |
 | Listing copy, permission justifications, data-use answers | `docs/store/listing.md`, `docs/store/permissions.md` | |
-| Screenshots and promo tile | `docs/store/screenshots/01…06` (1280×800) and `docs/store/promo/small-promo-440x280.png` | `node scripts/store-assets.mjs` regenerates them |
+| Screenshots and promo tile | `docs/store/screenshots/01…06` (1280×800) and `docs/store/promo/small-promo-440x280.png` | Taken from the October build. The script that took them ran on the dev-only `js/mock.js` and was removed with it on 2026-11-17, so new ones are taken by hand. |
 
 ### Smoke test of the real extension (headless Chrome 155)
 
@@ -140,7 +139,8 @@ one ID for both dev and store:
 ### D. Listing and submission
 
 - [ ] **Store listing:** paste from `docs/store/listing.md`. Upload `icons/icon128.png`, the
-      small promo tile and screenshots 01 to 05.
+      small promo tile and screenshots 01 to 05. The screenshots show the October build; if the
+      app has changed visibly since (Zen, the lounges), take new 1280×800 ones by hand first.
 - [ ] **Privacy practices:** paste from `docs/store/permissions.md`, and add the privacy policy
       URL.
 - [ ] **Distribution:** Free, all regions. Set visibility to **Unlisted** for the first

@@ -473,22 +473,23 @@ sh scripts/package.sh
 ```
 
 builds `dist/stacknest-<version>.zip` from an allowlist — the manifest without its dev `"key"`,
-`newtab.html`, `css/`, `js/` (minus the dev-only `js/mock.js`), `fonts/` (with `OFL.txt`) and the
+`newtab.html`, `css/`, `js/`, `fonts/` (with `OFL.txt`) and the
 icon PNGs — and checks the store limits (description ≤ 132 characters, version format, every file
 the manifest names). `node scripts/smoke-test.mjs` then loads that build into a throwaway headless
 Chrome as the real extension and walks every view in every theme — it exits non-zero on any
 exception, console error, CSP violation or failed load. Upload **only** that zip.
-`node scripts/store-assets.mjs` re-captures the
-1280×800 store screenshots and the promo tile; `node scripts/render-icons.mjs` re-renders the
-icons from `icons/icon.svg`. The listing copy, permission justifications and the owner's launch
+The store screenshots and promo tile in `docs/store/` and the icon PNGs in `icons/` are final
+images with no script behind them; take new 1280×800 screenshots by hand if the UI changes
+before an upload. The listing copy, permission justifications and the owner's launch
 steps are in `docs/store/`; the privacy policy is [PRIVACY.md](PRIVACY.md). Bump `version` in
 `manifest.json` for every upload.
 
 ## Development
 
-The page runs outside Chrome too: serve the folder (`python3 -m http.server`) and open
-`newtab.html` — `js/mock.js` shims the `chrome.*` APIs (tabs, windows, storage, bookmarks)
-with demo data. The mock never activates inside Chrome.
+StackNest runs only as an extension. Load this folder unpacked (the manifest's dev `"key"`
+gives it the ID Google sign-in expects) and reload it in `chrome://extensions` after a change.
+`node scripts/smoke-test.mjs .` loads the folder into a throwaway headless Chrome and walks
+every view.
 
 ```
 manifest.json      MV3 manifest (new-tab override, toolbar action, CSP)
@@ -515,5 +516,4 @@ js/format.js       B/I/U/S selection formatting + per-card text scale, native un
 js/history.js      command-based undo/redo + snackbar
 js/store.js        serialized chrome.storage.local write-queue
 js/ui.js           DOM helpers, icons, letter-tiles, toast, favicons, drag helpers
-js/mock.js         dev-only chrome.* shim
 ```

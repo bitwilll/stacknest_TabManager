@@ -1,11 +1,8 @@
-// Boot: mock fallback (dev preview only), theme, view switching, unified search.
+// Boot: theme, view switching, unified search.
 
 const THEME_KEY = 'stacknest:theme';
 
 async function main() {
-  if (!globalThis.chrome?.tabs?.query) {
-    await import('./mock.js');
-  }
   const { initTabs, stashCurrentWindow, saveCurrentWindow } = await import('./tabs.js');
   const { initSpaces } = await import('./spaces.js');
   const { initBookmarks, saveHere } = await import('./bookmarks.js');

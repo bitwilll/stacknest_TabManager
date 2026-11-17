@@ -18,7 +18,7 @@ command center for **open tabs** (left column, "Open now") and **bookmarks** (ri
 | Bookmark "groups" | Native bookmark folders | Interops with Chrome's own manager & sync |
 | Opening a bookmark | Navigates the current new-tab page (Cmd/Ctrl-click → background tab) | Seamless, no tab spam |
 | Multi-select | None in v1 — drag & drop is the grouping gesture | Less UI chrome |
-| Dev preview | `js/mock.js` shims `chrome.*` with demo data when APIs are absent | Page can be styled/tested outside Chrome |
+| Dev preview | `js/mock.js` shimmed `chrome.*` with demo data when APIs were absent. Removed 2026-11-17: StackNest now runs only as the extension | Page could be styled/tested outside Chrome |
 
 ## Features
 
@@ -380,6 +380,24 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+
+## The browser preview and the icon master are gone (2026-11-17)
+
+`js/mock.js`, the `chrome.*` shim that let `newtab.html` run in a plain browser tab, and
+`icons/icon.svg`, the master the PNG icons were rendered from, were deleted on purpose
+(`b618503`). What depended on them went too:
+
+- `js/app.js` no longer imports the shim. `scripts/package.sh` lost its three mock exceptions
+  (the copy step, the allowed missing import, the zip check) and now copies all of `js/`.
+- `scripts/store-assets.mjs` (the store screenshots and promo tile, which ran on the shim),
+  `scripts/render-icons.mjs` (which needed the SVG) and `.claude/launch.json` (the preview
+  server) are removed. The images already in `docs/store/` and `icons/*.png` stay as they are.
+  New store screenshots are taken by hand; the launch checklist says so where they are uploaded.
+- Development happens in the extension itself: Load unpacked, reload after a change, and
+  `node scripts/smoke-test.mjs .` for a headless pass over every view (README › Development).
+- Left in place: `js/drive.js` still simulates the cloud when `chrome.identity` is missing, and
+  `js/ui.js` still falls back to a public favicon resolver outside the extension. Older entries
+  that say "verified in the mock preview" describe how things were checked at the time.
 
 ## Google sign-in: one extension ID everywhere, and a plain answer when it isn't (2026-11-17)
 
@@ -1601,6 +1619,6 @@ console errors.
 manifest.json          newtab.html
 css/newtab.css         js/app.js (boot, search, events)
 js/tabs.js             js/bookmarks.js
-js/ui.js (dom helpers, toast, favicon)   js/mock.js (dev-only shim)
+js/ui.js (dom helpers, toast, favicon)
 fonts/ icons/          README.md (install steps)
 ```

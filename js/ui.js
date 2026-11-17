@@ -340,7 +340,7 @@ export function faviconUrl(pageUrl, size = 32) {
       u.searchParams.set('size', String(size));
       return u.toString();
     }
-  } catch { /* fall through to public resolver (mock/dev mode only) */ }
+  } catch { /* fall through to the public resolver (outside the extension only) */ }
   try {
     return `https://www.google.com/s2/favicons?sz=${size}&domain=${new URL(pageUrl).hostname}`;
   } catch {

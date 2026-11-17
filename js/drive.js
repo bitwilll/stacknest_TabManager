@@ -11,10 +11,8 @@
 // isConfigured() detects the placeholder so the UI can say "not set up" instead of
 // throwing a cryptic Chrome OAuth error.
 //
-// Preview (served outside Chrome, mock mode): there is no chrome.identity or network
-// auth, so the same public API is backed by an in-memory "cloud" kept in storage, letting
-// the whole UX be exercised. Nothing here talks to a StackNest server — the paid
-// StackNest Cloud tier needs a hosted backend and is surfaced as "coming soon".
+// Without chrome.identity (isLive() false) the same public API is backed by a simulated
+// "cloud" kept in local storage. Nothing here talks to a StackNest server.
 
 import { getKey, setKey } from './store.js';
 import { buildBackup, applyBackup } from './backup.js';
