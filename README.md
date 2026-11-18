@@ -320,8 +320,14 @@ the one or two actions that fill it (new collection, new folder, new note or lis
 | `identity` | Google sign-in for **Google Drive backup** (Settings › Backup & sync) |
 | `alarms` | scheduling Notes reminders, so they fire with no StackNest tab open |
 | `notifications` | showing a reminder when it is due |
+| `offscreen` | playing the soft reminder chime from the background worker (Settings › Zen › Chime with reminders) |
+| `scripting` | Settings › StackNest on the web: one content script for the single site the user connects |
 
-There are **no host permissions**: the four services StackNest can talk to — Google Drive and its
+Neither `offscreen` nor `scripting` adds an install warning.
+
+There are **no host permissions** at install. The only optional one, `https://*/*`, is requested
+for a single site when the user connects it under StackNest on the web, and given back when they
+disconnect. The four services StackNest can talk to — Google Drive and its
 sign-in (`www.googleapis.com`, `oauth2.googleapis.com`) and the market ticker's price sources
 (`api.coingecko.com`, `open.er-api.com`) — all answer cross-origin requests, and the manifest's
 content security policy (`connect-src`) allows exactly those four and nothing else.
