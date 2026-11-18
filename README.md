@@ -336,8 +336,11 @@ removed so that statement stays true.)
 
 Google Drive backup uses `chrome.identity` OAuth, which needs a one-time client that's tied to
 *your* extension's ID. The code is ready — it just needs the client ID. Until you add it, Settings
-shows Google Drive (Settings › Backup & sync) as **"Set up required"** (in the dev preview it's simulated, so you can try the
-whole flow without Google).
+shows Google Drive (Settings › Backup & sync) as **"Set up required"**.
+
+Drive backup needs Chrome's sign-in for extensions (`chrome.identity.getAuthToken`). A Chromium
+browser that leaves it out shows **"Not available here"** instead of Connect, and every Drive action
+says so. Nothing is simulated. **Export backup** works in any browser.
 
 1. **Load the extension unpacked** (`chrome://extensions` → Developer mode → *Load unpacked*) and
    copy its **ID**.

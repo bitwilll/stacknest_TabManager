@@ -9,7 +9,9 @@
 //
 // It also guards Google sign-in: the manifest key must give an ID that js/authConfig.js ›
 // OAUTH_EXTENSION_IDS lists, and on the key-less store build (a random ID) Connect must explain
-// how to reinstall instead of opening Google's "Access blocked" page.
+// how to reinstall instead of opening Google's "Access blocked" page. A page without
+// chrome.identity.getAuthToken (as in browsers that leave it out) must say Drive isn't available
+// there, offer no Connect, and refuse every Drive call instead of pretending to connect.
 //
 // Uses the DevTools protocol over --remote-debugging-pipe and Extensions.loadUnpacked (branded
 // Chrome no longer honours --load-extension). Nothing touches your real profile. Exit code 1 on
@@ -123,6 +125,30 @@ try {
     else if (!/can.t sign in this copy/.test(said)) problems.push(`key-less build: Connect said "${said}" instead of the reinstall advice`);
     if (google.length) problems.push('key-less build: Connect opened a Google sign-in page');
     guard = `\n  key-less build: Connect explains the reinstall and opens no Google page`;
+  }
+  // A browser without Google sign-in for extensions: a second page with getAuthToken removed
+  // before the app loads.
+  {
+    const { targetId: t2 } = await send('Target.createTarget', { url: 'about:blank' });
+    const { sessionId: s2 } = await send('Target.attachToTarget', { targetId: t2, flatten: true });
+    await send('Page.enable', {}, s2);
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: `Object.defineProperty(chrome.identity, 'getAuthToken', { value: undefined, configurable: true });` }, s2);
+    const ev2 = async (expression) => (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }, s2)).result.value;
+    await send('Page.navigate', { url: `chrome-extension://${id}/newtab.html` }, s2);
+    await pause(2000);
+    await ev2(`document.querySelector('#nav-settings').click()`);
+    await pause(400);
+    const chip = await ev2(`document.querySelector('[data-status="set-backup"]')?.textContent || ''`);
+    const offersConnect = await ev2(`!!document.querySelector('[data-key="drive-connect"]')`);
+    const answers = await ev2(`(async () => { const d = await import('./js/drive.js'); const out = [];
+      for (const f of [() => d.connect(), () => d.backupNow(false), () => d.restoreLatest()]) { try { await f(); out.push('RESOLVED'); } catch (e) { out.push(e.message); } }
+      return out; })()`);
+    const stored = await ev2(`(async () => (await chrome.storage.local.get('stacknest:cloud'))['stacknest:cloud'] || {})()`);
+    if (chip !== 'drive not available here') problems.push(`no sign-in: the backup status reads "${chip}"`);
+    if (offersConnect) problems.push('no sign-in: Settings still offers Connect');
+    answers.forEach((a, i) => { if (!/doesn.t let extensions sign in to Google/.test(a)) problems.push(`no sign-in: ${['connect', 'backupNow', 'restoreLatest'][i]} answered "${a}"`); });
+    if (stored.connected) problems.push('no sign-in: Drive was marked connected');
+    guard += `\n  no Google sign-in in the browser: Drive says so and refuses every call`;
   }
   console.log(`smoke: ${dir}\n  extension id ${id}${signInIds.includes(id) ? ' (registered for Google sign-in)' : ''}\n  ${VIEWS.length} views × 3 themes, rail toggled${guard}`);
 } catch (e) {

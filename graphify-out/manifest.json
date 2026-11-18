@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "js/auth.js": {
-    "mtime": 1794912654.0,
-    "seen": 1794937436.0152519,
-    "ast_hash": "98c71f9f29ac4f2b010129d36be8aea5",
+    "mtime": 1794961752.9469032,
+    "seen": 1794961971.732933,
+    "ast_hash": "2b097f9fd881b3e27abdcc1874bc5781",
     "semantic_hash": ""
   },
   "js/authConfig.js": {
@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "js/drive.js": {
-    "mtime": 1794937649.3613458,
-    "seen": 1794937750.9345431,
-    "ast_hash": "36fecd025c4253104a2924f3286a4b42",
+    "mtime": 1794961790.5723455,
+    "seen": 1794961971.73294,
+    "ast_hash": "b9d2dd74346223e2121fc79da6e4a610",
     "semantic_hash": ""
   },
   "js/duplicates.js": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "js/settings.js": {
-    "mtime": 1794912654.0,
-    "seen": 1794937436.01527,
-    "ast_hash": "351389e61c30226912cf12439908fcf5",
+    "mtime": 1794961782.347381,
+    "seen": 1794961971.732959,
+    "ast_hash": "fd520c11b00567e6e7a49f297695599e",
     "semantic_hash": ""
   },
   "js/spaces.js": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "scripts/smoke-test.mjs": {
-    "mtime": 1794912632.135435,
-    "seen": 1794912676.261012,
-    "ast_hash": "ce7762449a6b17d571d1c8b1a67c8ab7",
+    "mtime": 1794961873.0643413,
+    "seen": 1794961971.7329721,
+    "ast_hash": "ecd95830fa3659a9d21d39add844482b",
     "semantic_hash": ""
   },
   ".impeccable.md": {
@@ -174,15 +174,15 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794937687.0471976,
-    "seen": 1794937750.9345741,
-    "ast_hash": "c6449e147fe76d3be3775a67f7f9250a",
+    "mtime": 1794961963.1478865,
+    "seen": 1794961971.732974,
+    "ast_hash": "0f167a71ebb65c21673fc12349d19576",
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794937687.048384,
-    "seen": 1794937750.934575,
-    "ast_hash": "04bf30539c9d0a440cd314632329818b",
+    "mtime": 1794961963.1487257,
+    "seen": 1794961971.732975,
+    "ast_hash": "f292ec44b6b9b496a80a2cdbcd6ccaf6",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {

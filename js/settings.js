@@ -8,7 +8,7 @@ import { getKey, setKey, update } from './store.js';
 import { playChime } from './chime.js';
 import { WALLPAPERS, WALLPAPER_IDS, WALLPAPER_KEY, DEFAULT_WALLPAPER, MAX_OWN, prepareWallpaper, wallpaperFor, ownWallpapers } from './wallpapers.js';
 import { exportBackup, importFlow } from './backup.js';
-import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
+import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, driveAvailable, NO_SIGNIN_MSG, isConfigured, canChooseAccount } from './drive.js';
 import { LOCK_KEY, loadLock, hasPin, setPin, clearPin, verifyPin, validatePin,
          isLockedOut, hasSecurityQuestion, promptSecurityAnswer,
          SECURITY_QUESTIONS, MAX_FAILS } from './lock.js';
@@ -466,13 +466,13 @@ const setStatus = (id, text) => root.querySelectorAll(`[data-status="${id}"]`).f
 async function render() {
   const s = await loadSettings();
   const cloud = await loadCloudState();
-  const live = isLive();
-  const needsSetup = live && !isConfigured(); // real extension, but no OAuth client ID yet
+  const needsSetup = !isConfigured();        // no OAuth client ID in this build
+  const unavailable = !needsSetup && !driveAvailable();   // a browser without Google sign-in for extensions
   const connected = !!(cloud.connected || cloud.email);
   const [pinSet, lockedOut, web] = await Promise.all([hasPin(), isLockedOut(), webStatus()]);
   const status = {
     'set-appearance': { text: appearanceStatus(s) },
-    'set-backup': { text: needsSetup ? 'setup required' : connected ? `drive · last backup ${shortWhen(cloud.lastBackupAt)}` : !live ? 'preview' : 'drive not connected' },
+    'set-backup': { text: needsSetup ? 'setup required' : unavailable ? 'drive not available here' : connected ? `drive · last backup ${shortWhen(cloud.lastBackupAt)}` : 'drive not connected' },
     'set-vault': { text: lockedOut ? 'locked out' : pinSet ? 'pin set' : 'no pin', tone: lockedOut ? 'danger' : null },
     'set-ticker': { text: tickerStatus(s) },
     'set-zen': { text: zenStatus(s) },
@@ -484,7 +484,7 @@ async function render() {
     sectionHead({ className: 'set-top', scope: { key: 'applies to', value: 'This device' }, note: 'Changes save as you make them — there is no Save button.' }),
     el('div', { class: 'sec-body' }, el('div', { class: 'set-layout' }, index, el('div', { class: 'set-plates' },
       appearancePlate(s, status['set-appearance']),
-      backupPlate({ cloud, live, needsSetup, connected }, status['set-backup']),
+      backupPlate({ cloud, needsSetup, unavailable, connected }, status['set-backup']),
       await vaultPlate(status['set-vault']),
       tickerPlate(s, status['set-ticker']),
       await zenPlate(s, status['set-zen']),
@@ -529,7 +529,7 @@ function appearancePlate(s, st) {
 }
 
 /* ——— 02 Backup & sync: a file on this device, or your own Google Drive ——— */
-function backupPlate({ cloud, live, needsSetup, connected }, st) {
+function backupPlate({ cloud, needsSetup, unavailable, connected }, st) {
   const includeBm = el('input', { type: 'checkbox', id: 'set-include-bm', class: 'set-check set-switch', role: 'switch', dataset: { key: 'include-bm' } });
   includeBm.checked = includeBookmarks;
   includeBm.addEventListener('change', () => { includeBookmarks = includeBm.checked; });   // same module variable
@@ -547,21 +547,21 @@ function backupPlate({ cloud, live, needsSetup, connected }, st) {
     group('options', setRow({ label: 'Include my Chrome bookmarks', forId: 'set-include-bm', control: includeBm,
       help: 'Applies to Export backup and Back up now. Not remembered after this tab closes.' })),
     group('file on this device', setRow({ label: 'Backup file', help: 'A JSON file you can re-import later or on another machine.', control: [exportBtn, importBtn] })),
-    group('google drive', driveGroup(cloud, needsSetup, connected)),
+    group('google drive', driveGroup(cloud, needsSetup, unavailable, connected)),
   ], [
     callout('Import replaces your current spaces, collections, notes, tags, My Space, the Vault and settings. Bookmarks, if present, are added under a new "StackNest Import" folder (nothing is overwritten).'),
-    callout(driveNote(live, needsSetup)),
+    callout(driveNote(needsSetup, unavailable)),
   ]);
 }
 
-// Google Drive: set up required / Connect / the connected account with its actions.
-// The dot is green only when an account is actually connected.
-function driveGroup(cloud, needsSetup, connected) {
+// Google Drive: set up required / not available in this browser / Connect / the connected
+// account with its actions. The dot is green only when an account is actually connected.
+function driveGroup(cloud, needsSetup, unavailable, connected) {
   const name = (inner) => el('span', { class: 'cloud-name' }, el('span', { class: `cloud-dot g${connected ? ' is-on' : ''}` }), inner);
   const box = el('div', { class: 'cloud-provider' });
-  if (needsSetup) {
+  if (needsSetup || unavailable) {
     box.append(el('div', { class: 'cloud-row' }, name('Google Drive'),
-      el('button', { class: 'btnx soft', disabled: 'true' }, el('span', { text: 'Set up required' }))));
+      el('button', { class: 'btnx soft', disabled: 'true' }, el('span', { text: needsSetup ? 'Set up required' : 'Not available here' }))));
   } else if (!connected) {
     box.append(el('div', { class: 'cloud-row' }, name('Google Drive'),
       el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'drive-connect' },          // was .primary
@@ -589,9 +589,9 @@ function driveGroup(cloud, needsSetup, connected) {
   return box;
 }
 
-function driveNote(live, needsSetup) {
+function driveNote(needsSetup, unavailable) {
   if (needsSetup) return 'Google Drive backup isn’t available in this build.';
-  if (!live) return 'Preview mode: Google sign-in and Drive aren’t available outside the packaged extension, so this simulates the cloud locally. In the real extension it uses your Google account.';
+  if (unavailable) return NO_SIGNIN_MSG;
   // Be explicit about WHOSE account this is: nothing is pre-connected, and the backup
   // goes to the signed-in person's own private Drive folder.
   return canChooseAccount()

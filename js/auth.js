@@ -87,7 +87,18 @@ export const idRegistered = () => {
   try { return OAUTH_EXTENSION_IDS.includes(chrome.runtime.id); } catch { return false; }
 };
 
+// Whether this browser gives extensions the sign-in function the configured path needs.
+// Chrome always does. Some other Chromium browsers leave chrome.identity.getAuthToken out,
+// and an incognito page may have no chrome.identity at all (drive.js asks the worker there).
+// Same code-word convention as WRONG_ID.
+export const NO_SIGNIN = 'signin_unavailable';
+export const signInAvailable = () => {
+  const id = globalThis.chrome?.identity;
+  return typeof (canChooseAccount() ? id?.launchWebAuthFlow : id?.getAuthToken) === 'function';
+};
+
 export async function mintToken({ interactive = false, chooseAccount = false, loginHint = null } = {}) {
+  if (!signInAvailable()) throw new Error(`${NO_SIGNIN}: this browser has no chrome.identity.${canChooseAccount() ? 'launchWebAuthFlow' : 'getAuthToken'}`);
   if (!idRegistered()) throw new Error(`${WRONG_ID}: this copy runs as ${globalThis.chrome?.runtime?.id || 'an unknown ID'}`);
   if (canChooseAccount()) {
     try {

@@ -11,15 +11,15 @@
 // isConfigured() detects the placeholder so the UI can say "not set up" instead of
 // throwing a cryptic Chrome OAuth error.
 //
-// Without chrome.identity (isLive() false) the same public API is backed by a simulated
-// "cloud" kept in local storage. Nothing here talks to a StackNest server.
+// A browser without Google sign-in for extensions (see signInAvailable in js/auth.js) gets
+// a plain "not available in this browser" answer. Nothing is simulated, and nothing here
+// talks to a StackNest server.
 
 import { getKey, setKey } from './store.js';
 import { buildBackup, applyBackup } from './backup.js';
-import { mintToken, forgetToken, forgetAllTokens, canChooseAccount, idRegistered, WRONG_ID } from './auth.js';
+import { mintToken, forgetToken, forgetAllTokens, canChooseAccount, idRegistered, WRONG_ID, signInAvailable, NO_SIGNIN } from './auth.js';
 
 export const CLOUD_KEY = 'stacknest:cloud'; // { connected, email, lastBackupAt, lastRestoreAt }
-const DEV_FILE_KEY = 'stacknest:cloud:devfile'; // preview-only simulated Drive file
 const FILE_NAME = 'stacknest-backup.json';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
@@ -27,15 +27,16 @@ const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 // from the profile it is signed into (see js/authConfig.js for how to change that).
 export { canChooseAccount };
 
-// running inside a real extension (has chrome.identity + a runtime id). Incognito
-// pages may not expose chrome.identity at all, but they still count as live —
-// token work is delegated to the background worker there (see getToken).
-export const isLive = () => !!(globalThis.chrome?.runtime?.id && (chrome.identity?.getAuthToken || chrome.extension?.inIncognitoContext));
-
 // chrome.identity's OAuth flows (interactive consent especially) can't run from an
 // incognito page, so incognito delegates token mint/evict to the background service
 // worker (js/sw.js) — "spanning" mode shares one worker, living in the regular profile.
 const inIncognito = () => !!globalThis.chrome?.extension?.inIncognitoContext;
+
+// Whether Drive backup can work in this browser. Incognito pages hand sign-in to the worker,
+// which checks for itself and answers NO_SIGNIN (shown as NO_SIGNIN_MSG) if it can't.
+export const driveAvailable = () => inIncognito() || signInAvailable();
+export const NO_SIGNIN_MSG = 'This browser doesn’t let extensions sign in to Google, so Drive backup can’t work here. '
+  + 'Export backup still does: keep the file, or import it into StackNest in Google Chrome.';
 
 // the OAuth client is actually filled in (not the shipped placeholder). Live sync
 // can only work when this is true; the UI uses it to show a clear setup prompt.
@@ -48,9 +49,19 @@ export const isConfigured = () => {
 
 const NOT_CONFIGURED = () => new Error("Google Drive backup isn't available in this build.");
 
+// the two reasons Drive can't be used at all, checked before any token work
+function assertUsable() {
+  if (!isConfigured()) throw NOT_CONFIGURED();
+  if (!driveAvailable()) throw new Error(NO_SIGNIN_MSG);
+}
+
 export async function loadCloudState() {
   const s = await getKey(CLOUD_KEY, {});
-  return (s && typeof s === 'object') ? s : {};
+  if (!s || typeof s !== 'object') return {};
+  // the removed preview mode "connected" a made-up account (…@gmail.com (preview)) and kept the
+  // backup in local storage; that was never Drive, so don't show it as connected
+  if (typeof s.email === 'string' && s.email.endsWith('(preview)')) return {};
+  return s;
 }
 async function patchState(patch) {
   const next = { ...(await loadCloudState()), ...patch };
@@ -84,6 +95,7 @@ const REINSTALL = 'Google can’t sign in this copy of StackNest: it’s an old 
 
 function authError(raw, interactive) {
   const m = (raw || '').toLowerCase();
+  if (m.startsWith(NO_SIGNIN)) return new Error(NO_SIGNIN_MSG);
   if (m.startsWith(WRONG_ID) || m.includes('invalid_request') || m.includes('bad client')) return new Error(REINSTALL);
   // Google reports a blocked account ("Access blocked: … has not completed the Google
   // verification process", Error 403 access_denied) the same way as a closed window:
@@ -205,22 +217,18 @@ async function downloadLive(token) {
 export function getAccount(state) { return state?.email || (state?.connected ? 'Google Drive' : null); }
 
 export async function connect({ chooseAccount = false } = {}) {
-  if (isLive()) {
-    if (!isConfigured()) throw NOT_CONFIGURED();
-    if (!idRegistered()) throw new Error(REINSTALL);       // never open Google's "Access blocked" page
-    const token = await getToken(true, { chooseAccount }); // first sign-in: interactive consent
-    const email = await fetchEmail(token);
-    return patchState({ connected: true, email });
-  }
-  // preview: simulate a connected account
-  return patchState({ connected: true, email: chooseAccount ? 'someone.else@gmail.com (preview)' : 'you@gmail.com (preview)' });
+  assertUsable();
+  if (!idRegistered()) throw new Error(REINSTALL);       // never open Google's "Access blocked" page
+  const token = await getToken(true, { chooseAccount }); // first sign-in: interactive consent
+  const email = await fetchEmail(token);
+  return patchState({ connected: true, email });
 }
 
 // Move Drive sync to a different Google account. Only meaningful on the web-auth path;
 // with getAuthToken the account is whichever one Chrome itself is signed into, so say
 // so plainly rather than reconnecting the same account and looking broken.
 export async function switchAccount() {
-  if (isLive() && !canChooseAccount()) {
+  if (!canChooseAccount()) {
     throw new Error('Drive uses the Google account this Chrome profile is signed into. Switch Chrome profiles to use another account.');
   }
   await dropAllTokens();
@@ -237,15 +245,13 @@ export async function switchAccount() {
    screen again — so it is the user's choice at the moment of signing out, not a default
    buried in a settings row. Your backup file in Drive is untouched either way. */
 export async function signOut({ revoke = false } = {}) {
-  if (isLive()) {
-    if (revoke) {
-      try {
-        const t = await getToken(false);
-        try { await fetch(`${REVOKE_URL}?token=${encodeURIComponent(t)}`, { method: 'POST' }); } catch { /* best effort */ }
-      } catch { /* nothing cached to revoke */ }
-    }
-    await dropAllTokens();
+  if (revoke && driveAvailable()) {
+    try {
+      const t = await getToken(false);
+      try { await fetch(`${REVOKE_URL}?token=${encodeURIComponent(t)}`, { method: 'POST' }); } catch { /* best effort */ }
+    } catch { /* nothing cached to revoke */ }
   }
+  await dropAllTokens();
   return patchState({ connected: false, email: null });
 }
 
@@ -253,27 +259,18 @@ export async function signOut({ revoke = false } = {}) {
 export const disconnect = () => signOut({ revoke: true });
 
 export async function backupNow(includeBookmarks) {
+  assertUsable();
   const backup = await buildBackup(includeBookmarks);
   const json = JSON.stringify(backup);
-  if (isLive()) {
-    if (!isConfigured()) throw NOT_CONFIGURED();
-    await withDrive((token) => uploadLive(token, json));
-  } else {
-    await setKey(DEV_FILE_KEY, json);
-  }
+  await withDrive((token) => uploadLive(token, json));
   const cols = Array.isArray(backup.collections) ? backup.collections.length : 0;
   await patchState({ lastBackupAt: new Date().toISOString() });
   return { collections: cols, bookmarks: !!backup.bookmarks };
 }
 
 export async function restoreLatest() {
-  let data;
-  if (isLive()) {
-    if (!isConfigured()) throw NOT_CONFIGURED();
-    data = await withDrive((token) => downloadLive(token));
-  } else {
-    const json = await getKey(DEV_FILE_KEY, null); data = json ? JSON.parse(json) : null;
-  }
+  assertUsable();
+  const data = await withDrive((token) => downloadLive(token));
   if (!data) throw new Error('No cloud backup found yet');
   if (data.app !== 'StackNest' || data.type !== 'backup') throw new Error('Cloud file is not a StackNest backup');
   await applyBackup(data);
@@ -281,4 +278,4 @@ export async function restoreLatest() {
   return { collections: Array.isArray(data.collections) ? data.collections.length : 0 };
 }
 
-export const cloud = { CLOUD_KEY, isLive, isConfigured, canChooseAccount, loadCloudState, getAccount, connect, switchAccount, signOut, disconnect, backupNow, restoreLatest };
+export const cloud = { CLOUD_KEY, driveAvailable, isConfigured, canChooseAccount, loadCloudState, getAccount, connect, switchAccount, signOut, disconnect, backupNow, restoreLatest };

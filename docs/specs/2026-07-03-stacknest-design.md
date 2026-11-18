@@ -381,6 +381,44 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Drive says "not available here" instead of pretending (2026-11-18)
+
+**Found while removing the preview.** `js/drive.js` decided between real Drive and a simulated
+one with `isLive()`: a runtime ID plus `chrome.identity.getAuthToken`. The simulation existed for
+the browser preview, but it also ran inside the real extension in any browser without
+`getAuthToken` (some Chromium browsers leave it out). There, Connect "succeeded" as
+`you@gmail.com (preview)`, Back up now saved to local storage, and the toast said "Backed up … to
+Drive". Someone could believe they had a cloud backup when they didn't. Chrome itself always has
+the function, so this never happened there.
+
+**Fix.**
+- `js/auth.js` › `signInAvailable()` checks for the function the configured path needs
+  (`getAuthToken`, or `launchWebAuthFlow` when a Web client is set). `mintToken` refuses first
+  with the code word `signin_unavailable`, the same pattern as `wrong_extension_id`. That covers
+  the page and the worker, so incognito, where the worker signs in, is covered too.
+- `js/drive.js`: the simulation and its `stacknest:cloud:devfile` key are gone. `driveAvailable()`
+  (incognito, or `signInAvailable()`) replaces `isLive()`. Connect, Back up now and Restore check it
+  first and answer with one message: this browser doesn't let extensions sign in to Google, Export
+  backup still works. The worker's `signin_unavailable` maps to the same message. Sign-out always
+  clears tokens and state, and only tries to revoke where sign-in exists.
+- A leftover fake account (an email ending in "(preview)") is read as not connected.
+- Settings › Backup & sync: the status reads *drive not available here*, the Google Drive row
+  shows a disabled **Not available here** button, and the note says why and points to Export
+  backup.
+
+**Verified.**
+- In headless Chrome with `getAuthToken` removed before the page loads, 18 checks pass:
+  - Settings shows the status, the disabled button and the note.
+  - `connect()`, `connect({ chooseAccount })`, `backupNow` and `restoreLatest` all refuse with the
+    message, and nothing is marked connected.
+  - Sign-out still works.
+  - The old fake account is ignored.
+  - An incognito-style page whose worker answers `signin_unavailable` shows the same message.
+  - Normal Chrome still offers Connect, and no Google page opens.
+- `scripts/smoke-test.mjs` now runs the core of this on a second page. It passes on the store
+  build, the install build and the dev folder, and fails on the previous commit (status "preview",
+  Connect offered, all three calls resolved, Drive marked connected).
+
 ## The browser preview and the icon master are gone (2026-11-17)
 
 `js/mock.js`, the `chrome.*` shim that let `newtab.html` run in a plain browser tab, and
@@ -395,8 +433,8 @@ across both themes and all four surfaces.
   New store screenshots are taken by hand; the launch checklist says so where they are uploaded.
 - Development happens in the extension itself: Load unpacked, reload after a change, and
   `node scripts/smoke-test.mjs .` for a headless pass over every view (README › Development).
-- Left in place: `js/drive.js` still simulates the cloud when `chrome.identity` is missing, and
-  `js/ui.js` still falls back to a public favicon resolver outside the extension. Older entries
+- Left in place: `js/drive.js` still simulated the cloud when `chrome.identity` was missing (fixed
+  the next day, entry above), and `js/ui.js` still falls back to a public favicon resolver outside the extension. Older entries
   that say "verified in the mock preview" describe how things were checked at the time.
 
 ## Google sign-in: one extension ID everywhere, and a plain answer when it isn't (2026-11-17)
