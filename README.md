@@ -223,6 +223,13 @@ never strands a blank row. Every card can be:
 - **Undone** — deleting a card is reversible: a snackbar offers **Undo**, and **⌘Z / Ctrl+Z** puts
   it back where it was with its items, tags, colour and reminder intact (**⌘⇧Z / Ctrl+Y** to redo).
 
+**In Zen**, the same cards edit where they sit. Click a reminder, a list's title or item, or a pinned
+note to type in it; Enter adds the next item and Backspace in an empty one removes it. The bell sets
+a time, the time itself changes it, and the bin deletes (with Undo). The note button in Zen's
+top-right corner drops a **quick note** down when you hover it: type, press Enter, and it is a new
+note in Notes. The five most recently edited notes sit under the box, editable too. Moving the
+pointer away folds it up, unless you are typing in it.
+
 **Formatting.** Click into any text field and a formatting bar docks at the bottom of that card —
 only while you're writing in it: **B / I / U / S**, **bullet / numbered / checklist** lines, and
 **A+ / A−**. The list buttons work in a note body (they mark the current line, or every selected

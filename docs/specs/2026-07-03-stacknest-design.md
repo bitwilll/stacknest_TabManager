@@ -381,6 +381,62 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## Zen edits notes in place, and a quick note waits in the top-right corner (2026-11-18)
+
+**Asked for.** Notes, to-dos and reminders editable in Zen, not only tickable. And a quick way to
+add a note from the top-right corner that peeks open on hover and hides when the pointer leaves.
+
+**Editing in place** (`js/zen.js`, with a small API in `js/notes.js`).
+- Every text in a Notes card shown in Zen rests as rendered text and becomes a text box on a click,
+  or on Tab: a reminder, a list's title and rows, a note's title and body. A click on a link still
+  follows it. This is the Notes view's own `lineView` deal, rebuilt for Zen as `lineField` and
+  `areaField`.
+- Keys work as in Notes. Enter in a row adds the next row under it. Backspace in an empty row
+  removes it and steps up. Enter in a list title goes to the first row. Enter in a note body
+  continues a markdown list. Esc leaves the field and stays in Zen.
+- Each card has a bell (when it has no time), a delete with the Notes view's confirm and Undo, and
+  a × per row. They show on hover or focus, and always on a touch screen. The time chip is a button
+  that opens the Notes view's reminder popover to change or clear it. "+ Add item" ends each list.
+- Text saves through the Notes view's debounced queue (`saveNoteField` → `queueSave`). Row
+  add/remove, reminder, delete and quick note go through `mutate()`, so typing is flushed first.
+  New exports: `saveNoteField`, `flushNoteSaves`, `addNoteRow`, `removeNoteRow`,
+  `openNoteReminder`, `deleteNoteCard`, `addQuickNote`.
+- **Typing is never rebuilt.** Zen re-renders on every Notes change, including the echo of its own
+  saves. `render()` now holds back while a field marked `data-edit` has focus and runs when the
+  field is left (after its typing is flushed). A row added or removed from Zen forces the rebuild,
+  because the store matches the screen at that point. Each field's `data-edit` is
+  `scope|card|row|field`, so focus and the caret come back to the same field after a rebuild.
+  The scope is needed because one note can show in two places.
+- A card dragged in a pane no longer starts its drag from a text box, so text can be selected
+  there.
+- Toasts sat under Zen (z-index 30 vs 40), so "Reminder set" and the like never showed there. While
+  Zen is on they are at 45, still under dialogs (60). The Undo bar was already above.
+
+**The quick-note corner.**
+- A note button sits at the far right of Zen's top bar. Hovering it drops a panel down: a box
+  ("Jot a note…"), a Save button, and the five most recently edited notes, each editable in place,
+  with pin-to-Zen and delete.
+- Enter saves the box as a new note card at the top of Notes, body only and no title; Shift+Enter
+  adds a new line. A quick note with no title shows only its text.
+- The panel folds about 0.2 s after the pointer leaves. It stays open while focus is inside it
+  (you are typing) or after a click on the button. A click outside, Esc, or the button again folds
+  it.
+- Hover is mouse and pen only. A tap is a click, which holds it open. A 10 px see-through bridge
+  between button and panel keeps it open while the pointer crosses.
+- A half-written note is kept in `localStorage` (`stacknest:zen-quicknote`, this device only)
+  until it is saved.
+- It folds on a peek at the wallpaper, on the arcade page and on leaving Zen.
+
+**Verified.** In headless Chrome with real mouse moves, clicks and keystrokes over CDP, 45 checks
+pass with no exceptions or console errors:
+- An outside change to Notes mid-typing leaves the field and caret alone, and the held-back render
+  lands on leaving.
+- Enter, Backspace, ×, Add item and list continuation each store the right rows or text.
+- The reminder popover, the confirm dialog, the toast and the Undo bar all draw over Zen.
+- The quick note opens on hover, survives the pointer crossing into it, folds when it leaves,
+  stays while typing, saves on Enter, folds on Esc or a click outside, keeps a draft across a
+  reload, and pins a note to Zen.
+
 ## Drive says "not available here" instead of pretending (2026-11-18)
 
 **Found while removing the preview.** `js/drive.js` decided between real Drive and a simulated
