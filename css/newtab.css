@@ -2941,24 +2941,23 @@ kbd {
   background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--frame) 22%, transparent)); }
 .zen[data-tone='theme'] .zen-veil { display: none; }
 
-/* a peek at the wallpaper: the corner button fades everything else to a fifth (Esc brings it back) */
-.zen > .zen-bar, .zen > .zen-stage, .zen > .zen-pager, .zen > .zen-veil { transition: opacity .45s ease; }
-.zen.is-peek > .zen-bar, .zen.is-peek > .zen-stage, .zen.is-peek > .zen-pager { opacity: .2; }
+/* a peek at the wallpaper: resting on the wallpaper button for 2 s fades everything else to a
+   fifth; the button itself stays lit (moving away or Esc brings it all back) */
+.zen > .zen-bar > *, .zen-tools > *, .zen > .zen-stage, .zen > .zen-pager, .zen > .zen-qn, .zen > .zen-veil { transition: opacity .45s ease; }
+.zen.is-peek > .zen-bar > :not(.zen-tools), .zen.is-peek .zen-tools > :not(.zen-wall-btn),
+.zen.is-peek > .zen-stage, .zen.is-peek > .zen-pager, .zen.is-peek > .zen-qn { opacity: .2; }
 .zen.is-peek > .zen-veil { opacity: 0; }
-.zen-peek { position: fixed; right: 22px; bottom: 18px; z-index: 4; width: 40px; height: 40px; box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5); }
-.zen-peek:hover { background: var(--text-strong); color: var(--bg-card); }
-.zen-icb.zen-peek[aria-pressed='true'] { background: var(--accent); color: #fff; border-color: transparent;
+.zen-icb.zen-wall-btn[aria-pressed='true'] { background: var(--accent); color: #fff; border-color: transparent;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent), 0 10px 30px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
-.zen[data-page='arcade'] .zen-peek { display: none; }
-.zen-peek-hint { position: absolute; right: calc(100% + 10px); top: 50%; transform: translate(6px, -50%); white-space: nowrap; pointer-events: none;
+.zen-peek-hint { position: absolute; top: calc(100% + 8px); right: 0; transform: translateY(-4px); white-space: nowrap; pointer-events: none;
   padding: 5px 11px; border-radius: 999px; font: 600 12px var(--grot, system-ui); background: var(--zen-glass); color: var(--text-strong);
   border: 1px solid var(--zen-glass-line); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   opacity: 0; transition: opacity .3s ease .2s, transform .3s ease .2s; }
-.zen.is-peek .zen-peek-hint { opacity: 1; transform: translate(0, -50%); animation: zen-peek-hint 3.2s ease forwards; }
+.zen-peek-hint.is-on { opacity: 1; transform: none; animation: zen-peek-hint 3.2s ease forwards; }
 @keyframes zen-peek-hint { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .zen > .zen-bar, .zen > .zen-stage, .zen > .zen-pager, .zen > .zen-veil, .zen-peek-hint { transition: none; }
-  .zen.is-peek .zen-peek-hint { animation: none; }
+  .zen > .zen-bar > *, .zen-tools > *, .zen > .zen-stage, .zen > .zen-pager, .zen > .zen-qn, .zen > .zen-veil, .zen-peek-hint { transition: none; }
+  .zen-peek-hint.is-on { animation: none; }
 }
 
 .zen-bar {
@@ -3346,13 +3345,15 @@ button.zen-due.past:hover { color: var(--red); }
 .zen-additem:hover { background: var(--hov); color: var(--text-strong); }
 .zen-additem svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; flex: none; }
 
-/* ——— the quick-note corner: a note button at the top right; hover drops a small box down ——— */
-.zen-qn { position: relative; flex: none; }
+/* ——— the quick-note corner: a note button at the bottom right; hover opens a small box upward ——— */
+.zen-qn { position: fixed; right: 22px; bottom: 18px; z-index: 4; }
+.zen-qn > .zen-qn-btn { width: 40px; height: 40px; box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5); }
+.zen:not([data-page='home']) > .zen-qn { display: none; }
 .zen-qn.is-open > .zen-qn-btn { background: var(--text-strong); color: var(--bg-card); }
 .zen-qn-pop {
-  position: absolute; top: 100%; right: 0; z-index: 6; width: min(360px, calc(100vw - 32px));
-  padding-top: 10px;   /* an invisible bridge, so the pointer can cross from the button without it folding */
-  opacity: 0; visibility: hidden; transform: translateY(-6px); transform-origin: top right;
+  position: absolute; bottom: 100%; right: 0; z-index: 6; width: min(360px, calc(100vw - 32px));
+  padding-bottom: 10px;   /* an invisible bridge, so the pointer can cross from the button without it folding */
+  opacity: 0; visibility: hidden; transform: translateY(6px); transform-origin: bottom right;
   transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s;
 }
 .zen-qn.is-open > .zen-qn-pop { opacity: 1; visibility: visible; transform: none; transition: opacity .16s ease, transform .16s ease, visibility 0s; }
@@ -3392,7 +3393,6 @@ button.zen-due.past:hover { color: var(--red); }
 .zen-np { display: none; }
 .zen[data-page='notes'] .zen-bar, .zen[data-page='notes'] .zen-stage { display: none; }
 .zen[data-page='notes'] .zen-np { position: relative; flex: 1 0 auto; display: flex; flex-direction: column; min-height: 100%; }
-.zen[data-page='notes'] .zen-peek { display: none; }
 .zen-a-bar.zen-np-bar { justify-content: space-between; align-items: center; }   /* the clock on the left, as on Zen's home page */
 .zen-np-stage { flex: 1; width: 100%; max-width: 1640px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 56px) var(--zen-dock); }
 .zen-np-pane { max-height: none; min-height: 0; }   /* the page scrolls, not the pane */

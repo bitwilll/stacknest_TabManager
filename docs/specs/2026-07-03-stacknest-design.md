@@ -381,6 +381,28 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## The peek lives on the wallpaper button; the quick note takes its corner (2026-11-19)
+
+Zen had two buttons that dealt with the wallpaper: shuffle in the top bar, and "look at the
+wallpaper" alone in the bottom-right corner. The look now belongs to the shuffle button, and
+the corner went to the quick note.
+
+- **Peek by resting.** Resting the pointer on the wallpaper button for 2 s fades everything
+  else to a fifth (inert, as before). The button itself stays lit in the accent and stays live,
+  so a press still shuffles and scene after scene can be looked at. A hint under it says
+  "Move away or press Esc to come back". Moving off the button ends the peek, and so does Esc.
+  A press restarts the 2 s wait, so someone shuffling quickly never peeks by surprise. Touch
+  has no hover, so a tap only shuffles. The old peek button and its `.zen-peek` styles are gone.
+- **Quick note in the corner.** The note button left the top bar for the bottom-right corner
+  (40 px, the peek button's old spot). Its box now opens upward with the same hover and click
+  rules, and it shows only on Zen's home page, as before.
+- Checked with real mouse input in headless Chrome:
+  - Nothing at 1.2 s, the peek at 2.3 s, and a press during a peek keeps it.
+  - Leaving the button ends the peek, and the wait restarts after a shuffle.
+  - Esc ends the peek but stays in Zen.
+  - The note box opens above its button and on screen.
+  - The smoke test is clean.
+
 ## The switch moves to the bottom centre; thunder and quiet snow (2026-11-18)
 
 **Asked for.** "Align the navigation bar in middle and set the margin of notes and other

@@ -7,8 +7,10 @@
 //   To-do                       open reminders and unfinished checklists — tick, or add one
 //   Pinned                      anything pinned to Zen: Notes cards, whole collections, plus links
 //                               and folders from Collections, the Library and My Space (js/zenpins.js)
-//   Quick note                  the top-right corner: hover (or click) and a small box drops down
-//                               to jot a note into Notes
+//   Quick note                  the bottom-right corner: hover (or click) and a small box opens
+//                               upward to jot a note into Notes
+//   Wallpaper button            press to shuffle; rest the pointer on it 2 s for a peek at the
+//                               wallpaper (everything else fades to a fifth until it leaves)
 //
 // The switch at the bottom centre turns the page: Lounge, Arcade, Zen, and Notes, which is the
 // whole of Notes on the wallpaper (every card, a filter, search, New note / list / reminder),
@@ -138,7 +140,7 @@ export function setZen(on, { persist = true, focus = true } = {}) {
   } else {
     shell.rest.stop();
     shell.qn.close();
-    setPeek(false, { focus: false });
+    setPeek(false);
     setPage('home', { focus: false });
     if (focus) (lastFocus?.isConnected ? lastFocus : document.getElementById('zen-btn'))?.focus?.({ preventScroll: true });
   }
@@ -175,11 +177,25 @@ function buildShell(openSettings) {
   const qn = createQuickNote();
   // the wallpaper button shuffles: each press the next scene from a shuffled deck (and your own
   // image, if you set one), crossfading, its name shown a moment. Shift-click or right-click
-  // opens every wallpaper in Settings.
+  // opens every wallpaper in Settings. Resting the pointer on it for two seconds is a peek:
+  // everything else fades to a fifth so the wallpaper can be seen, until the pointer leaves
+  // (or Esc). A press restarts the wait, so shuffling through scenes never peeks by surprise.
   const wallName = el('span', { class: 'zen-wall-name', 'aria-live': 'polite' });
-  const wallBtn = el('button', { class: 'zen-icb zen-wall-btn', type: 'button', title: 'Next wallpaper (Shift-click for all)', 'aria-label': 'Next wallpaper',
-    onclick: (e) => { if (e.shiftKey) { setZen(false); openSettings('set-zen'); return; } const b = e.currentTarget; b.classList.remove('is-spin'); void b.offsetWidth; b.classList.add('is-spin'); shuffleWallpaper(wallName); },
-    oncontextmenu: (e) => { e.preventDefault(); setZen(false); openSettings('set-zen'); } }, icon('wallShuffle', 19), wallName);
+  const peekHint = el('span', { class: 'zen-peek-hint', 'aria-hidden': 'true', text: 'Move away or press Esc to come back' });
+  let peekTimer = null;
+  const armPeek = () => { clearTimeout(peekTimer); peekTimer = setTimeout(() => setPeek(true), PEEK_AFTER); };
+  const wallBtn = el('button', { class: 'zen-icb zen-wall-btn', type: 'button', 'aria-pressed': 'false', title: WALL_TITLE, 'aria-label': 'Next wallpaper',
+    onclick: (e) => {
+      if (e.shiftKey) { setZen(false); openSettings('set-zen'); return; }
+      const b = e.currentTarget; b.classList.remove('is-spin'); void b.offsetWidth; b.classList.add('is-spin');
+      peekHint.classList.remove('is-on');   // the scene's name takes the spot under the button
+      shuffleWallpaper(wallName);
+      if (!root.classList.contains('is-peek') && b.matches(':hover')) armPeek();
+    },
+    oncontextmenu: (e) => { e.preventDefault(); setZen(false); openSettings('set-zen'); } }, icon('wallShuffle', 19), wallName, peekHint);
+  // hover is a mouse thing; a finger resting on the button would also press it
+  wallBtn.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') armPeek(); });
+  wallBtn.addEventListener('pointerleave', () => { clearTimeout(peekTimer); setPeek(false); });
   // eye rest: the pill is itself the switch: eye icon, what it is doing (minutes to the next
   // pause, or off) and a little track whose knob slides over when it is on
   const eyeLabel = el('span', { class: 'zen-eye-label', text: 'Eye rest' });
@@ -289,17 +305,12 @@ function buildShell(openSettings) {
     fx.append(el('i', { style: `--x:${(r(1) * 100).toFixed(1)}%;--y:${(r(2) * 100).toFixed(1)}%;--d:${(-r(3) * 20).toFixed(1)}s;--t:${(14 + r(4) * 14).toFixed(1)}s;--s:${(0.6 + r(5) * 0.9).toFixed(2)}` }));
   }
 
-  // the corner button: everything else fades to a fifth so the wallpaper can be seen; Esc (or the
-  // button again) brings it all back
-  const peekHint = el('span', { class: 'zen-peek-hint', 'aria-hidden': 'true', text: 'Esc to come back' });
-  const peekBtn = el('button', { class: 'zen-icb zen-peek', type: 'button', 'aria-pressed': 'false', title: 'Look at the wallpaper', 'aria-label': 'Look at the wallpaper',
-    onclick: () => setPeek(!root.classList.contains('is-peek')) }, icon('wallWindow', 19), peekHint);
 
   root.replaceChildren(
     el('div', { class: 'zen-wall', 'aria-hidden': 'true' }),
     fx,
     el('div', { class: 'zen-veil', 'aria-hidden': 'true' }),
-    el('header', { class: 'zen-bar' }, thought, el('div', { class: 'zen-tools' }, eyeBtn, wallBtn, exit, qn.node)),
+    el('header', { class: 'zen-bar' }, thought, el('div', { class: 'zen-tools' }, eyeBtn, wallBtn, exit)),
     el('div', { class: 'zen-stage' },
       el('aside', { class: 'zen-side' },
         el('div', { class: 'zen-clock' }, time, el('div', { class: 'zen-sub' }, greet, el('span', { class: 'zen-dot', 'aria-hidden': 'true', text: '·' }), date)),
@@ -308,7 +319,7 @@ function buildShell(openSettings) {
     arcadePage,
     np.node,
     pager,
-    peekBtn,
+    qn.node,
     rest.node,
   );
 
@@ -318,13 +329,13 @@ function buildShell(openSettings) {
   sortable(todoBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { todo: keys } }) });
   sortable(pinBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { pinned: keys } }) });
 
-  shell = { peekBtn, cal2, arcade, aTime, aDate, np, pager, time, date, greet, exit, qn, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, thoughtBy, thoughtStar, thoughtOnly, grid, panes, cal, rest, colKey: null };
+  shell = { wallBtn, peekHint, cal2, arcade, aTime, aDate, np, pager, time, date, greet, exit, qn, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, thoughtBy, thoughtStar, thoughtOnly, grid, panes, cal, rest, colKey: null };
   paintThought();
   setPage('home', { focus: false });
 }
 
 /* ————————————————————————— the quick-note corner —————————————————————————
-   A note button at the top-right corner. Hovering it drops a small panel down (a peek) with one
+   A note button at the bottom-right corner. Hovering it opens a small panel upward with one
    box to jot a note into Notes; nothing else, so other notes stay out of sight. Moving the
    pointer away folds it up again after a moment, unless the box has focus (you are typing) or
    it was opened with a click; then a click outside, Esc, or the button again folds it. A
@@ -467,17 +478,22 @@ function notesPageCard(it) {
 }
 
 // a peek at the wallpaper: the page fades to 20% and can't be clicked or tabbed into; only the
-// corner button stays lit (and keeps focus)
-function setPeek(on, { focus = true } = {}) {
-  if (!shell?.peekBtn) return;
-  const b = shell.peekBtn;
+// wallpaper button stays lit and live (it is what the pointer rests on, and a press still
+// shuffles, so scenes can be looked at one after another)
+const PEEK_AFTER = 2000;
+const WALL_TITLE = 'Next wallpaper · rest here 2 s to look at it · Shift-click for all';
+const PEEK_DIM = ':scope > .zen-bar > :not(.zen-tools), :scope > .zen-bar .zen-tools > :not(.zen-wall-btn), :scope > .zen-stage, :scope > .zen-pager, :scope > .zen-qn';
+function setPeek(on) {
+  if (!shell?.wallBtn) return;
+  if (on && (!isOn() || root.dataset.page !== 'home')) return;   // only Zen's home page has the wallpaper button
+  if (on === root.classList.contains('is-peek')) return;
+  const b = shell.wallBtn;
   if (on) shell.qn.close();
   root.classList.toggle('is-peek', on);
-  for (const n of root.querySelectorAll(':scope > .zen-bar, :scope > .zen-stage, :scope > .zen-pager')) n.inert = on;
+  for (const n of root.querySelectorAll(PEEK_DIM)) n.inert = on;
   b.setAttribute('aria-pressed', String(on));
-  b.title = on ? 'Back to Zen (Esc)' : 'Look at the wallpaper';
-  b.setAttribute('aria-label', on ? 'Back to Zen' : 'Look at the wallpaper');
-  if (on && focus) b.focus({ preventScroll: true });
+  b.title = on ? 'Back to Zen (move away or Esc)' : WALL_TITLE;
+  shell.peekHint.classList.toggle('is-on', on);
 }
 
 // the fold state of each pane, from the layout
@@ -514,7 +530,7 @@ function goPage(id, { focus = true, speed = 0 } = {}) {
 function setPage(page, { focus = true, dir = 0, speed = 0 } = {}) {
   const was = root.dataset.page;
   if (!speed) dropSwipe();   // a click or a key takes over from a swipe still under way
-  if (page !== 'home') { setPeek(false, { focus: false }); shell.qn.close(); }
+  if (page !== 'home') { setPeek(false); shell.qn.close(); }
   root.dataset.page = page;
   paintPager();
   if (page !== 'arcade') shell.arcade.stop();
