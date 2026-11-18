@@ -7,8 +7,8 @@
 //   To-do                       open reminders and unfinished checklists — tick, or add one
 //   Pinned                      anything pinned to Zen: Notes cards, whole collections, plus links
 //                               and folders from Collections, the Library and My Space (js/zenpins.js)
-//   Quick note                  the top-right corner: hover (or click) and a small panel drops down
-//                               to jot a note into Notes, with the latest few notes under it
+//   Quick note                  the top-right corner: hover (or click) and a small box drops down
+//                               to jot a note into Notes
 //
 // Notes cards edit in place here as they do in the Notes view: click a reminder, a list's title
 // or row, or a note to type; Enter adds the next row; the bell sets a time; the bin deletes (with
@@ -313,13 +313,12 @@ function buildShell(openSettings) {
 }
 
 /* ————————————————————————— the quick-note corner —————————————————————————
-   A note button at the top-right corner. Hovering it drops a small panel down (a peek): a box to
-   jot a note into Notes, and the latest few notes under it, editable. Moving the pointer away
-   folds it up again after a moment, unless something in it has focus (you are typing) or it
-   was opened with a click; then a click outside, Esc, or the button again folds it. A
+   A note button at the top-right corner. Hovering it drops a small panel down (a peek) with one
+   box to jot a note into Notes; nothing else, so other notes stay out of sight. Moving the
+   pointer away folds it up again after a moment, unless the box has focus (you are typing) or
+   it was opened with a click; then a click outside, Esc, or the button again folds it. A
    half-written note stays in the box (and on this device) until it is saved. */
 const QN_DRAFT = 'stacknest:zen-quicknote';
-const QN_SHOW = 5;
 
 function createQuickNote() {
   let hover = false, held = false, hideTimer = null;
@@ -336,7 +335,6 @@ function createQuickNote() {
     await addQuickNote(v);
     saved.textContent = 'Saved to Notes';
     saved.classList.remove('is-on'); void saved.offsetWidth; saved.classList.add('is-on');
-    await render();
     input.focus({ preventScroll: true });
   };
   const saveBtn = el('button', { class: 'zen-qn-save', type: 'button', onclick: save }, icon('plus', 13), el('span', { text: 'Save' }));
@@ -345,14 +343,11 @@ function createQuickNote() {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close({ focus: true }); return; }
     if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.isComposing) { e.preventDefault(); save(); }
   });
-  const list = el('div', { class: 'zen-qn-list' });
-  const sub = el('div', { class: 'zen-qn-sub', text: 'Recent notes' });
   const pop = el('div', { class: 'zen-qn-pop', id: 'zen-qn-pop' },
     el('div', { class: 'zen-qn-card', role: 'group', 'aria-label': 'Quick note' },
       el('div', { class: 'zen-qn-head' }, el('span', { class: 'zen-qn-h', text: 'Quick note' }), saved),
       el('div', { class: 'zen-qn-box' }, input,
-        el('div', { class: 'zen-qn-foot' }, el('span', { class: 'zen-qn-tip', text: 'Enter saves to Notes · Shift+Enter, new line' }), saveBtn)),
-      sub, list));
+        el('div', { class: 'zen-qn-foot' }, el('span', { class: 'zen-qn-tip', text: 'Enter saves to Notes · Shift+Enter, new line' }), saveBtn))));
   const btn = el('button', { class: 'zen-icb zen-qn-btn', type: 'button', title: 'Quick note', 'aria-label': 'Quick note',
     'aria-expanded': 'false', 'aria-controls': 'zen-qn-pop',
     onclick: () => {
@@ -382,19 +377,8 @@ function createQuickNote() {
   node.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') { hover = false; paint(); } });
   node.addEventListener('focusin', paint);
   node.addEventListener('focusout', () => setTimeout(paint, 0));
-  document.addEventListener('pointerdown', (e) => {
-    if (held && !node.contains(e.target) && !e.target.closest?.('.rem-pop, .modal-scrim')) { held = false; paint(); }
-  }, true);
-
-  // the latest notes, newest edit first, each editable where it sits
-  function paintList(items) {
-    const notes = items.filter((i) => i.kind === 'note')
-      .sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')))
-      .slice(0, QN_SHOW);
-    sub.hidden = !notes.length;
-    list.replaceChildren(...notes.map((n) => noteCard(n, { scope: 'qn', quick: true })));
-  }
-  return { node, isOpen, close, paintList };
+  document.addEventListener('pointerdown', (e) => { if (held && !node.contains(e.target)) { held = false; paint(); } }, true);
+  return { node, isOpen, close };
 }
 
 // a peek at the wallpaper: the page fades to 20% and can't be clicked or tabbed into; only the
@@ -705,7 +689,6 @@ export async function render(opts) {
   shell.todoBody.replaceChildren(...(todos.length
     ? todos.map((i) => (i.kind === 'reminder' ? reminderRow(i, { key: i.id, scope: 'todo' }) : listCard(i, { key: i.id, scope: 'todo' })))
     : [quiet('Nothing open. Add a to-do above — it lands in Notes too.')]));
-  shell.qn.paintList(items);
 
   const pinned = arrange([
     ...pinnedNotes.map((n) => ({ key: `n:${n.id}`, note: n })),
@@ -721,9 +704,8 @@ export async function render(opts) {
   restoreFocus(focus);
 }
 
-// Each editable field is named by data-edit = "<scope>|<card id>|<row id>|<field>" (scope:
-// todo, pin or qn, since one note can show in two places), so focus and the caret can find
-// their way back after a rebuild.
+// Each editable field is named by data-edit = "<scope>|<card id>|<row id>|<field>" (scope: the
+// pane, todo or pin), so focus and the caret can find their way back after a rebuild.
 function snapshotFocus() {
   const a = document.activeElement;
   if (!a?.dataset?.edit || !root.contains(a)) return null;
@@ -864,14 +846,11 @@ async function rowRemoved(scope, it, rowId, { stepBack = false } = {}) {
 }
 
 /* ——— a card's actions: shown on hover or focus, always on a touch screen ——— */
-function cardActs(it, { bell = true, pin = false } = {}) {
+function cardActs(it) {
   const name = it.title || it.text || KIND_LABEL[it.kind] || 'card';
   return el('span', { class: 'zen-acts' },
-    bell && !it.reminder ? el('button', { class: 'zen-act', type: 'button', title: 'Set a reminder', 'aria-label': `Set a reminder for ${name}`,
+    !it.reminder ? el('button', { class: 'zen-act', type: 'button', title: 'Set a reminder', 'aria-label': `Set a reminder for ${name}`,
       onclick: (e) => openNoteReminder(e.currentTarget, it.id) }, icon('bell', 13)) : null,
-    pin ? el('button', { class: `zen-act${it.pinned ? ' on' : ''}`, type: 'button', 'aria-pressed': String(!!it.pinned),
-      title: it.pinned ? 'Unpin from Zen' : 'Pin to Zen', 'aria-label': `${it.pinned ? 'Unpin' : 'Pin'} ${name} ${it.pinned ? 'from' : 'to'} Zen`,
-      onclick: () => setNotePinned(it.id, !it.pinned).then(render) }, icon('pin', 13)) : null,
     el('button', { class: 'zen-act zen-act-del', type: 'button', title: `Delete ${KIND_LABEL[it.kind] || 'card'}`, 'aria-label': `Delete ${name}`,
       onclick: () => deleteNoteCard(it.id) }, icon('trash', 13)));
 }
@@ -923,16 +902,15 @@ function listCard(it, { key = null, pinnedCard = false, scope } = {}) {
     el('button', { class: 'zen-additem', type: 'button', onclick: () => rowAdded(scope, it, null) }, icon('plus', 12), el('span', { text: 'Add item' })));
 }
 
-// a note: its title (left out of a quick note that has none) and its markdown body
-function noteCard(it, { key = null, scope, pinnedCard = false, quick = false } = {}) {
-  const showTitle = !quick || !!it.title.trim();
-  const title = showTitle ? lineField({ key: editKey(scope, it, null, 'title'), value: it.title, placeholder: 'Title', label: 'Note title', cls: 'zen-list-title',
+// a note: its title and its markdown body
+function noteCard(it, { key = null, scope, pinnedCard = false } = {}) {
+  const title = lineField({ key: editKey(scope, it, null, 'title'), value: it.title, placeholder: 'Title', label: 'Note title', cls: 'zen-list-title',
     onInput: (v) => saveNoteField(it.id, 'title', v),
-    onKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); focusEdit(editKey(scope, it, null, 'body')); } } }) : el('span', { class: 'zen-qn-gap' });
+    onKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); focusEdit(editKey(scope, it, null, 'body')); } } });
   const body = areaField({ key: editKey(scope, it, null, 'body'), value: it.body, placeholder: 'Write… (markdown works)', label: 'Note',
     onInput: (v) => saveNoteField(it.id, 'body', v) });
-  return el('div', { class: `zen-list zen-note c-${it.color || 'none'}${quick ? ' zen-qn-note' : ''}${showTitle ? '' : ' no-title'}`, draggable: key ? 'true' : null, dataset: key ? { key } : null },
-    el('div', { class: 'zen-list-head' }, title, dueChip(it), cardActs(it, { bell: !quick, pin: quick }), pinnedCard ? unpinNoteBtn(it) : null),
+  return el('div', { class: `zen-list zen-note c-${it.color || 'none'}`, draggable: key ? 'true' : null, dataset: key ? { key } : null },
+    el('div', { class: 'zen-list-head' }, title, dueChip(it), cardActs(it), pinnedCard ? unpinNoteBtn(it) : null),
     body);
 }
 

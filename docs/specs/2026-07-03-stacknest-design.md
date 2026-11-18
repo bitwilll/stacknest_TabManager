@@ -405,19 +405,20 @@ add a note from the top-right corner that peeks open on hover and hides when the
   saves. `render()` now holds back while a field marked `data-edit` has focus and runs when the
   field is left (after its typing is flushed). A row added or removed from Zen forces the rebuild,
   because the store matches the screen at that point. Each field's `data-edit` is
-  `scope|card|row|field`, so focus and the caret come back to the same field after a rebuild.
-  The scope is needed because one note can show in two places.
+  `scope|card|row|field` (the scope is the pane), so focus and the caret come back to the same
+  field after a rebuild.
 - A card dragged in a pane no longer starts its drag from a text box, so text can be selected
   there.
 - Toasts sat under Zen (z-index 30 vs 40), so "Reminder set" and the like never showed there. While
   Zen is on they are at 45, still under dialogs (60). The Undo bar was already above.
 
 **The quick-note corner.**
-- A note button sits at the far right of Zen's top bar. Hovering it drops a panel down: a box
-  ("Jot a note…"), a Save button, and the five most recently edited notes, each editable in place,
-  with pin-to-Zen and delete.
+- A note button sits at the far right of Zen's top bar. Hovering it drops a panel down with one
+  box ("Jot a note…") and a Save button, nothing else. A first version also listed the five most
+  recently edited notes under the box; it was taken out the same day, at the owner's request, so
+  the corner shows no other notes.
 - Enter saves the box as a new note card at the top of Notes, body only and no title; Shift+Enter
-  adds a new line. A quick note with no title shows only its text.
+  adds a new line. "Saved to Notes" shows for a moment in the panel's header.
 - The panel folds about 0.2 s after the pointer leaves. It stays open while focus is inside it
   (you are typing) or after a click on the button. A click outside, Esc, or the button again folds
   it.
@@ -427,7 +428,7 @@ add a note from the top-right corner that peeks open on hover and hides when the
   until it is saved.
 - It folds on a peek at the wallpaper, on the arcade page and on leaving Zen.
 
-**Verified.** In headless Chrome with real mouse moves, clicks and keystrokes over CDP, 45 checks
+**Verified.** In headless Chrome with real mouse moves, clicks and keystrokes over CDP, 42 checks
 pass with no exceptions or console errors:
 - An outside change to Notes mid-typing leaves the field and caret alone, and the held-back render
   lands on leaving.
@@ -435,7 +436,7 @@ pass with no exceptions or console errors:
 - The reminder popover, the confirm dialog, the toast and the Undo bar all draw over Zen.
 - The quick note opens on hover, survives the pointer crossing into it, folds when it leaves,
   stays while typing, saves on Enter, folds on Esc or a click outside, keeps a draft across a
-  reload, and pins a note to Zen.
+  reload, and shows no notes besides the box.
 
 ## Drive says "not available here" instead of pretending (2026-11-18)
 

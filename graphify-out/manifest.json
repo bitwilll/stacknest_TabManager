@@ -174,15 +174,15 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794996094.3389187,
-    "seen": 1794996186.22178,
-    "ast_hash": "d6ac14a0778fc7145e504f62835b0dba",
+    "mtime": 1794996335.3346815,
+    "seen": 1794996418.33567,
+    "ast_hash": "8013d84df6570ab06241ffeaf809ceb6",
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794996109.1303973,
-    "seen": 1794996186.221781,
-    "ast_hash": "b2a77587d01c782dd4c7cc6b7e4790d9",
+    "mtime": 1794996381.7974584,
+    "seen": 1794996418.335671,
+    "ast_hash": "3417f43ee54c2cfa44012197dc7b8e66",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {
@@ -330,9 +330,9 @@
     "semantic_hash": ""
   },
   "js/zen.js": {
-    "mtime": 1794996044.344691,
-    "seen": 1794996186.221774,
-    "ast_hash": "fff25dfd3200026c217312bf29751ed4",
+    "mtime": 1794996325.7481663,
+    "seen": 1794996418.335664,
+    "ast_hash": "e66f8be456b95395631c235c2ba65a0a",
     "semantic_hash": ""
   },
   "js/thoughts.js": {

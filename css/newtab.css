@@ -3332,7 +3332,7 @@ button.zen-due.past:hover { color: var(--red); }
 .zen-additem:hover { background: var(--hov); color: var(--text-strong); }
 .zen-additem svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; flex: none; }
 
-/* ——— the quick-note corner: a note button at the top right; hover drops a small panel down ——— */
+/* ——— the quick-note corner: a note button at the top right; hover drops a small box down ——— */
 .zen-qn { position: relative; flex: none; }
 .zen-qn.is-open > .zen-qn-btn { background: var(--text-strong); color: var(--bg-card); }
 .zen-qn-pop {
@@ -3373,15 +3373,6 @@ button.zen-due.past:hover { color: var(--red); }
 }
 .zen-qn-save:hover { filter: brightness(1.08); }
 .zen-qn-save svg { stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
-.zen-qn-sub { margin-top: 2px; padding: 0 2px; font: 600 var(--t1) var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--text-mut); }
-.zen-qn-sub[hidden] { display: none; }
-.zen-qn-list { display: flex; flex-direction: column; gap: 8px; }
-.zen-qn-note { position: relative; padding: 8px 10px 6px; }
-.zen-qn-note > .zen-list-head { padding-bottom: 2px; }
-/* a quick note with no title is just its text; its buttons float over the top-right corner */
-.zen-qn-note.no-title > .zen-list-head { position: absolute; top: 4px; right: 4px; z-index: 1; padding: 0; }
-.zen-qn-note.no-title .zen-acts { border-radius: var(--pill); background: var(--bg-card); box-shadow: 0 0 0 1px var(--card-line); }
-.zen-qn-gap { display: none; }
 @media (prefers-reduced-motion: reduce) { .zen-qn-pop { transform: none !important; transition: none !important; } }
 /* toasts ("Reminder set") show over Zen, under its dialogs */
 :root[data-zen='on'] .toast { z-index: 45; }
