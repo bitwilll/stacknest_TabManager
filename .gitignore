@@ -15,3 +15,6 @@ Thumbs.db
 
 # Web Store build output (scripts/package.sh)
 dist/
+
+# graphify: the graph is committed; its per-machine parse and session caches are not
+graphify-out/cache/

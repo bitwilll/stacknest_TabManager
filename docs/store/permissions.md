@@ -16,7 +16,8 @@ a second purpose, it is the feature to drop. It is opt-in and off by default.
 ## Permission justifications
 
 The install dialog shows four warnings, verified in Chrome 155 with
-`chrome.management.getPermissionWarningsByManifest`:
+`chrome.management.getPermissionWarningsByManifest` and again in Chrome 157 with `offscreen`,
+`scripting` and the optional host permission added:
 *Replace the page you see when opening a new tab · Read your browsing history · Display
 notifications · Read and change your bookmarks.*
 
@@ -28,9 +29,22 @@ notifications · Read and change your bookmarks.*
 | `storage` | Saves the user's collections, spaces, notes, tags, settings and Vault data in `chrome.storage.local` on their device. | `js/store.js:18`, `:26` |
 | `identity` | Optional Google Drive backup. When the user clicks Connect, StackNest uses `chrome.identity` to sign in with Google and get a token for the `drive.appdata` and `userinfo.email` scopes. Nothing happens until the user starts it. | `js/auth.js:61`, `:71`; `js/drive.js:197` |
 | `alarms` | Schedules the reminder times the user sets on notes and to-dos, so a reminder fires even when no StackNest tab is open. | `js/notes.js:81` |
-| `notifications` | Shows the reminder the user scheduled, as a browser notification. Clicking it opens StackNest on the Notes view. | `js/sw.js:69`, `:81` |
+| `notifications` | Shows the reminder the user scheduled, as a browser notification. Clicking it opens StackNest on the Notes view. | `js/sw.js:107`, `:148` |
+| `offscreen` | Plays a short, soft chime when a reminder the user set comes due. The background service worker can't play sound, so it opens a hidden offscreen document (reason `AUDIO_PLAYBACK`), which plays one bell synthesised with Web Audio, then closes it a few seconds later. Nothing is shown, no sound file is fetched, and no data leaves the device. The user can turn it off in Settings › Zen › Chime with reminders. Adds no install warning. | `js/sw.js:54` (open), `:58` (close); `js/offscreen.js:6` |
+| `scripting` | Used only by the optional "StackNest on the web" setting, after the user connects a website there: registers one content script for that single https site so it can show the user's own new-tab content, and unregisters it when they disconnect. It does nothing without a host permission, and StackNest holds none until the user grants one for that site. Adds no install warning. | `js/webbridge.js:135` (register), `:149` (connect), `:169` (disconnect) |
 
-**Host permissions:** none. The manifest asks for no host access. Google APIs, CoinGecko and
+**Host permissions:** none at install. `optional_host_permissions: ["https://*/*"]` is declared
+for Settings › StackNest on the web, which lets one website the user chooses show their
+new-tab content. The site's address is typed in at run time, because the StackNest website
+doesn't exist yet and the option has to work without another release; a static
+`externally_connectable` list can't take a domain chosen later. Nothing is granted until the
+user connects: then StackNest requests that one origin with `chrome.permissions.request`
+(`js/webbridge.js:152`; Chrome shows its own prompt naming the site), and Disconnect removes it
+with `chrome.permissions.remove` (`:175`). The optional permission and `scripting` add no
+install warning: `getPermissionWarningsByManifest` returns the same four warnings with and
+without them (Chrome 157).
+
+No host permission is needed for the network features. Google APIs, CoinGecko and
 ExchangeRate-API all answer cross-origin requests from the extension. This was verified in
 Chrome 155 with host permissions removed: each Drive call (list, media update, multipart create,
 delete), userinfo and token revoke returned a readable response. The manifest's

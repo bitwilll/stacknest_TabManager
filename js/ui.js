@@ -74,7 +74,31 @@ const ICONS = {
   cloudDown: '<path d="M8 16.5H7a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8a3.5 3.5 0 0 1 .5 8.5H16"/><path d="M12 12.5v8m0 0-3-3m3 3 3-3"/>',
   reset:     '<path d="M4 4.5V9h4.5"/><path d="M4.6 14.5a8 8 0 1 0 1.8-8.3L4 9"/>',
   paste:     '<rect x="5" y="4.5" width="14" height="16.5" rx="2"/><rect x="9" y="3" width="6" height="3.5" rx="1"/><path d="M9 11.5h6M9 15.5h4"/>',
+  pin:      '<path d="M9 4h6l-1 5 3.5 3.5v1.5h-11v-1.5L10 9Z"/><path d="M12 14v6.5"/>',
+  zen:      '<path d="M12 4c-2 2-3 4.3-3 6.5 0 2.3 1.3 4 3 5 1.7-1 3-2.7 3-5C15 8.3 14 6 12 4Z"/><path d="M9.3 15.3C6.6 14.9 4.4 13.5 3.5 11.5c2-.6 4.2-.4 5.8.6"/><path d="M14.7 15.3c2.7-.4 4.9-1.8 5.8-3.8-2-.6-4.2-.4-5.8.6"/><path d="M5 19.5h14"/>',
+  star:     '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9Z"/>',
+  lounge:   '<path d="M5 11V8.5A2.5 2.5 0 0 1 7.5 6h9A2.5 2.5 0 0 1 19 8.5V11"/><path d="M3 13a2 2 0 0 1 4 0v1h10v-1a2 2 0 0 1 4 0v4.5H3Z"/><path d="M5 17.5V20M19 17.5V20"/>',
+  expand:   '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  shrink:   '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+  gamepad:  '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r="1" fill="currentColor"/><circle cx="17.5" cy="13.8" r="1" fill="currentColor"/>',
+  bellOff:  '<path d="M18 8a6 6 0 0 0-9.3-5M6.3 6.3A6 6 0 0 0 6 8c0 6-2.5 7-2.5 7H15"/><path d="M10.3 20a2 2 0 0 0 3.4 0M3 3l18 18"/>',
+  eye:      '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  quote:    '<path d="M10 8.5C7.5 9 6 10.8 6 13.5V17h4v-4H7.6"/><path d="M18 8.5c-2.5.5-4 2.3-4 5V17h4v-4h-2.4"/>',
+  // a gong on its stand (the meditation timer), and pause
+  gong:     '<path d="M4 20.5V6M20 20.5V6M2.5 5.5h19"/><path d="M12 5.5v2.2"/><circle cx="12" cy="13" r="5.2"/><circle cx="12" cy="13" r="1.4"/>',
+  pause:    '<path d="M9 6v12M15 6v12"/>',
+  image:    '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="m20.5 16-5-5-9.5 8.5"/>',
+  // an open ensō whose brush end turns into an arrow, round a ridge and a sun: the next wallpaper
+  // (Zen's shuffle button)
+  wallShuffle: '<path d="M20 9.1A8.5 8.5 0 1 1 14.2 3.8"/><path d="M11.2 5.2 14.2 3.8 12.2 1.1"/><path d="M7.6 15.4c1.2-1.7 1.9-2.5 2.7-2.5.7 0 1.1.9 1.7.9.8 0 1.3-1.9 2.4-1.9.9 0 1.5 1.4 2.1 3.5"/><circle cx="10.6" cy="9.4" r="1.15" fill="currentColor" stroke="none"/>',
+  // a frame left open at one corner, hills inside and the crescent moon rising out of it: look at
+  // the wallpaper itself (Zen's corner button)
+  wallWindow: '<path d="M14.6 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5.4"/><path d="M4.5 16.4c2.4-2.6 4.4-3 6.6-1.2 1.8-2.2 4.3-2.7 8.4-.4"/><path d="M16.65 4.73A2.3 2.3 0 1 0 19.16 7.8 2 2 0 0 1 16.65 4.73z" fill="currentColor" stroke="none"/>',
   swap:     '<path d="M4 8h13m0 0-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7m0 0 3.5 3.5M7 16l3.5-3.5"/>',
+  // the open-tabs bar, as a window: a strip of tabs across the top, or a rail of them down the left
+  barTop:   '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M6.5 7h2.5M11 7h2.5"/>',
+  barSide:  '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15"/><path d="M5.8 8.5h1.7M5.8 12h1.7M5.8 15.5h1.7"/>',
 };
 
 export function icon(name, size = 15) {
@@ -307,7 +331,8 @@ export function toast(message) {
   node.textContent = message;
   node.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => node.classList.remove('show'), 2400);
+  // long messages (instructions, not confirmations) stay up long enough to read
+  toastTimer = setTimeout(() => node.classList.remove('show'), Math.min(12000, Math.max(2400, String(message).length * 55)));
 }
 
 export function faviconUrl(pageUrl, size = 32) {
@@ -318,7 +343,7 @@ export function faviconUrl(pageUrl, size = 32) {
       u.searchParams.set('size', String(size));
       return u.toString();
     }
-  } catch { /* fall through to public resolver (mock/dev mode only) */ }
+  } catch { /* fall through to the public resolver (outside the extension only) */ }
   try {
     return `https://www.google.com/s2/favicons?sz=${size}&domain=${new URL(pageUrl).hostname}`;
   } catch {

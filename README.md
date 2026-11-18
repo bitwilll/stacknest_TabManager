@@ -15,6 +15,29 @@ Requires **Chrome 128 or later**.
 
 > Chrome will ask to confirm the new-tab replacement the first time. Click **Keep it**.
 
+### Installing on another computer
+
+Google Drive backup only works for StackNest's own extension ID. The `"key"` in `manifest.json`
+fixes that ID, so install a build that **keeps the key**:
+
+- **From GitHub:** Code › **Download ZIP**, unzip, then **Load unpacked** on the unzipped folder.
+- **From a build:** `sh scripts/package.sh` writes `dist/stacknest-<version>-install.zip`. Share
+  that file, unzip it, then **Load unpacked**.
+
+**Don't hand-install `dist/stacknest-<version>.zip`.** That one is the Chrome Web Store upload,
+and the store requires it without a key. Installed by hand, it gets a random ID. Older copies
+(before October 2026) used a sign-in client that no longer works. In both cases Connect now says
+*"Google can't sign in this copy of StackNest"*. Older copies show Google's *"Access blocked: …
+request is invalid (Error 400)"* instead. To fix either:
+
+1. In the old copy: Settings › Backup & sync › **Export backup** (if it holds anything you want).
+2. `chrome://extensions` › remove the old StackNest.
+3. Install the latest StackNest, as above.
+4. Settings › **Import backup…**, then **Connect** Google Drive.
+
+The export and import step matters because Chrome keeps each extension's data under its ID, so
+a copy with a new ID starts empty.
+
 ### Use it in incognito
 
 The manifest declares `"incognito": "spanning"`, so StackNest can run in incognito windows with
@@ -70,6 +93,11 @@ normal-profile window.
   - **Vertical** — its own rail beside the sidebar, on every view. A rail that vanished
     when you opened Notes would be a board widget, not a tab bar.
   - **Hidden** — neither; expand a window in the sidebar to reach its tabs.
+
+  You don't have to open Settings to switch it: a two-icon switch (horizontal · vertical) sits
+  at the left of the board's head, before the space name, and the vertical rail carries the same
+  switch at its top, so you can turn it back from any view. In Hidden, neither icon is lit, and
+  either one brings the bar back.
 
   It is one element with two homes, re-parented rather than duplicated, so the ids,
   listeners and render path stay single. It used to render in both places at once, which
@@ -177,7 +205,8 @@ three kinds of card:
 | **Reminder** | A single checkable line on its own card, optionally with a date/time notification. |
 
 Everything **auto-saves as you type** — there is no Save button. Quick-add a reminder from the bar at
-the top, or use **New ▾** for any of the three.
+the top, or use **New ▾** for any of the three. New never stacks up empty cards: if a blank card of
+that kind is already waiting (nothing typed, no tags, no time), New takes you to it instead.
 
 > **If you used StackNest before this:** what used to be called a *todo* — one checkable line per
 > card — is now a **reminder**, and *to-do list* is the new checklist card. Your existing tasks
@@ -199,6 +228,47 @@ never strands a blank row. Every card can be:
   completing or deleting a task cancels its reminder. Notes can carry reminders too.
 - **Undone** — deleting a card is reversible: a snackbar offers **Undo**, and **⌘Z / Ctrl+Z** puts
   it back where it was with its items, tags, colour and reminder intact (**⌘⇧Z / Ctrl+Y** to redo).
+
+**In Zen**, the same cards edit where they sit. Click a reminder, a list's title or item, or a pinned
+note to type in it; Enter adds the next item and Backspace in an empty one removes it. The bell sets
+a time, the time itself changes it, and the bin deletes (with Undo). The note button in Zen's
+top-right corner drops a **quick note** box down when you hover it: type, press Enter, and it is a
+new note in Notes. It shows only the box, no other notes. Moving the pointer away folds it up,
+unless you are typing in it.
+
+All of Notes is in Zen too: **Notes** on the switch at the bottom centre (Lounge · Arcade · Zen ·
+Notes) opens a Notes page on the wallpaper instead of leaving Zen. Every card is there in the
+Notes view's order, editable the same way, with a filter (All · Notes · Lists · Reminders), a
+search over the same fields, **Note / List / Reminder** buttons that start a card at the top
+(or go to the blank one already waiting), and a pin to put any card on Zen's home page. Esc goes
+back to Zen.
+
+Zen's wallpapers are drawn inside the extension (no downloads), and each one moves gently:
+mist and fog, petals, fireflies, stars, waves and more. There are twenty-four, plus your own
+images. Among the newest are **Rain** (a pond at dusk, rain falling and rings opening on the
+water), **Snowfall** (a pagoda among snowy pines), **Cloud sea** (peaks above the clouds at
+sunrise, gulls crossing) and **Lanterns** (paper lanterns lifting off a river at night). Two
+are thunder, kept calm: **Far storm** (a storm far out over a dusk sea, its cloud glowing from
+inside now and then and once in a while a far bolt to the water, by a lighthouse) and **Storm
+night** (rain round a cabin with lit windows, the clouds lit softly from behind). Two are quiet
+snow: **Snow lake** (a frozen lake at dawn among birches, a few slow flakes) and **Winter
+night** (a cabin under the moon, snow falling and smoke rising from the chimney). The lightning
+is a soft glow over part of the sky, never more than two pulses close together, and there is
+none under reduced motion. Pick one in
+Settings › Zen, or press the wallpaper button in Zen to shuffle. Settings › Zen › Animate the
+wallpaper turns the motion off, and it stays still for anyone who has asked their system for
+reduced motion.
+
+The switch sits at the bottom centre of every Zen page, and each page stops above it, so
+nothing rests underneath. On a narrow window it shows its icons only.
+
+On a trackpad, a **two-finger sideways swipe** turns Zen's pages in the switch's order, one page
+per swipe: fingers to the left go towards Notes, to the right towards Lounge. The page follows
+your fingers as you swipe, and the switch lights up the page that's coming. Lift your fingers and
+the page either turns, if you swiped far enough or flicked, or springs back into place. At either
+end it gives a little and holds. You can swipe again straight away, even while a page is still
+settling. A swipe does nothing while a game or lounge is open, in a text field, or over something
+that scrolls sideways itself.
 
 **Formatting.** Click into any text field and a formatting bar docks at the bottom of that card —
 only while you're writing in it: **B / I / U / S**, **bullet / numbered / checklist** lines, and
@@ -297,8 +367,14 @@ the one or two actions that fill it (new collection, new folder, new note or lis
 | `identity` | Google sign-in for **Google Drive backup** (Settings › Backup & sync) |
 | `alarms` | scheduling Notes reminders, so they fire with no StackNest tab open |
 | `notifications` | showing a reminder when it is due |
+| `offscreen` | playing the soft reminder chime from the background worker (Settings › Zen › Chime with reminders) |
+| `scripting` | Settings › StackNest on the web: one content script for the single site the user connects |
 
-There are **no host permissions**: the four services StackNest can talk to — Google Drive and its
+Neither `offscreen` nor `scripting` adds an install warning.
+
+There are **no host permissions** at install. The only optional one, `https://*/*`, is requested
+for a single site when the user connects it under StackNest on the web, and given back when they
+disconnect. The four services StackNest can talk to — Google Drive and its
 sign-in (`www.googleapis.com`, `oauth2.googleapis.com`) and the market ticker's price sources
 (`api.coingecko.com`, `open.er-api.com`) — all answer cross-origin requests, and the manifest's
 content security policy (`connect-src`) allows exactly those four and nothing else.
@@ -313,8 +389,11 @@ removed so that statement stays true.)
 
 Google Drive backup uses `chrome.identity` OAuth, which needs a one-time client that's tied to
 *your* extension's ID. The code is ready — it just needs the client ID. Until you add it, Settings
-shows Google Drive (Settings › Backup & sync) as **"Set up required"** (in the dev preview it's simulated, so you can try the
-whole flow without Google).
+shows Google Drive (Settings › Backup & sync) as **"Set up required"**.
+
+Drive backup needs Chrome's sign-in for extensions (`chrome.identity.getAuthToken`). A Chromium
+browser that leaves it out shows **"Not available here"** instead of Connect, and every Drive action
+says so. Nothing is simulated. **Export backup** works in any browser.
 
 1. **Load the extension unpacked** (`chrome://extensions` → Developer mode → *Load unpacked*) and
    copy its **ID**.
@@ -334,7 +413,10 @@ whole flow without Google).
    - **Credentials → Create credentials → OAuth client ID → Application type: Chrome Extension**,
      and paste the extension **ID** from step 1/2.
 4. **Wire it in.** Put the generated client ID into `manifest.json` → `oauth2.client_id` (replacing
-   the `REPLACE_WITH_…` placeholder). It must end in `.apps.googleusercontent.com`.
+   the `REPLACE_WITH_…` placeholder). It must end in `.apps.googleusercontent.com`. Put the
+   extension ID into `js/authConfig.js` → `OAUTH_EXTENSION_IDS`. Sign-in refuses any other ID with
+   plain advice instead of Google's "Access blocked" page, and `node scripts/smoke-test.mjs` fails
+   if the manifest key's ID isn't listed there.
 5. **Reload the extension.** Settings → Backup & sync now shows **Connect** → sign in →
    **Back up now / Restore latest**. The backup lives in Drive's private `appDataFolder`
    (invisible in your Drive UI). **Disconnect** revokes the grant, not just the local token cache.
@@ -447,22 +529,23 @@ sh scripts/package.sh
 ```
 
 builds `dist/stacknest-<version>.zip` from an allowlist — the manifest without its dev `"key"`,
-`newtab.html`, `css/`, `js/` (minus the dev-only `js/mock.js`), `fonts/` (with `OFL.txt`) and the
+`newtab.html`, `css/`, `js/`, `fonts/` (with `OFL.txt`) and the
 icon PNGs — and checks the store limits (description ≤ 132 characters, version format, every file
 the manifest names). `node scripts/smoke-test.mjs` then loads that build into a throwaway headless
 Chrome as the real extension and walks every view in every theme — it exits non-zero on any
 exception, console error, CSP violation or failed load. Upload **only** that zip.
-`node scripts/store-assets.mjs` re-captures the
-1280×800 store screenshots and the promo tile; `node scripts/render-icons.mjs` re-renders the
-icons from `icons/icon.svg`. The listing copy, permission justifications and the owner's launch
+The store screenshots and promo tile in `docs/store/` and the icon PNGs in `icons/` are final
+images with no script behind them; take new 1280×800 screenshots by hand if the UI changes
+before an upload. The listing copy, permission justifications and the owner's launch
 steps are in `docs/store/`; the privacy policy is [PRIVACY.md](PRIVACY.md). Bump `version` in
 `manifest.json` for every upload.
 
 ## Development
 
-The page runs outside Chrome too: serve the folder (`python3 -m http.server`) and open
-`newtab.html` — `js/mock.js` shims the `chrome.*` APIs (tabs, windows, storage, bookmarks)
-with demo data. The mock never activates inside Chrome.
+StackNest runs only as an extension. Load this folder unpacked (the manifest's dev `"key"`
+gives it the ID Google sign-in expects) and reload it in `chrome://extensions` after a change.
+`node scripts/smoke-test.mjs .` loads the folder into a throwaway headless Chrome and walks
+every view.
 
 ```
 manifest.json      MV3 manifest (new-tab override, toolbar action, CSP)
@@ -489,5 +572,4 @@ js/format.js       B/I/U/S selection formatting + per-card text scale, native un
 js/history.js      command-based undo/redo + snackbar
 js/store.js        serialized chrome.storage.local write-queue
 js/ui.js           DOM helpers, icons, letter-tiles, toast, favicons, drag helpers
-js/mock.js         dev-only chrome.* shim
 ```

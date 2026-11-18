@@ -15,7 +15,7 @@
 // lands in that person's own Drive appDataFolder. See js/authConfig.js.
 
 import { getKey, setKey } from './store.js';
-import { WEB_CLIENT_ID } from './authConfig.js';
+import { WEB_CLIENT_ID, OAUTH_EXTENSION_IDS } from './authConfig.js';
 
 export const SCOPES = ['https://www.googleapis.com/auth/drive.appdata', 'https://www.googleapis.com/auth/userinfo.email'];
 
@@ -78,7 +78,28 @@ function profileToken(interactive) {
 
 /* ————— public ————— */
 
+// Google only signs in the extension ID its OAuth client is registered to (see
+// OAUTH_EXTENSION_IDS in js/authConfig.js). A copy installed without the manifest "key" runs
+// under a random ID; for it, Google would open "Access blocked: … request is invalid" — so
+// don't ask Google at all. The message's first word is a code drive.js turns into advice.
+export const WRONG_ID = 'wrong_extension_id';
+export const idRegistered = () => {
+  try { return OAUTH_EXTENSION_IDS.includes(chrome.runtime.id); } catch { return false; }
+};
+
+// Whether this browser gives extensions the sign-in function the configured path needs.
+// Chrome always does. Some other Chromium browsers leave chrome.identity.getAuthToken out,
+// and an incognito page may have no chrome.identity at all (drive.js asks the worker there).
+// Same code-word convention as WRONG_ID.
+export const NO_SIGNIN = 'signin_unavailable';
+export const signInAvailable = () => {
+  const id = globalThis.chrome?.identity;
+  return typeof (canChooseAccount() ? id?.launchWebAuthFlow : id?.getAuthToken) === 'function';
+};
+
 export async function mintToken({ interactive = false, chooseAccount = false, loginHint = null } = {}) {
+  if (!signInAvailable()) throw new Error(`${NO_SIGNIN}: this browser has no chrome.identity.${canChooseAccount() ? 'launchWebAuthFlow' : 'getAuthToken'}`);
+  if (!idRegistered()) throw new Error(`${WRONG_ID}: this copy runs as ${globalThis.chrome?.runtime?.id || 'an unknown ID'}`);
   if (canChooseAccount()) {
     try {
       return await webToken({ interactive, chooseAccount, loginHint });

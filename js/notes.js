@@ -147,6 +147,7 @@ function normalize(x, seen = new Set(), mark = () => {}) {
     tags: Array.isArray(x.tags) ? x.tags.filter(Boolean).map(String) : [],
     color: CARD_COLORS.some((c) => c.id === x.color) ? x.color : 'none',
     scale: clampScale(x.scale),
+    pinned: !!x.pinned,          // pinned to Zen mode (js/zen.js) — any kind of card
     createdAt: x.createdAt || now(),
   };
   // `at` must be a STRING: `'tomorrow'.at` resolves to String.prototype.at, which is truthy,
@@ -246,6 +247,123 @@ async function mutate(fn, { rerender = true } = {}) {
   if (rerender) await render();
 }
 const findItem = (d, id) => d.items.find((x) => x.id === id);
+
+/* ————— a small API for Zen mode (js/zen.js) —————
+   Zen shows the same cards and edits them in place: tick, retype a reminder, a list's title
+   and rows, a note's title and body, add or remove rows, set a reminder time, delete a card
+   (with Undo), and jot a quick note. Text goes through the same debounced queue as the Notes
+   view (queueSave → flushSaves); every structural write goes through mutate(), so queued
+   keystrokes flush first and the Notes view repaints itself the next time it is opened. */
+export async function loadNotes() { return (await load()).items; }
+// path: 'text' (a reminder), 'title', 'body' (a note), or 'row:<rowId>' (a checklist row)
+export function saveNoteField(cardId, path, value) {
+  if (!/^(text|title|body|row:.+)$/.test(path)) return;
+  queueSave(cardId, path, String(value ?? ''));
+}
+export const flushNoteSaves = () => flushSaves();
+// a new, empty row after `afterRowId` (or at the end); resolves to its id
+export async function addNoteRow(cardId, afterRowId = null) {
+  const id = uid();
+  await mutate((d) => {
+    const x = findItem(d, cardId);
+    if (!x || x.kind !== 'todo') return;
+    const at = afterRowId ? x.list.findIndex((r) => r.id === afterRowId) : -1;
+    x.list.splice(at < 0 ? x.list.length : at + 1, 0, normalizeRow({ id }));
+    x.updatedAt = now();
+  });
+  return id;
+}
+// resolves to the id of the row above it (for the caret to step back to), or null
+export async function removeNoteRow(cardId, rowId) {
+  const p = pending.get(cardId);
+  if (p) { delete p[`row:${rowId}`]; if (!Object.keys(p).length) pending.delete(cardId); }
+  let prevId = null;
+  await mutate((d) => {
+    const x = findItem(d, cardId);
+    const i = x?.list?.findIndex((r) => r.id === rowId) ?? -1;
+    if (i < 0) return;
+    prevId = x.list[i - 1]?.id || null;
+    x.list.splice(i, 1);
+    x.updatedAt = now();
+  });
+  return prevId;
+}
+// the Notes view's own reminder popover, opened from a Zen button
+export async function openNoteReminder(anchor, cardId) {
+  await flushSaves();
+  const it = findItem(await load(), cardId);
+  if (it) openReminderEditor(anchor, it);
+}
+// the Notes view's own delete: asks first when the card has words in it, and offers Undo
+export async function deleteNoteCard(cardId) {
+  await flushSaves();
+  const it = findItem(await load(), cardId);
+  if (it) await removeCard(it);
+}
+// A card nobody has written in yet: no words (spaces don't count), no tags, no reminder time.
+const isBlank = (x) => !(x.tags || []).length && !x.reminder && (
+  x.kind === 'reminder' ? !String(x.text || '').trim()
+    : x.kind === 'todo' ? !String(x.title || '').trim() && (x.list || []).every((r) => !String(r.text || '').trim())
+      : !String(x.title || '').trim() && !String(x.body || '').trim());
+
+// A new, empty card at the top of Notes, as New ▾ makes one: a list starts with one blank row
+// so there is something to type into. But never a second blank one of the same kind: if one is
+// already waiting, that one is handed back instead (reused: true), for the caret to go to. The
+// check runs inside the queued write, after queued typing is flushed, so a burst of clicks makes
+// one card, and a card just typed into is not mistaken for blank. Resolves to { id, rowId, reused }.
+export async function addNoteCard(kind) {
+  const k = KIND_LABEL[kind] ? kind : 'note';
+  let id = uid(), rowId = uid(), reused = false;
+  await mutate((d) => {
+    const blank = d.items.find((x) => x.kind === k && isBlank(x));
+    if (blank) { id = blank.id; rowId = blank.list?.[0]?.id || null; reused = true; return; }
+    d.items.unshift(normalize(k === 'todo' ? { id, kind: k, list: [{ id: rowId, text: '' }] } : { id, kind: k }));
+  });
+  return { id, rowId, reused };
+}
+// the Notes view's own search: titles, bodies, reminder text, checklist rows and tags
+export const noteMatches = (it, q) => !q || matches(q, ...searchText(it));
+// a note card from Zen's quick-note corner, newest first like any new card
+export async function addQuickNote(text) {
+  const body = String(text || '').replace(/\s+$/, '');
+  if (!body.trim()) return null;
+  let made = null;
+  await mutate((d) => { made = normalize({ kind: 'note', body }); d.items.unshift(made); });
+  return made;
+}
+// `to` (true / false) sets the state outright instead of flipping it, for a tick that must never
+// undo itself (a double click, or a card showing an item already ticked elsewhere)
+export async function toggleNoteDone(cardId, rowId = null, to = null) {
+  let item = null;
+  const next = (was) => (typeof to === 'boolean' ? to : !was);
+  await mutate((d) => {
+    const x = findItem(d, cardId);
+    if (!x) return;
+    if (rowId) { const r = x.list?.find((y) => y.id === rowId); if (r) r.done = next(r.done); x.updatedAt = now(); }
+    else if (x.kind === 'reminder') x.done = next(x.done);
+    item = { ...x };
+  });
+  if (item?.kind === 'reminder') {
+    if (item.done) clearAlarm(item.id);
+    else if (item.reminder) armAlarm(item.id, fireTime(item.reminder));
+  }
+}
+// at: an optional Date — the reminder notifies (with the chime) at that moment
+export async function addQuickReminder(text, at = null) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  const when = at instanceof Date && !Number.isNaN(at.getTime()) && at.getTime() > Date.now() ? at : null;
+  let made = null;
+  await mutate((d) => {
+    made = normalize({ kind: 'reminder', text: t, ...(when ? { reminder: { at: when.toISOString(), lead: 0 } } : {}) });
+    d.items.unshift(made);
+  });
+  if (made && when) armAlarm(made.id, when.getTime());
+  return made;
+}
+export async function setNotePinned(id, pinned) {
+  await mutate((d) => { const x = findItem(d, id); if (x) x.pinned = !!pinned; });
+}
 
 /* ————— debounced text saves —————
    Keystrokes accumulate in `pending` and flush as one write. Paths address either a
@@ -449,13 +567,7 @@ function composer() {
 }
 
 async function newItem(kind) {
-  const id = uid();
-  const rowId = uid();
-  await flushSaves();
-  await mutate((d) => {
-    // a new list starts with one blank row so there is something to type into
-    d.items.unshift(normalize(kind === 'todo' ? { id, kind, list: [{ id: rowId, text: '' }] } : { id, kind }));
-  });
+  const { id } = await addNoteCard(kind);   // mutate() flushes queued typing first
   focusItem(id);
 }
 
@@ -564,6 +676,7 @@ function itemCard(it) {
     el('span', { class: 'mos-grip', title: 'Drag to reorder' }, icon('grip', 13)),
     el('span', { class: 'mos-when', text: it.kind === 'reminder' ? '' : shortDate(it.updatedAt || it.createdAt) }),
     el('div', { class: 'mos-acts' },
+      actionBtn('pin', it.pinned ? 'Unpin from Zen' : 'Pin to Zen', () => setNotePinned(it.id, !it.pinned).then(() => toast(it.pinned ? 'Unpinned from Zen' : 'Pinned to Zen')), it.pinned ? 'pin-btn on' : 'pin-btn'),
       actionBtn('bell', it.reminder ? 'Edit reminder' : 'Set reminder', (_, b) => openReminderEditor(b, it), it.reminder ? 'rem-bell on' : 'rem-bell'),
       actionBtn('tag', 'Tags', (_, b) => openTagPicker(b, it)),
       actionBtn('palette', 'Card colour', (_, b) => openColorPicker(b, it)),

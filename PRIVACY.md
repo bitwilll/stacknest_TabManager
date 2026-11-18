@@ -10,7 +10,8 @@ device.
 **The short version:** your data stays in your browser. The developer runs no server and
 receives none of it. StackNest has no analytics, no ads and no trackers, and it never sells
 or shares your data. Only two optional features ever use the network, and you have to turn
-each of them on yourself.
+each of them on yourself. A third, StackNest on the web, shows your StackNest to one website
+you connect yourself, inside your browser.
 
 ---
 
@@ -36,7 +37,7 @@ browsing history, your location, or your keystrokes outside its own page.
 
 ## 2. When information leaves your device
 
-Information leaves your device only in these four cases, and you start each one yourself.
+Information leaves StackNest only in these five cases, and you start each one yourself.
 
 ### Google Drive backup (optional, off until you connect)
 
@@ -62,6 +63,23 @@ access page.
 
 **Export** saves the same backup as a JSON file to your computer, in a location you choose.
 StackNest does not send that file anywhere.
+
+### StackNest on the web (optional, off until you connect)
+
+If you type a website's address in Settings › StackNest on the web and switch **Connect** on,
+Chrome asks you to allow StackNest on that one site. Pages on that site can then ask StackNest,
+inside your browser, for what your new tab shows: collections and spaces, your Chrome bookmarks,
+My Space, notes, to-do lists and reminders, tags, Zen (with your own wallpaper image if the page
+asks for it) and display settings. They can also tick a to-do off. StackNest answers in the page
+itself; nothing passes through a server run by the developer, and nothing is put in a web
+address. What the site then does with what it is shown is governed by that site's own privacy
+policy, so connect only a site you trust.
+
+The site never receives the Vault or anything in it, your Vault PIN or security question, your
+Google account email, Google sign-in tokens or your Drive backup. Switching **Connect** off
+stops the answers at once and gives the site permission back to Chrome; removing the site's
+access in Chrome's extension settings does the same. The connection is kept on this device
+only and is not part of a backup.
 
 ### Market ticker (optional, off by default)
 

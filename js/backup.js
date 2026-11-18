@@ -9,6 +9,8 @@ import { TAGS_KEY } from './tags.js';
 import { FORGET_KEY } from './duplicates.js';
 import { SPACE_KEY } from './myspace.js';
 import { LOCK_KEY, relock } from './lock.js';
+import { ZENPINS_KEY, ZENLAYOUT_KEY } from './zenpins.js';
+import { THOUGHTS_KEY } from './thoughts.js';
 
 // Every key a backup carries. Anything the app persists must appear here, or a restore on
 // a new machine silently loses it — tags, forgotten duplicates and the whole My Space / Vault
@@ -37,7 +39,7 @@ async function exportBookmarkTree() {
 }
 
 export async function buildBackup(includeBookmarks) {
-  const [workspaces, collections, activeWorkspace, settings, notes, tags, dupForgotten, myspace, lock] = await Promise.all([
+  const [workspaces, collections, activeWorkspace, settings, notes, tags, dupForgotten, myspace, lock, zenPins, zenLayout, thoughts] = await Promise.all([
     getKey(WORKSPACES_KEY, []),
     getKey(SPACES_KEY, []),
     getKey(ACTIVE_WS_KEY, null),
@@ -47,6 +49,9 @@ export async function buildBackup(includeBookmarks) {
     getKey(FORGET_KEY, null),
     getKey(SPACE_KEY, null),
     getKey(LOCK_KEY, null),
+    getKey(ZENPINS_KEY, null),
+    getKey(ZENLAYOUT_KEY, null),
+    getKey(THOUGHTS_KEY, null),
   ]);
   const backup = {
     app: 'StackNest',
@@ -62,6 +67,9 @@ export async function buildBackup(includeBookmarks) {
     dupForgotten, // links excluded from the Duplicates scan
     myspace,      // the My Space + Vault store (bookmarks moved out of Chrome), plain text like storage
     lock,         // the Vault's PIN record: salt + PBKDF2 hash (+ security answer hash) — never the PIN itself
+    zenPins,      // links and Library folders pinned to Zen
+    zenLayout,    // how the Zen page is arranged
+    thoughts,     // starred thoughts for the day
   };
   if (includeBookmarks) backup.bookmarks = await exportBookmarkTree();
   return backup;
@@ -109,6 +117,9 @@ export async function applyBackup(data) {
     if (isObj(data.dupForgotten)) await setKey(FORGET_KEY, data.dupForgotten);
     if (isObj(data.myspace)) await setKey(SPACE_KEY, data.myspace);
     if (isObj(data.lock)) { await setKey(LOCK_KEY, data.lock); relock(); }   // a restored PIN starts locked
+    if (isObj(data.zenPins)) await setKey(ZENPINS_KEY, data.zenPins);
+    if (isObj(data.zenLayout)) await setKey(ZENLAYOUT_KEY, data.zenLayout);
+    if (isObj(data.thoughts)) await setKey(THOUGHTS_KEY, data.thoughts);
   });
   // a restore brings reminders that have no chrome.alarms entry behind them
   await rearmAlarms().catch(() => {});

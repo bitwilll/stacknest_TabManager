@@ -1,14 +1,18 @@
-// Settings: four numbered plates — Appearance (fonts, size, text sizes, tabs bar), Backup &
-// sync (file + Google Drive), the Vault's PIN, and the market ticker — with an index beside them.
+// Settings: seven numbered plates — Appearance (fonts, size, text sizes, tabs bar), Backup &
+// sync (file + Google Drive), the Vault's PIN, the market ticker, Zen, the new tab page, and
+// StackNest on the web (one connected website) — with an index beside them.
 // Fonts are offline-safe stacks (bundled + system) so nothing hits the network.
 
-import { el, icon, toast, confirmDialog, secGroup, sectionHead } from './ui.js';
-import { getKey, update } from './store.js';
+import { el, icon, toast, confirmDialog, secGroup, sectionHead, pickFile } from './ui.js';
+import { getKey, setKey, update } from './store.js';
+import { playChime } from './chime.js';
+import { WALLPAPERS, WALLPAPER_IDS, WALLPAPER_KEY, DEFAULT_WALLPAPER, MAX_OWN, prepareWallpaper, wallpaperFor, ownWallpapers } from './wallpapers.js';
 import { exportBackup, importFlow } from './backup.js';
-import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, isLive, isConfigured, canChooseAccount } from './drive.js';
+import { CLOUD_KEY, loadCloudState, connect, switchAccount, signOut, backupNow, restoreLatest, driveAvailable, NO_SIGNIN_MSG, isConfigured, canChooseAccount } from './drive.js';
 import { LOCK_KEY, loadLock, hasPin, setPin, clearPin, verifyPin, validatePin,
          isLockedOut, hasSecurityQuestion, promptSecurityAnswer,
          SECURITY_QUESTIONS, MAX_FAILS } from './lock.js';
+import { WEB_KEY, PLACEHOLDER_ORIGIN, parseOrigin, webStatus, connectWeb, disconnectWeb } from './webbridge.js';
 
 export const SETTINGS_KEY = 'stacknest:settings';
 
@@ -77,7 +81,17 @@ export const DEFAULT_SETTINGS = {
   tabsBar: 'top',
   tickerEnabled: false, tickerBase: 'USD',
   tickerCrypto: ['bitcoin', 'ethereum', 'solana'], tickerFx: ['EUR', 'GBP'],
+  zenWallpaper: DEFAULT_WALLPAPER, zenCollection: '',   // Zen mode (js/zen.js)
+  zenEyeRest: true,                                      // a 30-second pause every 30 min in Zen (js/zenrest.js)
+  zenMotion: true,                                       // the wallpaper's slow animation in Zen
+  boardWallpaper: false,                                 // the Zen wallpaper behind the board too, still (js/wallboard.js)
+  reminderChime: true,                                   // a soft chime with reminder notifications (js/chime.js)
+  newTab: true,                                          // StackNest replaces Chrome's new tab page (boot.js)
 };
+
+// boot.js runs before any module and cannot wait for chrome.storage, so the new-tab choice is
+// mirrored into localStorage whenever settings are applied (NTP_KEY must match boot.js)
+const NTP_KEY = 'stacknest:ntp';
 
 const pick = (list, id) => list.find((x) => x.id === id) || list[0];
 
@@ -137,6 +151,13 @@ function normalize(raw) {
     tickerBase: TICKER_BASES.includes(m.tickerBase) ? m.tickerBase : DEFAULT_SETTINGS.tickerBase,
     tickerCrypto: validArr(TICKER_CRYPTOS.map((c) => c.id), m.tickerCrypto, DEFAULT_SETTINGS.tickerCrypto),
     tickerFx: validArr(TICKER_FX, m.tickerFx, DEFAULT_SETTINGS.tickerFx),
+    zenWallpaper: WALLPAPER_IDS.includes(m.zenWallpaper) ? m.zenWallpaper : DEFAULT_WALLPAPER,
+    zenCollection: typeof m.zenCollection === 'string' ? m.zenCollection.slice(0, 200) : '',
+    zenEyeRest: m.zenEyeRest !== false,
+    reminderChime: m.reminderChime !== false,
+    zenMotion: m.zenMotion !== false,
+    boardWallpaper: m.boardWallpaper === true,
+    newTab: m.newTab !== false,
   };
 }
 
@@ -187,6 +208,7 @@ export function applySettings(s) {
   // layout switches ride on the root element so the stylesheet owns what is shown —
   // no inline display juggling, and nothing to re-apply on every view change
   root.dataset.tabsbar = pick(TAB_BARS, s.tabsBar).id;
+  try { localStorage.setItem(NTP_KEY, s.newTab === false ? 'off' : 'on'); } catch { /* boot.js then keeps StackNest */ }
   document.dispatchEvent(new CustomEvent('stacknest:tabsbar', { detail: pick(TAB_BARS, s.tabsBar).id }));
 }
 
@@ -200,7 +222,7 @@ export function initSettings(options) {
   ({ root } = options);
   chrome.storage?.onChanged?.addListener((c, area) => {
     if (area !== 'local') return;
-    let external = !!(c[CLOUD_KEY] || c[LOCK_KEY]);
+    let external = !!(c[CLOUD_KEY] || c[LOCK_KEY] || c[WEB_KEY]);
     if (c[SETTINGS_KEY]) {
       const i = ownWrites.indexOf(JSON.stringify(c[SETTINGS_KEY].newValue));
       if (i !== -1) ownWrites.splice(i, 1);   // our own echo — the view is already right
@@ -359,8 +381,8 @@ async function signOutFlow() {
   toast(revoke.checked ? 'Signed out and access removed' : 'Signed out of Google Drive');
 }
 
-/* ————————————————————————— the four plates —————————————————————————
-   One static head ("applies to · This device"), then an index beside four numbered plates.
+/* ————————————————————————— the plates —————————————————————————
+   One static head ("applies to · This device"), then an index beside the numbered plates.
    Every plate stays in the scroll, so ⌘F still finds any setting; the index only jumps.
    Its items are buttons, not anchors, so the #view hash router never sees them. */
 
@@ -369,7 +391,12 @@ const PLATES = [
   { id: 'set-backup',     num: '02', name: 'Backup & sync' },
   { id: 'set-vault',      num: '03', name: 'Vault' },
   { id: 'set-ticker',     num: '04', name: 'Market ticker' },
+  { id: 'set-zen',        num: '05', name: 'Zen' },
+  { id: 'set-newtab',     num: '06', name: 'New tab' },
+  { id: 'set-web',        num: '07', name: 'StackNest on the web' },
 ];
+const newTabStatus = (s) => (s.newTab ? 'stacknest' : 'chrome’s page');
+const zenStatus = (s) => `${s.zenWallpaper === 'theme' ? 'no wallpaper' : s.zenWallpaper === 'custom' ? 'your image' : (WALLPAPERS.find((w) => w.id === s.zenWallpaper)?.label || '').toLowerCase()}${s.zenEyeRest ? ' · eye rest' : ''}`;
 const appearanceStatus = (s) => `${pick(SCALES, s.scale).label} · ${pick(FONT_UI, s.fontUi).label}`;
 const tickerStatus = (s) => (s.tickerEnabled ? `on · ${s.tickerCrypto.length + s.tickerFx.length} symbols` : 'off');
 let plateObserver = null;
@@ -439,24 +466,30 @@ const setStatus = (id, text) => root.querySelectorAll(`[data-status="${id}"]`).f
 async function render() {
   const s = await loadSettings();
   const cloud = await loadCloudState();
-  const live = isLive();
-  const needsSetup = live && !isConfigured(); // real extension, but no OAuth client ID yet
+  const needsSetup = !isConfigured();        // no OAuth client ID in this build
+  const unavailable = !needsSetup && !driveAvailable();   // a browser without Google sign-in for extensions
   const connected = !!(cloud.connected || cloud.email);
-  const [pinSet, lockedOut] = await Promise.all([hasPin(), isLockedOut()]);
+  const [pinSet, lockedOut, web] = await Promise.all([hasPin(), isLockedOut(), webStatus()]);
   const status = {
     'set-appearance': { text: appearanceStatus(s) },
-    'set-backup': { text: needsSetup ? 'setup required' : connected ? `drive · last backup ${shortWhen(cloud.lastBackupAt)}` : !live ? 'preview' : 'drive not connected' },
+    'set-backup': { text: needsSetup ? 'setup required' : unavailable ? 'drive not available here' : connected ? `drive · last backup ${shortWhen(cloud.lastBackupAt)}` : 'drive not connected' },
     'set-vault': { text: lockedOut ? 'locked out' : pinSet ? 'pin set' : 'no pin', tone: lockedOut ? 'danger' : null },
     'set-ticker': { text: tickerStatus(s) },
+    'set-zen': { text: zenStatus(s) },
+    'set-newtab': { text: newTabStatus(s) },
+    'set-web': { text: WEB_CHIP[web.state] },
   };
   const index = setIndex(status);
   const frag = [
     sectionHead({ className: 'set-top', scope: { key: 'applies to', value: 'This device' }, note: 'Changes save as you make them — there is no Save button.' }),
     el('div', { class: 'sec-body' }, el('div', { class: 'set-layout' }, index, el('div', { class: 'set-plates' },
       appearancePlate(s, status['set-appearance']),
-      backupPlate({ cloud, live, needsSetup, connected }, status['set-backup']),
+      backupPlate({ cloud, needsSetup, unavailable, connected }, status['set-backup']),
       await vaultPlate(status['set-vault']),
-      tickerPlate(s, status['set-ticker'])))),
+      tickerPlate(s, status['set-ticker']),
+      await zenPlate(s, status['set-zen']),
+      newTabPlate(s, status['set-newtab']),
+      webPlate(web, status['set-web'])))),
   ];
   // an external rebuild must not strand keyboard focus: data-key first, aria-label
   // second (the existing fallback); a control the rebuild replaced (Connect) hands focus to
@@ -476,6 +509,8 @@ async function render() {
   onSettingsChange(index, (next) => {
     setStatus('set-appearance', appearanceStatus(next));
     setStatus('set-ticker', tickerStatus(next));
+    setStatus('set-zen', zenStatus(next));
+    setStatus('set-newtab', newTabStatus(next));
   });
 }
 
@@ -494,7 +529,7 @@ function appearancePlate(s, st) {
 }
 
 /* ——— 02 Backup & sync: a file on this device, or your own Google Drive ——— */
-function backupPlate({ cloud, live, needsSetup, connected }, st) {
+function backupPlate({ cloud, needsSetup, unavailable, connected }, st) {
   const includeBm = el('input', { type: 'checkbox', id: 'set-include-bm', class: 'set-check set-switch', role: 'switch', dataset: { key: 'include-bm' } });
   includeBm.checked = includeBookmarks;
   includeBm.addEventListener('change', () => { includeBookmarks = includeBm.checked; });   // same module variable
@@ -512,21 +547,21 @@ function backupPlate({ cloud, live, needsSetup, connected }, st) {
     group('options', setRow({ label: 'Include my Chrome bookmarks', forId: 'set-include-bm', control: includeBm,
       help: 'Applies to Export backup and Back up now. Not remembered after this tab closes.' })),
     group('file on this device', setRow({ label: 'Backup file', help: 'A JSON file you can re-import later or on another machine.', control: [exportBtn, importBtn] })),
-    group('google drive', driveGroup(cloud, needsSetup, connected)),
+    group('google drive', driveGroup(cloud, needsSetup, unavailable, connected)),
   ], [
     callout('Import replaces your current spaces, collections, notes, tags, My Space, the Vault and settings. Bookmarks, if present, are added under a new "StackNest Import" folder (nothing is overwritten).'),
-    callout(driveNote(live, needsSetup)),
+    callout(driveNote(needsSetup, unavailable)),
   ]);
 }
 
-// Google Drive: set up required / Connect / the connected account with its actions.
-// The dot is green only when an account is actually connected.
-function driveGroup(cloud, needsSetup, connected) {
+// Google Drive: set up required / not available in this browser / Connect / the connected
+// account with its actions. The dot is green only when an account is actually connected.
+function driveGroup(cloud, needsSetup, unavailable, connected) {
   const name = (inner) => el('span', { class: 'cloud-name' }, el('span', { class: `cloud-dot g${connected ? ' is-on' : ''}` }), inner);
   const box = el('div', { class: 'cloud-provider' });
-  if (needsSetup) {
+  if (needsSetup || unavailable) {
     box.append(el('div', { class: 'cloud-row' }, name('Google Drive'),
-      el('button', { class: 'btnx soft', disabled: 'true' }, el('span', { text: 'Set up required' }))));
+      el('button', { class: 'btnx soft', disabled: 'true' }, el('span', { text: needsSetup ? 'Set up required' : 'Not available here' }))));
   } else if (!connected) {
     box.append(el('div', { class: 'cloud-row' }, name('Google Drive'),
       el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'drive-connect' },          // was .primary
@@ -554,9 +589,9 @@ function driveGroup(cloud, needsSetup, connected) {
   return box;
 }
 
-function driveNote(live, needsSetup) {
+function driveNote(needsSetup, unavailable) {
   if (needsSetup) return 'Google Drive backup isn’t available in this build.';
-  if (!live) return 'Preview mode: Google sign-in and Drive aren’t available outside the packaged extension, so this simulates the cloud locally. In the real extension it uses your Google account.';
+  if (unavailable) return NO_SIGNIN_MSG;
   // Be explicit about WHOSE account this is: nothing is pre-connected, and the backup
   // goes to the signed-in person's own private Drive folder.
   return canChooseAccount()
@@ -621,6 +656,212 @@ function tickerPlate(s, st) {
       checkGroup('Crypto', TICKER_CRYPTOS.map((c) => ({ value: c.id, label: c.sym })), s.tickerCrypto, (vals) => saveSettings({ tickerCrypto: vals })),
       checkGroup('Forex', TICKER_FX.map((c) => ({ value: c, label: c })), s.tickerFx, (vals) => saveSettings({ tickerFx: vals }))),
   ], [callout('Prices come from CoinGecko and open.er-api.com — turning the ticker on makes network requests to those services.')]);
+}
+
+/* ——— 05 Zen: the wallpaper behind the uncluttered page ——— */
+async function zenPlate(s, st) {
+  // your own pictures: a small gallery (up to MAX_OWN). 'custom' is the setting for "one of
+  // mine"; which one is the gallery's `active`. Each has a × to remove it.
+  let own = ownWallpapers(await getKey(WALLPAPER_KEY, null));
+  let current = s.zenWallpaper;
+  const grid = el('div', { class: 'wall-grid', role: 'radiogroup', 'aria-label': 'Zen wallpaper' });
+  const ownKey = (id) => `own:${id}`;
+  const isOn = (key) => (key.startsWith('own:') ? current === 'custom' && own.active === key.slice(4) : current === key);
+
+  const paint = () => { for (const w of grid.querySelectorAll('.wall-sw')) { const on = isOn(w.dataset.wall); w.classList.toggle('is-active', on); w.setAttribute('aria-checked', String(on)); } };
+  const keep = async (next) => {
+    try { await setKey(WALLPAPER_KEY, next.images.length ? next : null); own = next; return true; }
+    catch { toast('Not enough room on this device: remove one of your images first'); return false; }
+  };
+  // the images can change elsewhere (Zen's shuffle picks which of yours shows): read them fresh
+  // before any change here, and redraw when they change
+  const fresh = async () => { own = ownWallpapers(await getKey(WALLPAPER_KEY, null)); };
+  try {
+    chrome.storage.onChanged.addListener((ch, area) => {
+      if (area !== 'local' || !(WALLPAPER_KEY in ch)) return;
+      own = ownWallpapers(ch[WALLPAPER_KEY].newValue ?? null);
+      draw();
+    });
+  } catch { /* no storage events here */ }
+  const choose = async (key) => {
+    if (key.startsWith('own:')) {
+      await fresh();
+      const id = key.slice(4);
+      if (own.active !== id && !(await keep({ ...own, active: id }))) return;
+      key = 'custom';
+    }
+    current = key;
+    paint();
+    saveSettings({ zenWallpaper: key });
+  };
+  const upload = withBusy(async () => {
+    await fresh();
+    if (own.images.length >= MAX_OWN) { toast(`Up to ${MAX_OWN} of your own images: remove one to add another`); return; }
+    const file = await pickFile('image/*');
+    if (!file) return;
+    const img = await prepareWallpaper(file);
+    await fresh();
+    const id = `own${Date.now().toString(36)}`;
+    if (!(await keep({ images: [...own.images, { id, ...img }], active: id }))) return;
+    draw();
+    choose(ownKey(id));
+    toast('Wallpaper added');
+  });
+  const remove = async (id) => {
+    await fresh();
+    const images = own.images.filter((x) => x.id !== id);
+    const wasShowing = current === 'custom' && own.active === id;
+    if (!(await keep({ images, active: own.active === id ? images[0]?.id || null : own.active }))) return;
+    if (wasShowing && !images.length) choose(DEFAULT_WALLPAPER);
+    else if (wasShowing) saveSettings({ zenWallpaper: 'custom' });   // the next of yours takes its place
+    draw();
+    toast('Image removed');
+  };
+
+  const swatch = (key, label, css, extra = null) => {
+    const b = el('button', { class: `wall-sw${isOn(key) ? ' is-active' : ''}`, type: 'button', role: 'radio', 'aria-checked': String(isOn(key)),
+      dataset: { wall: key, key: `wall-${key}` } },
+      el('span', { class: `wall-thumb${key === 'theme' ? ' is-theme' : ''}`, style: css ? `background:${css}` : null }, extra),
+      el('span', { class: 'wall-name', text: label }));
+    b.addEventListener('click', () => (key === 'add' ? upload() : choose(key)));
+    return b;
+  };
+  // one of yours: the swatch, with a small × beside it (a sibling, not inside the button)
+  const ownSwatch = (img, n) => el('div', { class: 'wall-own' },
+    swatch(ownKey(img.id), own.images.length > 1 ? `Yours ${n}` : 'Your image', `url("${img.dataUrl}") center / cover no-repeat`),
+    el('button', { class: 'wall-own-x', type: 'button', title: 'Remove this image', 'aria-label': `Remove your image${own.images.length > 1 ? ` ${n}` : ''}`,
+      dataset: { key: `wall-remove-${img.id}` }, onclick: () => remove(img.id) }, icon('close', 11)));
+  function draw() {
+    grid.replaceChildren(
+      ...WALLPAPERS.map((w) => swatch(w.id, w.label, wallpaperFor(w.id).css)),
+      swatch('theme', 'Plain', null),
+      ...own.images.map((img, i) => ownSwatch(img, i + 1)),
+      ...(own.images.length < MAX_OWN ? [swatch('add', own.images.length ? 'Add image…' : 'Upload…', null, icon('upload', 18))] : []),
+    );
+  }
+  draw();
+
+  const motionSw = switchCtl('set-zen-motion', 'Animate the wallpaper', s.zenMotion, 'zen-motion', (on) => saveSettings({ zenMotion: on })
+    .then(() => toast(on ? 'Wallpaper animation on' : 'Wallpaper animation off')));
+  onSettingsChange(motionSw, (next) => { motionSw.checked = next.zenMotion; });
+  // the same picture behind the board, still (js/wallboard.js paints it)
+  const boardSw = switchCtl('set-board-wall', 'Show the wallpaper outside Zen', s.boardWallpaper, 'board-wall', (on) => saveSettings({ boardWallpaper: on })
+    .then(() => toast(on ? 'Wallpaper shown behind the board' : 'Wallpaper only in Zen')));
+  onSettingsChange(boardSw, (next) => { boardSw.checked = next.boardWallpaper; });
+  const replaceBtn = el('button', { class: 'btnx soft sm', type: 'button', dataset: { key: 'wall-upload' }, onclick: upload }, icon('image', 13), el('span', { text: 'Add my own image…' }));
+  const openBtn = el('button', { class: 'btnx soft', type: 'button', dataset: { key: 'zen-open' },
+    onclick: () => document.getElementById('zen-btn')?.click() }, icon('zen', 14), el('span', { text: 'Enter zen' }));
+
+  const eye = switchCtl('set-zen-eye', 'Rest your eyes', s.zenEyeRest, 'zen-eye', (on) => saveSettings({ zenEyeRest: on })
+    .then(() => toast(on ? 'Eye rest on' : 'Eye rest off')));
+  onSettingsChange(eye, (next) => { eye.checked = next.zenEyeRest; });
+  const chimeSw = switchCtl('set-chime', 'Chime with reminders', s.reminderChime, 'chime-on', (on) => saveSettings({ reminderChime: on })
+    .then(() => toast(on ? 'Reminders chime' : 'Reminders are silent')));
+  onSettingsChange(chimeSw, (next) => { chimeSw.checked = next.reminderChime; });
+  const hear = el('button', { class: 'btnx ghosty sm', type: 'button', dataset: { key: 'chime-play' }, onclick: () => playChime() }, icon('bell', 13), el('span', { text: 'Play' }));
+
+  return plate(PLATES[4], { desc: 'An uncluttered page: one collection, your to-dos, what you have pinned and a calendar, on a wallpaper. Switch it on with the zen button beside the theme; Esc leaves.', status: st }, [
+    group('enter', setRow({ label: 'Zen mode', help: 'Pick the collection inside Zen itself. Pin links, folders and Notes cards with the pin on their card. Drag panes and items to arrange them.', control: openBtn })),
+    group('breaks', setRow({ label: 'Rest your eyes', forId: 'set-zen-eye', control: eye,
+      help: 'After every 30 minutes of screen time in Zen, a 30-second pause to look into the distance. Five minutes away from the screen starts the count again.' }),
+      setRow({ label: 'Chime with reminders', forId: 'set-chime', control: [hear, chimeSw],
+        help: 'A soft bell when a reminder’s notification appears, and when an eye-rest pause ends. Add a timed reminder from the calendar in Zen.' })),
+    secGroup({ caption: 'wallpaper', level: 3, acts: el('div', { class: 'wall-acts' }, replaceBtn) }, grid,
+      setRow({ label: 'Animate the wallpaper', forId: 'set-zen-motion', control: motionSw,
+        help: 'A slow drift, with mist, petals, leaves, fireflies or stars to suit each picture. Off when your system asks for reduced motion.' }),
+      setRow({ label: 'Show it outside Zen too', forId: 'set-board-wall', control: boardSw,
+        help: 'The same picture behind the board and every view, held still, with the sidebar and panels turned to frosted glass over it. Plain shows no picture.' })),
+  ], [callout(`Add up to ${MAX_OWN} of your own images; the × on one removes it. They are resized and kept on this device only — not in a backup file or a Drive sync. Plain uses the current theme’s background. In Zen, the picture button shuffles through them all.`)]);
+}
+
+/* ——— 06 New tab: whether StackNest takes over Chrome's new tab page ——— */
+function newTabPlate(s, st) {
+  const sw = switchCtl('set-newtab-on', 'Open StackNest in new tabs', s.newTab, 'newtab-on', (on) => saveSettings({ newTab: on })
+    .then(() => toast(on ? 'New tabs open StackNest' : 'New tabs open Chrome’s page — use the toolbar button for StackNest')));
+  onSettingsChange(sw, (next) => { sw.checked = next.newTab; });
+  return plate(PLATES[5], { desc: 'Show StackNest on every new tab, or keep Chrome’s own new tab page and open StackNest from the toolbar.', status: st }, [
+    group('new tab', setRow({ label: 'Open StackNest in new tabs', forId: 'set-newtab-on', control: sw,
+      help: 'Off: new tabs show Chrome’s own page, and StackNest opens from its button in the toolbar.' })),
+  ], [callout(['To keep the button handy, click the puzzle-piece icon in Chrome’s toolbar and pin StackNest. ',
+    'Chrome only lets an extension replace the new tab page as a whole, so with this off a new tab opens StackNest for a moment, then hands over to Chrome’s page (its address shows chrome://new-tab-page).'])]);
+}
+
+/* ——— 07 StackNest on the web: one website, chosen here, that shows the new tab's content ———
+   There is no StackNest website yet. This is the switch for when there is: the address is
+   typed here, Connect asks Chrome for that one site, and the bridge in js/webbridge.js answers
+   its pages. The status never claims the site is up — only whether it has asked, and when.
+   The connection is this device's alone: it is kept under its own key, never in a backup. */
+const WEB_CHIP = { off: 'not connected', waiting: 'waiting for the site', seen: 'connected' };
+let webDraft = null;   // the address being typed; survives a re-render until it is connected
+
+function webStatusText(web) {
+  if (web.state === 'seen') return `Connected. ${web.origin} last asked for your StackNest ${shortWhen(new Date(web.lastSeenAt).toISOString())}. That is when it last asked — not a sign the site is up now.`;
+  if (web.state === 'waiting') return `Waiting for the site. StackNest will answer pages on ${web.origin} when they ask; none has asked yet, so nothing has been sent.`;
+  if (web.endedBy === 'chrome' && web.origin) return `Not connected. Site access for ${web.origin} was turned off in Chrome, so StackNest stopped answering it. Nothing is shared.`;
+  return 'Not connected. Nothing is shared with any website.';
+}
+
+function webPlate(web, st) {
+  const on = web.state !== 'off';
+  const input = el('input', { type: 'url', id: 'set-web-origin', class: 'set-input', inputmode: 'url', autocomplete: 'off',
+    placeholder: `${PLACEHOLDER_ORIGIN} (example only)`, 'aria-describedby': 'set-web-error', dataset: { key: 'web-origin' } });
+  input.value = on ? web.origin : (webDraft ?? web.origin ?? '');
+  input.readOnly = on;   // to change the address, disconnect first: the permission is for one site
+  const err = el('div', { class: 'set-fieldnote', id: 'set-web-error', role: 'alert' });
+  const showError = (msg) => { err.textContent = msg || ''; input.setAttribute('aria-invalid', msg ? 'true' : 'false'); };
+  input.addEventListener('input', () => { webDraft = input.value; showError(''); });
+  input.addEventListener('change', () => { if (input.value.trim() && !on) showError(parseOrigin(input.value).error); });
+
+  const dot = el('span', { class: `cloud-dot g web-dot is-${web.state}`, 'aria-hidden': 'true' });
+  const statusLine = el('p', { class: 'web-status', role: 'status' }, dot, el('span', { text: webStatusText(web) }));
+
+  const sw = switchCtl('set-web-on', 'Connect StackNest to this site', on, 'web-on', async (want) => {
+    sw.disabled = true;
+    try {
+      if (want) {
+        const p = parseOrigin(input.value);
+        if (p.error) { sw.checked = false; showError(p.error); input.focus(); return; }
+        input.value = p.origin;
+        const ok = await confirmDialog({
+          title: `Connect ${p.host}?`,
+          message: `Pages on ${p.origin} will be able to show, in this browser, the same things as your new tab: collections, your Chrome bookmarks (the Library), My Space, notes and to-dos, tags, Zen, and these settings — and to tick to-dos off. The Vault, your PIN and your Google account are never shared. Chrome will ask you to allow StackNest on that site; switching this off takes it all back.`,
+          confirmLabel: 'Connect',
+        });
+        if (!ok) { sw.checked = false; return; }
+        const r = await connectWeb(p.origin);   // Chrome's prompt; the click above is the gesture it needs
+        if (!r.granted) { sw.checked = false; toast('Chrome’s permission wasn’t given — nothing is shared'); return; }
+        webDraft = null;
+        toast(`Connected to ${p.host} — waiting for the site`);
+      } else {
+        const r = await disconnectWeb();
+        toast(r.removed ? 'Disconnected — the site gets nothing more' : 'Disconnected — Chrome kept its site access; remove it in Chrome’s extension settings');
+      }
+    } catch (e) {
+      sw.checked = !want;
+      toast(e?.message || 'Something went wrong');
+    } finally { sw.disabled = false; }
+    // the plate re-renders from the storage change; this covers a declined prompt, which stores nothing
+  });
+
+  return plate(PLATES[6], { desc: 'Let one website of your choosing show what your new tab shows, so it can be your home page too. There is no StackNest website yet; when there is, connect it here — no extension update needed.', status: st }, [
+    group('site', setRow({ label: 'Web address', forId: 'set-web-origin', control: input,
+      help: on ? 'Switch off below to change it.' : 'The site’s https address, like the example in the box. Leave it empty until there is a StackNest website.',
+      extra: [err] })),
+    group('connection', setRow({ label: 'Connect', forId: 'set-web-on', control: sw, extra: [statusLine],
+      help: 'Off: StackNest answers no website, and Chrome grants it no access to any site.' })),
+  ], [
+    callout([el('strong', {}, 'Nothing leaves this device until you connect. '),
+      'Then only pages on that one address can ask, only in this browser, and StackNest answers inside the page — there is no StackNest server and nothing goes into a link. What the site then does with what it shows is up to the site, so connect only one you trust.']),
+    callout(['Never shared: the Vault and anything in it, your PIN, and your Google account or its Drive backup. Switching off stops the answers at once, unregisters the bridge and gives Chrome’s site access back.']),
+  ]);
+}
+
+// an on/off switch in the house style (the same control as the ticker's)
+function switchCtl(id, label, checked, key, onChange) {
+  const sw = el('input', { type: 'checkbox', id, class: 'set-check set-switch', role: 'switch', 'aria-label': label, dataset: { key } });
+  sw.checked = !!checked;
+  sw.addEventListener('change', () => onChange(sw.checked));
+  return sw;
 }
 
 function checkGroup(label, options, selected, onChange) {

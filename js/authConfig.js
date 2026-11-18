@@ -30,3 +30,18 @@
 //
 // Leave it empty to keep the current behaviour (Chrome profile account, no picker).
 export const WEB_CLIENT_ID = '';
+
+// ——— Which extension IDs Google will sign in ———
+// The Chrome Extension OAuth client (manifest.json › oauth2.client_id) is registered to ONE
+// extension ID, its "Item ID". A copy running under any other ID gets Google's "Access
+// blocked: … request is invalid (Error 400: invalid_request)" page, which tells the person
+// nothing useful. That happens when StackNest is installed from a build without the manifest
+// "key" (the Web Store zip from scripts/package.sh has none), so Chrome picks a random ID.
+//
+// Sign-in checks chrome.runtime.id against this list first and, on a mismatch, explains how
+// to reinstall instead of opening Google's page. The ID here is the one the manifest "key"
+// produces; scripts/smoke-test.mjs fails if the two ever drift apart.
+//
+// After launch (docs/store/launch-checklist.md §C), when the store's public key replaces the
+// dev key and the client's Item ID is set to the store ID, put the store ID here instead.
+export const OAUTH_EXTENSION_IDS = ['jcmhhjnegjiejjjcppfkejnclbljnldm'];

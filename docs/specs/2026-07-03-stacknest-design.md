@@ -18,7 +18,7 @@ command center for **open tabs** (left column, "Open now") and **bookmarks** (ri
 | Bookmark "groups" | Native bookmark folders | Interops with Chrome's own manager & sync |
 | Opening a bookmark | Navigates the current new-tab page (Cmd/Ctrl-click → background tab) | Seamless, no tab spam |
 | Multi-select | None in v1 — drag & drop is the grouping gesture | Less UI chrome |
-| Dev preview | `js/mock.js` shims `chrome.*` with demo data when APIs are absent | Page can be styled/tested outside Chrome |
+| Dev preview | `js/mock.js` shimmed `chrome.*` with demo data when APIs were absent. Removed 2026-11-17: StackNest now runs only as the extension | Page could be styled/tested outside Chrome |
 
 ## Features
 
@@ -380,6 +380,928 @@ a variation that moves no ratio past a rounding place.
 
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
+
+## The peek lives on the wallpaper button; the quick note takes its corner (2026-11-19)
+
+Zen had two buttons that dealt with the wallpaper: shuffle in the top bar, and "look at the
+wallpaper" alone in the bottom-right corner. The look now belongs to the shuffle button, and
+the corner went to the quick note.
+
+- **Peek by resting.** Resting the pointer on the wallpaper button for 2 s fades everything
+  else to a fifth (inert, as before). The button itself stays lit in the accent and stays live,
+  so a press still shuffles and scene after scene can be looked at. A hint under it says
+  "Move away or press Esc to come back". Moving off the button ends the peek, and so does Esc.
+  A press restarts the 2 s wait, so someone shuffling quickly never peeks by surprise. Touch
+  has no hover, so a tap only shuffles. The old peek button and its `.zen-peek` styles are gone.
+- **Quick note in the corner.** The note button left the top bar for the bottom-right corner
+  (40 px, the peek button's old spot). Its box now opens upward with the same hover and click
+  rules, and it shows only on Zen's home page, as before.
+- Checked with real mouse input in headless Chrome:
+  - Nothing at 1.2 s, the peek at 2.3 s, and a press during a peek keeps it.
+  - Leaving the button ends the peek, and the wait restarts after a shuffle.
+  - Esc ends the peek but stays in Zen.
+  - The note box opens above its button and on screen.
+  - The smoke test is clean.
+
+## The switch moves to the bottom centre; thunder and quiet snow (2026-11-18)
+
+**Asked for.** "Align the navigation bar in middle and set the margin of notes and other
+elements accordingly." Then: "also add thunder wallpapers, and snow wallpapers which are calm."
+
+**The switch, centred** (`css/newtab.css`, "Zen's pages").
+- `.zen-pager` is centred at the bottom: fixed, `left: 0; right: 0; width: max-content;
+  margin-inline: auto`. It is no longer in the bottom-left corner.
+- `--zen-dock` (72 px) is the strip it keeps clear: 18 px below it, its 38 px, and 16 px above.
+  Each page now stops at that strip:
+  - **Bottom padding:** Zen's home stage, the Notes page and the arcade page all end with
+    `var(--zen-dock)` (they had 80, 84 and 84 px).
+  - **Home panes:** their height cap is `100vh - 110px - var(--zen-dock)`.
+  - **Arcade frame:** the square is `100vh - 90px - var(--zen-dock)`, so a game ends above the
+    switch.
+  - **Quick note:** its card is capped the same way.
+- **Toasts** in Zen sit just above the switch (`bottom: calc(var(--zen-dock) - 6px)`), where
+  they used to sit on it.
+- **Narrow windows:** under 560 px the switch shows icons only. The names stay for screen
+  readers through a clipped span, and the switch never meets the peek button in the corner.
+- **Measured** in headless Chrome at 1440×900, 1280×720, 760×900 and 400×820 on all four
+  pages:
+  - The switch is centred to the pixel.
+  - Scrolled to the end, no pane, card, calendar, game frame or shelf is under it.
+  - The peek button is never touched.
+  - At 1440×900, Zen, Arcade and Lounge now fit without scrolling (they scrolled 31–47 px).
+
+**Thunder and quiet snow** (`js/wallpapers.js`, after the four weathers; motion in
+`css/newtab.css`, "storms far off and quiet snow"). Four more scenes, 24 in all:
+- **Far storm** (dark, motion `thunder`): a tall storm cloud far out over a calm sea at dusk,
+  softened with a blur, with a rain curtain under it. There are the afterglow and its glints on
+  the left, and a lighthouse with a lit lamp on the rocks.
+  - In motion: a glow inside the cloud now and then, and once a cycle a far bolt down to the
+    water (`--zen-bolt`, a small blurred SVG). Glints of the afterglow come and go on the sea.
+- **Storm night** (dark, motion `storm`): low heavy cloud over the hills, a meadow, and a cabin
+  whose lit windows shine on the wet path among pines.
+  - In motion: rain over everything (the Rain wallpaper's streaks), the upper sky lit softly from
+    behind now and then, and mist easing along the hills.
+- **Snow lake** (light, motion `snowlight`): a frozen lake at dawn under a pink sky, with snowy
+  peaks, a far line of pines, birches on the near bank and snowy pines.
+  - In motion: eleven small flakes falling slowly, and mist breathing over the ice.
+- **Winter night** (dark, motion `snownight`): a cabin under the moon with warm windows and
+  footprints in the snow, among moonlit hills and snowy pines.
+  - In motion: flakes catching the moonlight as they fall, and smoke rising from the chimney
+    (the Shrine's thread of smoke, wider and slower).
+
+**The lightning is calm on purpose.**
+- It is a radial glow over part of the sky, never a full-screen flash, and never full white
+  (glow at most 0.85 opacity of a soft gradient).
+- It is seldom: one cycle every 13 s or 17 s, with two pulses close together at most. That is
+  well under the three flashes in any second where photosensitivity guidance draws its line.
+- It exists only while animating (base opacity 0), so under reduced motion, or with Animate the
+  wallpaper off, there is none.
+
+**Verified.**
+- **Wallpaper test (35 checks), all pass with no exceptions or console errors:**
+  - All 24 wallpapers draw as images.
+  - Each new scene has its tone and motion, and every visible speck runs and moves.
+  - The lightning's keyframes have at most two pulses in any second, at most 0.9 opacity, and
+    cycles of 12 s or more.
+  - Under reduced motion, neither storm has any lightning.
+  - Settings › Zen lists all eight of the newest, each with its own thumbnail.
+- **Screenshots:** each scene, and both storms mid-flash.
+
+## The two-finger swipe follows the fingers (2026-11-18)
+
+**Asked for.** Make the two-finger scrolling experience seamless.
+
+**What was wrong with the first version** (the entry below). Nothing moved until 80 px of
+deltas had added up, then the page swapped all at once. And the next swipe only counted after
+280 ms of stillness, which a trackpad's momentum often never gave: a quick second swipe was lost.
+
+**Now** (`js/zen.js`, "the page in motion" and "two-finger sideways swipe").
+- **The page follows the fingers** from the first delta: nearly 1:1, easing off towards about
+  16 % of the screen width, and fading a little. Only the page's own content moves; the
+  wallpaper, the switch and the corner button stay put.
+- **The switch lights the page that is coming**, more as the swipe nears its turn
+  (`data-swipe-to`, `--swipe-p`).
+- **Lifting decides.** A wheel event has no "fingers up", so a lift is read from the deltas.
+  Three falling deltas under 70 % of the peak mean momentum has begun; 110 ms with none means
+  the fingers lifted, or rest. The page then goes if the swipe's own travel plus about 100 ms of
+  its speed reaches 6 % of the screen width (64–110 px), or springs back. So a quick flick turns
+  a page that a slow drag of the same length doesn't. Drawn 2.4 times that far, it goes at once.
+- **Going and coming.** The page that goes carries on at the fingers' pace (0.9–2.6 px/ms) while
+  it fades, for 110 ms. Then the next comes in from its side, handed that speed, on a critically
+  damped spring (k 290: at rest in about 0.4 s, no wobble). A click on the switch, and Esc from
+  Notes, bring the page in the same way from 44 px off.
+- **At either end** the page gives a short rubber band (at most 56 px) and holds.
+- **One swipe, one page, with no wait between swipes.** A decided swipe's momentum is
+  swallowed. Fingers that go again count as a new swipe at once: deltas speeding up twice
+  running, measured per ms so events Chrome merges under load aren't mistaken for that, and
+  only after the momentum has eased to 60 % of its peak. Turning the other way counts too.
+- **Taking hold of a page in motion.** One requestAnimationFrame loop drives following, going,
+  coming in and springing back. A new swipe takes hold of the page wherever it is (the position
+  is mapped back to finger travel exactly, so nothing jumps). It is judged by its own travel, so
+  a swipe that catches a page still coming in turns the next page, like one from rest. A swipe
+  that starts while a page is still going lets it go and catches the next.
+- **The first delta decides** between a swipe and a scroll. Mostly up and down, and the whole
+  gesture is left to scroll. Only a gesture that started sideways is kept, and only if its first
+  event can still be cancelled.
+- **No sideways scroll or focus ring.** Zen clips sideways overflow, so a page drawn aside never
+  scrolls the screen. A swipe moves no focus (a button click still does), and focus left on the
+  page that went is let go.
+- **Notes arrive full.** Entering the Notes page paints it at once from the last render's notes,
+  then refreshes, so it never slides in empty.
+- **Reduced motion:** nothing moves under the fingers. The switch still lights, and the page
+  changes once the swipe is decided.
+
+**Verified.** In headless Chrome with real wheel input, 56 checks pass on the store build:
+- Following the fingers: the page drawn left and fading, the switch half lit.
+- Springing back short of the turn; the rubber band at both ends.
+- A flick turns a page where a slow drag of the same length doesn't.
+- One long swipe turns one page.
+- A swipe, its momentum and a second swipe with no pause turn exactly two pages, as do two
+  quick swipes back to back.
+- Catching the arriving Notes page with no jump, holding it, and sending it back.
+- The click and Esc slide-ins.
+- Reduced motion.
+- No focus moved by a swipe.
+- Notes full on arrival.
+- The game, nudge, vertical-scroll and blank-card checks from before.
+
+Not tried on a real trackpad: the deltas are simulated, including the momentum curve.
+
+## Four quiet weathers: Rain, Snowfall, Cloud sea, Lanterns (2026-11-18)
+
+**Asked for.** More wallpapers, Zen, animated and peaceful.
+
+**What they are** (`js/wallpapers.js`, drawn as SVG like the rest; 8 to 14 KB each):
+- **Rain** (dark, motion `rain`): a pond at dusk.
+  - In the picture: hills going into cloud, a tea house on the far bank with a lamp lit and its
+    reflection, lily pads, reeds with cattails.
+  - In motion: fine slanted streaks falling over everything, rings opening on the pond, a bank of
+    cloud easing along the hills.
+- **Snowfall** (light, motion `snow`): a five-roofed pagoda among snowy pines on a white hill,
+  under a grey-blue sky.
+  - In motion: flakes drifting down over 16–32 s, swaying, every third one out of focus, and a
+    breath of mist low over the slope.
+- **Cloud sea** (light, motion `clouds`): peaks standing out of a sea of cloud, the sun just up.
+  - In motion: two cloud banks drifting at different speeds, and four gulls crossing high up,
+    their wings slowly beating (two arcs on `i::before` / `::after`).
+- **Lanterns** (dark, motion `lanterns`): a river at night with dark hills, an arched bridge,
+  stars, and lanterns floating with their reflections.
+  - In motion: fourteen lanterns lifting off the water, swaying, glowing and fading high up, and
+    their light trembling on the water.
+
+**Motion** (`css/newtab.css`, after round five). Anchored the way round five's scenes are:
+`.zen-fx` is a size container with `--k` mapping picture units to the screen and breathing in
+step with the wall. So rings land on the pond and lanterns rise from the river at any
+interface size. Under reduced motion nothing animates, and the rings and the rising lanterns
+are left out.
+
+**Verified** in headless Chrome, 17 checks, no exceptions or console errors:
+- All 20 wallpapers load as images.
+- Each new scene sets its tone and motion, and every visible speck is running and moves within
+  0.7 s.
+- Settings › Zen lists all four, each with its own thumbnail.
+- Reduced motion hides the rising lanterns.
+
+## Zen's pages turn with a two-finger swipe, and New never stacks blank cards (2026-11-18)
+
+**Asked for.** A two-finger sideways scroll that moves through the pages "from lounge to arcade
+to zen to notes". And New note / list / reminder must not keep adding cards: if a blank one is
+there, go to it.
+
+**The swipe** (`js/zen.js` › `onSwipeWheel`).
+- The order is the one asked for: Lounge, Arcade, Zen, Notes. The switch at the bottom left was
+  reordered to match (it read Zen · Arcade · Lounge · Notes), so a swipe always lands on the next
+  button along. Lounge and Arcade are the arcade page on its lounge or games shelf.
+- A trackpad's sideways scroll arrives as `wheel` events with `deltaX`. Mostly-sideways deltas
+  (|dx| > |dy|) add up to 80 px, which turns one page; the rest of that gesture, momentum
+  included, is spent until 280 ms of stillness. Positive dx (fingers moving left, natural
+  scrolling) goes right along the switch, towards Notes. At either end nothing turns.
+- The listener is on the Zen root and not passive. Handled swipes call `preventDefault()`, so
+  Chrome's own back / forward swipe gesture doesn't fire in Zen.
+- Left alone: an open game or lounge (`arcade.playing`; the Temple's meditation panel lives
+  inside one), a text field, anything under the pointer that scrolls sideways itself in that
+  direction, a dialog or the reminder popover, the eye-rest pause, and pinch zoom (`ctrlKey`).
+- The page coming in slides 32 px from its side and fades in (`data-turn`, 0.32 s), for the
+  switch's buttons too. Nothing moves under reduced motion.
+
+**New reuses a blank card** (`js/notes.js` › `addNoteCard`).
+- Blank means no words (spaces don't count), no tags and no reminder time. For a list that means
+  no title and every row empty.
+- If a blank card of the asked kind exists, New hands it back (`reused: true`) instead of making
+  another, and the caret goes there. On Zen's Notes page it is also lit up, and a filter or
+  search hiding it is cleared.
+- The check runs inside the queued write, after queued typing is flushed. So a burst of clicks
+  makes one card, and a card typed into a moment ago isn't mistaken for blank.
+- The Notes view's New ▾ uses the same function, so it follows the same rule.
+
+**Verified.** In headless Chrome with real wheel, mouse and key input, 31 checks pass with no
+exceptions or console errors:
+- The new switch order.
+- Each direction, both ends, one page per long swipe. A small nudge and a mostly-vertical scroll
+  turn nothing.
+- The browser's swipe held off, and the slide-in.
+- No turn while a game is open; it turns again once back on the shelf.
+- New Note twice adds nothing and goes back to the note, and three clicks at once on New Reminder
+  make one.
+- A blank note doesn't stop New List, and New Note from the Lists filter goes back to the blank
+  note.
+- Words make the next New a new card, while spaces alone still count as blank.
+- The Notes view's New ▾ follows the same rule.
+
+## Notes inside Zen: a fourth page beside Lounge (2026-11-18)
+
+**Asked for.** A button beside Lounge to go to Notes, and when Notes is reached from Zen, a Zen
+page for it rather than the Notes view.
+
+**What it is** (`js/zen.js` › `createNotesPage`).
+- The switch at the bottom left reads **Lounge · Arcade · Zen · Notes** (reordered for the swipe,
+  in the entry above). Notes sets
+  `data-page="notes"` on the Zen root. The home page's bar and stage hide (as they do for the
+  arcade) and the Notes page shows on the wallpaper. The peek button hides there too.
+- The page has the arcade page's clock on the left and Leave zen on the right. Under them is one
+  glass pane: "Notes", a count ("5 cards · 2 open", or "1 of 5" while filtered), a filter (All ·
+  Notes · Lists · Reminders), a search box, and **Note / List / Reminder**. The cards sit in a
+  masonry (CSS columns, each card kept whole), in the Notes view's own order, done items
+  included.
+- Cards are the home page's builders with scope `np`: a list or a note as on the home page, a
+  reminder in a small "Reminder" card. They edit in place the same way, and keep the bell, the
+  delete with Undo and the row ×. An unpinned card offers **Pin to Zen** among its hover actions;
+  a pinned one shows the pin to take it off.
+- Search is the Notes view's own (`noteMatches` in `js/notes.js`): titles, bodies, reminder text,
+  checklist rows and tags.
+- New: `addNoteCard(kind)` in `js/notes.js` makes the card the way New ▾ does (a list starts with
+  one blank row); the Notes view's `newItem` now uses it too. A filter or search that would hide
+  the new card is cleared, the page is rebuilt, and the caret goes to the new card's title (or a
+  reminder's text). Enter moves on to the first row or the body.
+- The page is filled only while it is open (`render()` paints it when `data-page` is `notes`).
+  Opening it triggers a render. Typing is protected as on the home page: a render waits while a
+  field has focus.
+- Esc from a field leaves the field. Esc outside a field goes back to Zen's home page, and the
+  next Esc leaves Zen. Leaving Zen always resets to the home page.
+
+**Verified.** In headless Chrome with real clicks and keys, 32 checks pass with no exceptions or
+console errors:
+- The switch order. Notes opens the page, not the Notes view, and focus lands on the switch.
+- All cards show in order, with the right count and the clock.
+- Each filter works. Search finds tags and checklist rows, and "Nothing matches" shows when
+  nothing does.
+- Editing a row in place, with Enter and Backspace.
+- New List, New Reminder and New Note each make a card at the top and put the caret in it,
+  clearing a filter and a search that would hide it. Title then row or body, all saved.
+- Pin to Zen, and delete with confirm and Undo.
+- Esc goes back to Zen's home page, which shows the newly pinned note. Leave zen works from the
+  page, and Zen opens on home again.
+
+## The open-tabs bar switches from the board, and from the bar itself (2026-11-18)
+
+**Asked for.** A horizontal / vertical selector for the open-tabs bar at the left of the board's
+"space" readout, and the same choice while the bar is vertical.
+
+**What it is.**
+- Two icon buttons in a pill well, the same `.theme-seg` the board's layout switch uses: a window
+  with a strip across the top (Horizontal) and a window with a rail down the left (Vertical).
+  The icons are `barTop` and `barSide` in `js/ui.js`. The buttons form a labelled group with
+  `aria-pressed` on each.
+- **Two places, one setting.**
+  - First in the board's head, before the space readout. `#board-state` now sits in a
+    `.board-lead` wrapper that takes the head's `state` grid area, and the switch is prepended
+    to it.
+  - At the top right of the bar's head while it is vertical (26 px buttons, so they fit beside
+    the live count in the 212 px rail). That one shows on every view, like the rail itself, so
+    the bar can be turned back from Notes or the Library. The horizontal strip doesn't carry
+    one: the board's switch sits right under it.
+- Both write `tabsBar` through `saveSettings`, the same write as Settings › Open tabs bar. So the
+  bar moves through the usual `stacknest:tabsbar` path, Settings shows the change, and a change
+  made in Settings lights the switch. In Hidden, neither button is lit and either one brings the
+  bar back. Pressing a button keeps focus on a visible twin when the pressed one moves away with
+  the bar.
+- The board is now redrawn when the bar moves. An empty board's hint ("Drop a tab here from the
+  live strip above" or "…the tab rail on the left") had kept the old wording until something
+  else redrew it, which the new switch made easy to see.
+
+**Verified.** In headless Chrome with real clicks, 23 checks pass with no exceptions or console
+errors:
+- The switch sits left of the space readout. The vertical rail has its own switch, which fits
+  beside the live count at 240 px, at 212 px (a 1100 px window) and in the stacked layout below
+  881 px.
+- Each switch moves the bar and saves the setting, both switches agree, and Settings agrees in
+  both directions, Hidden included.
+- Switching back from the rail works on the Notes view.
+- Enter on a focused button works.
+- The empty board's hint follows the bar.
+
+## Zen edits notes in place, and a quick note waits in the top-right corner (2026-11-18)
+
+**Asked for.** Notes, to-dos and reminders editable in Zen, not only tickable. And a quick way to
+add a note from the top-right corner that peeks open on hover and hides when the pointer leaves.
+
+**Editing in place** (`js/zen.js`, with a small API in `js/notes.js`).
+- Every text in a Notes card shown in Zen rests as rendered text and becomes a text box on a click,
+  or on Tab: a reminder, a list's title and rows, a note's title and body. A click on a link still
+  follows it. This is the Notes view's own `lineView` deal, rebuilt for Zen as `lineField` and
+  `areaField`.
+- Keys work as in Notes. Enter in a row adds the next row under it. Backspace in an empty row
+  removes it and steps up. Enter in a list title goes to the first row. Enter in a note body
+  continues a markdown list. Esc leaves the field and stays in Zen.
+- Each card has a bell (when it has no time), a delete with the Notes view's confirm and Undo, and
+  a × per row. They show on hover or focus, and always on a touch screen. The time chip is a button
+  that opens the Notes view's reminder popover to change or clear it. "+ Add item" ends each list.
+- Text saves through the Notes view's debounced queue (`saveNoteField` → `queueSave`). Row
+  add/remove, reminder, delete and quick note go through `mutate()`, so typing is flushed first.
+  New exports: `saveNoteField`, `flushNoteSaves`, `addNoteRow`, `removeNoteRow`,
+  `openNoteReminder`, `deleteNoteCard`, `addQuickNote`.
+- **Typing is never rebuilt.** Zen re-renders on every Notes change, including the echo of its own
+  saves. `render()` now holds back while a field marked `data-edit` has focus and runs when the
+  field is left (after its typing is flushed). A row added or removed from Zen forces the rebuild,
+  because the store matches the screen at that point. Each field's `data-edit` is
+  `scope|card|row|field` (the scope is the pane), so focus and the caret come back to the same
+  field after a rebuild.
+- A card dragged in a pane no longer starts its drag from a text box, so text can be selected
+  there.
+- Toasts sat under Zen (z-index 30 vs 40), so "Reminder set" and the like never showed there. While
+  Zen is on they are at 45, still under dialogs (60). The Undo bar was already above.
+
+**The quick-note corner.**
+- A note button sits at the far right of Zen's top bar. Hovering it drops a panel down with one
+  box ("Jot a note…") and a Save button, nothing else. A first version also listed the five most
+  recently edited notes under the box; it was taken out the same day, at the owner's request, so
+  the corner shows no other notes.
+- Enter saves the box as a new note card at the top of Notes, body only and no title; Shift+Enter
+  adds a new line. "Saved to Notes" shows for a moment in the panel's header.
+- The panel folds about 0.2 s after the pointer leaves. It stays open while focus is inside it
+  (you are typing) or after a click on the button. A click outside, Esc, or the button again folds
+  it.
+- Hover is mouse and pen only. A tap is a click, which holds it open. A 10 px see-through bridge
+  between button and panel keeps it open while the pointer crosses.
+- A half-written note is kept in `localStorage` (`stacknest:zen-quicknote`, this device only)
+  until it is saved.
+- It folds on a peek at the wallpaper, on the arcade page and on leaving Zen.
+
+**Verified.** In headless Chrome with real mouse moves, clicks and keystrokes over CDP, 42 checks
+pass with no exceptions or console errors:
+- An outside change to Notes mid-typing leaves the field and caret alone, and the held-back render
+  lands on leaving.
+- Enter, Backspace, ×, Add item and list continuation each store the right rows or text.
+- The reminder popover, the confirm dialog, the toast and the Undo bar all draw over Zen.
+- The quick note opens on hover, survives the pointer crossing into it, folds when it leaves,
+  stays while typing, saves on Enter, folds on Esc or a click outside, keeps a draft across a
+  reload, and shows no notes besides the box.
+
+## Drive says "not available here" instead of pretending (2026-11-18)
+
+**Found while removing the preview.** `js/drive.js` decided between real Drive and a simulated
+one with `isLive()`: a runtime ID plus `chrome.identity.getAuthToken`. The simulation existed for
+the browser preview, but it also ran inside the real extension in any browser without
+`getAuthToken` (some Chromium browsers leave it out). There, Connect "succeeded" as
+`you@gmail.com (preview)`, Back up now saved to local storage, and the toast said "Backed up … to
+Drive". Someone could believe they had a cloud backup when they didn't. Chrome itself always has
+the function, so this never happened there.
+
+**Fix.**
+- `js/auth.js` › `signInAvailable()` checks for the function the configured path needs
+  (`getAuthToken`, or `launchWebAuthFlow` when a Web client is set). `mintToken` refuses first
+  with the code word `signin_unavailable`, the same pattern as `wrong_extension_id`. That covers
+  the page and the worker, so incognito, where the worker signs in, is covered too.
+- `js/drive.js`: the simulation and its `stacknest:cloud:devfile` key are gone. `driveAvailable()`
+  (incognito, or `signInAvailable()`) replaces `isLive()`. Connect, Back up now and Restore check it
+  first and answer with one message: this browser doesn't let extensions sign in to Google, Export
+  backup still works. The worker's `signin_unavailable` maps to the same message. Sign-out always
+  clears tokens and state, and only tries to revoke where sign-in exists.
+- A leftover fake account (an email ending in "(preview)") is read as not connected.
+- Settings › Backup & sync: the status reads *drive not available here*, the Google Drive row
+  shows a disabled **Not available here** button, and the note says why and points to Export
+  backup.
+
+**Verified.**
+- In headless Chrome with `getAuthToken` removed before the page loads, 18 checks pass:
+  - Settings shows the status, the disabled button and the note.
+  - `connect()`, `connect({ chooseAccount })`, `backupNow` and `restoreLatest` all refuse with the
+    message, and nothing is marked connected.
+  - Sign-out still works.
+  - The old fake account is ignored.
+  - An incognito-style page whose worker answers `signin_unavailable` shows the same message.
+  - Normal Chrome still offers Connect, and no Google page opens.
+- `scripts/smoke-test.mjs` now runs the core of this on a second page. It passes on the store
+  build, the install build and the dev folder, and fails on the previous commit (status "preview",
+  Connect offered, all three calls resolved, Drive marked connected).
+
+## The browser preview and the icon master are gone (2026-11-17)
+
+`js/mock.js`, the `chrome.*` shim that let `newtab.html` run in a plain browser tab, and
+`icons/icon.svg`, the master the PNG icons were rendered from, were deleted on purpose
+(`b618503`). What depended on them went too:
+
+- `js/app.js` no longer imports the shim. `scripts/package.sh` lost its three mock exceptions
+  (the copy step, the allowed missing import, the zip check) and now copies all of `js/`.
+- `scripts/store-assets.mjs` (the store screenshots and promo tile, which ran on the shim),
+  `scripts/render-icons.mjs` (which needed the SVG) and `.claude/launch.json` (the preview
+  server) are removed. The images already in `docs/store/` and `icons/*.png` stay as they are.
+  New store screenshots are taken by hand; the launch checklist says so where they are uploaded.
+- Development happens in the extension itself: Load unpacked, reload after a change, and
+  `node scripts/smoke-test.mjs .` for a headless pass over every view (README › Development).
+- Left in place: `js/drive.js` still simulated the cloud when `chrome.identity` was missing (fixed
+  the next day, entry above), and `js/ui.js` still falls back to a public favicon resolver outside the extension. Older entries
+  that say "verified in the mock preview" describe how things were checked at the time.
+
+## Google sign-in: one extension ID everywhere, and a plain answer when it isn't (2026-11-17)
+
+**Report.** Connect on another computer showed Google's *"Access blocked: LifeManager's request
+is invalid — Error 400: invalid_request"*. This Mac was fine: its copy uses StackNest's own OAuth
+client (`1020230466744-gi8j…`, project `stacknest-511618`, since `28c898a` on 2026-10-15) and had
+backed up to Drive that same morning.
+
+**Cause.** The other computer ran a build from before `28c898a`. Every earlier build, and `main`
+until the 2026-10-30 merge, carried LifeManager's client, which explains the name on the page.
+*invalid_request* is what Google says when the extension ID doesn't match the client's registered
+Item ID. A Chrome Extension client is registered to exactly one ID, and the ID comes from the
+manifest `"key"`. `scripts/package.sh` strips the key, because the store refuses it, so anyone
+hand-installing that zip got a random ID. The current zip would have failed the same way, just
+with StackNest's name on the page.
+
+**Fix, in three layers.**
+- **One ID for every hand install.** `package.sh` now also writes
+  `dist/stacknest-<ver>-install.zip` (with its unzipped folder), the same files with the key put
+  back. That is the build to share. The store zip stays key-less. Packaging refuses to finish if
+  the key's ID isn't one Google signs in.
+- **A guard before Google.** `js/authConfig.js › OAUTH_EXTENSION_IDS` lists the IDs the client
+  is registered to (today `jcmh…`). `auth.js › mintToken` checks `chrome.runtime.id` against it
+  first, and so does `drive.js › connect`. This covers the page and the incognito worker path
+  alike. A copy under any other ID never opens Google's page. Instead it says *"Google can't sign
+  in this copy of StackNest: it's an old build, or it was installed without its ID key. Export a
+  backup, install the latest StackNest, import the backup and connect again."* Google's own
+  `invalid_request` / `bad client id` errors map to the same advice. The old wording, "isn't
+  available right now", read like an outage.
+- **A test that can't drift.** `scripts/smoke-test.mjs` derives the ID from the manifest key and
+  fails if `OAUTH_EXTENSION_IDS` doesn't list it. Derivation: SHA-256 of the DER key, first 32 hex
+  digits, each spelled a–p. It also checks that Chrome loads a keyed build under that ID. On the
+  key-less store build it presses Connect and asserts the reinstall advice appears and no
+  `accounts.google.com` target opens.
+
+Toasts now stay up in proportion to their length, from 2.4 s up to 12 s at 55 ms per character,
+so a two-line instruction can actually be read. Short confirmations are unchanged.
+
+`package.sh`'s stylesheet check also stopped misreading `url(%23b)` inside an inline SVG
+`data:` URI (the Zen smoke filter) as a missing file. Quoted `data:` URIs are dropped before the
+`url()` scan.
+
+**When the store listing exists** (launch checklist §C): the store's public key replaces the dev
+key, the client's Item ID becomes the store ID, and that ID replaces `jcmh…` in
+`OAUTH_EXTENSION_IDS`. The smoke test fails until all three agree.
+
+Verified: `sh scripts/package.sh` builds both zips, and the install manifest gives
+`jcmhhjnegjiejjjcppfkejnclbljnldm`. `node scripts/smoke-test.mjs` passes on the store build
+(random ID `jmdh…`, guard message shown, no Google page), on the install build and on the dev
+folder (both `jcmh…`), with 0 exceptions and 0 console errors.
+
+## Collections can be pinned to Zen (2026-11-17)
+
+Links, Library folders and Notes cards could already be pinned to Zen; a whole collection could
+not. Every collection header now carries the same pin, right after "Open all in a new window"
+(the main action first, then the quiet toggles). It lights up like every other pin, and a pin
+made or removed in Zen, on the board or in another tab repaints in place (js/zenpins.js
+syncButtons).
+
+- **Store.** A pin is `{ kind: 'collection', colId, title }` in `stacknest:zenpins`, keyed
+  `c:<colId>`, one per collection. It goes into backups with the other pins, and the web bridge
+  sends it as its own kind (docs/specs/stacknest-web-bridge.md).
+- **In Zen.** The Pinned pane shows it as a live card: the collection's own colour dot, its name,
+  the link count, "open all in background tabs" and unpin. The first eight links show, then
+  "+ N more in the collection". It reads from every Space, so a collection pinned in Work still
+  shows while Personal is active. Like the other pinned cards, it can be dragged into any order.
+- **Deleted.** A collection that is deleted keeps its pin and says "This collection is no
+  longer here". Undo brings the card straight back, which dropping the pin on delete would
+  break.
+
+## Brush Stroke's saved painting gets a foot, a little luck and a sigil; games keep their shape in full screen (2026-11-17)
+
+The owner asked for five lucky lotto numbers and a valid BIP-39 seed phrase on the saved
+painting, the quote clearly visible, centred and in black ink, the date and time off the
+artwork, a unique sigil in a corner, the with/without-stroke switch to show on the card, and
+games that do not stretch in full screen.
+
+- **A paper foot below the painting** (`artwork()` in `js/game-brush.js`): the same paper,
+  mirrored so the grain meets at a soft fold. The painting itself carries only its stroke, trace
+  and red seal. The foot holds the card's kind word centred in black Petit Formal Script (one
+  line if it fits at a large size, else two balanced lines, never a lone word), five lotto
+  numbers (1–50) in ink rings, the twelve words in a numbered 4×3 grid, a caution in plain words
+  (a BIP-39 seed is the master key of a BIP-32 wallet; this one has been on a screen and in a
+  picture, so keep it for luck and never fund it), and a bottom row: the date and time it was
+  made at the left, its own sigil in the corner. The sheet grows to fit (1600 px wide); the
+  card's thumbnail shows the painting's square.
+- **The phrase is valid BIP-39** (`js/luck.js`, `js/bip39-words.js`, the standard English list,
+  SHA-256 `2f5eed53…`). Its 128 bits are the first half of SHA-256 over 32 bytes from
+  `crypto.getRandomValues` and the round's own movement (the sub-millisecond moment and way of
+  every turn, each press and swipe's place and time), so the play adds unpredictability and can
+  never remove the system's. SHA-256 is computed synchronously in `luck.js`; it matches Node's on
+  300 inputs, the official test vectors pass, and 2,000 generated phrases all validate.
+- **The sigil** is drawn from 16 further random bytes (separate from the phrase's, so it reveals
+  nothing of the words): a double ring ticked where bits are set and a line walked through nine
+  points, begun with a small circle and ended with a bar, a red dot at its heart; its id is
+  printed beside the date.
+- **The stroke switch shows.** The card already had a "Brush stroke shown / hidden" switch, but
+  Brush Stroke never asked for it; it now does, and the hidden version keeps the faint trace.
+- **Full screen keeps proportions.** Only the lounges take the screen's shape now; games stay
+  square, as large as fits on the dark ground (`is-wide` is set for `meta.lounge` alone), so
+  nothing stretches. Measured in headless Chrome: six games 1:1 (element and drawing), the two
+  lounges 1.696 with drawing and element the same shape.
+
+## Zen, round six: a temple to sit in, a gong to sit by, games to the edges (2026-11-17)
+
+The owner asked for a Buddhist temple lounge with incense, monks and pilgrims and slow sitar and
+tabla, a meditation timer with a soft gong in it, games that fill the whole screen in full
+screen, and a choice to leave Brush Stroke's black stroke out of a saved painting.
+
+- **Meditation timer** (`js/meditate.js`). In the Temple lounge a gong button sits on the
+  player bar. Its panel offers 3, 5, 10, 15, 20 or 30 minutes (arrow keys move along them) and
+  an optional gong every five minutes; Begin strikes one gong, and three close the sit. Every
+  gong of the sit is scheduled on the audio clock when it starts, so the ending is on time even
+  with the tab hidden; pausing or ending cancels them. While sitting, a quiet dial in the top
+  corner shows the time left (pause and end on hover or focus); the lounge plays on around it.
+  Today's minutes and the last choice are kept on this device. Esc closes the panel first;
+  leaving the lounge ends the sit. The arcade's sound switch is respected.
+- **The gong** is synthesised: seven inharmonic partials, each a pair of tones detuned a
+  fraction of a hertz (the slow beating is its shimmer), a padded mallet thump, a faint settle
+  in pitch, and a ten-second fade. Rendered offline: peak 0.35, silent by 12 s.
+- **Temple at Dusk** (`js/lounge-temple.js`): an Indian Buddhist shrine hall at dusk in the
+  spirit of the great pilgrimage temples, original and drawn with care for dignity. A gilded
+  seated Buddha (lowered eyes, hands in the lap, thumbs touching) in a red niche with a halo,
+  butter lamps, marigolds and water bowls; incense rising in slow ribbons; monks (Tibetan and
+  Theravada) chanting at low tables, the eldest sounding a singing bowl; barefoot pilgrims (an
+  elderly woman with beads, a family, a full prostration on a board, walkers turning the prayer
+  wheels); the bronze bell; the Bodhi tree and a brick spire under prayer flags through the
+  arches; dusk to night to dawn. The critic's dignity notes (the first face read as a grin, the
+  hands as a block, a prostration as a fall) were all fixed before it went on the shelf. The
+  meditation timer's gong button appears on the bar here only.
+- **Reading Room** (`js/lounge-reading.js`): an old library on a rainy night, from your own
+  armchair. A tall arched window with rain on the glass, a gas lamp and a church spire beyond;
+  floor-to-ceiling shelves with gilt spines and a rolling ladder; a green banker's lamp over an
+  open book whose pages turn, tea, spectacles and an hourglass; a stone fireplace with a mantel
+  clock that keeps and strikes the real hour; a tabby by the hearth. Wide: a window-seat nook, a
+  writing desk with quill and inkwell, framed maps. Click to turn a page, pull a book (an
+  invented title), light or dim the lamp, poke the fire, pour tea, change the rain, roll the
+  ladder. It plays "Pages", the piano waltz written for it. Whole bays appear only when they
+  fit, so no full-screen shape cuts a window or a desk in half.
+- **Llama Trail, a glide rather than a gauntlet.** The owner asked for the genre's best feel
+  and presentation (Alto's Adventure the reference; mechanics and polish only, our own art) with
+  the stones gone and an easy glide. No rocks and no chasms; landings are forgiving (clean
+  within ±0.75 rad, wobbly to ±1.35) and, with the button up, the llama settles to the slope, so
+  ordinary jumps land smoothly; gentler swells (steepest uphill 48°→22°) and a minimum speed.
+  Rails to grind (fences that follow the snow, fallen logs on stakes), and combos: flips, grinds,
+  long air and apples multiply on a clean landing, and ×2 or more gives a two-second boost with a
+  light ribbon. Presentation: four-stop skies through the day cached and cross-faded, four ranges
+  in atmospheric perspective with mist between them and rim light, sun bloom, a crescent moon,
+  stars, shooting stars and the odd aurora, drifting fog and changing snowfall, soft spray, a
+  shadow, landing squash, a scarf that streams with speed, and a camera that eases back and
+  looks ahead as it speeds (less under reduced motion). Left alone it glides on: a measured idle
+  minute covered 825 m with no fall.
+- **Forest Drive, a new road every time.** Each drive draws a route from a seed: the road's
+  bends and hills, which trees line it (more pine or broadleaf, how many birches, ferns, how
+  thick), and its season, one of a summer road, an autumn road (copper and amber), a spring road
+  (fresh green, blossom), a late-summer road (gold) or a deep pine valley. It starts at a random
+  hour and in a fitting weather, and the title card names the day's road; "Back on the road"
+  after a crash draws a new one. The shelf's still keeps one route.
+- **Headlights that follow the road.** The beams used to swing against a turn (they were offset
+  by minus the steering). They now aim at the farthest stretch of road in view within about 40
+  segments ahead, leading a touch into the turn being steered, so they reach down the road and
+  sweep into its bends.
+- **Mountain Cabin** (`js/lounge-cabin.js`): a log cabin high in snowy mountains at night, from a
+  rocking chair. A nine-pane window frosted at the corners onto a moonlit peak, an aurora, pine
+  slopes and a valley village, snow falling at four depths and swirling in gusts, a fox, deer or
+  owl now and then; a stone fireplace whose flames are a small rising heat field over the logs
+  (logs settle, fuel burns down, a poke flares it), the firelight blended between a low and a high
+  bake each frame so it truly moves; mittens drying, a kettle that whistles, cocoa, a husky on
+  the braided rug. Wind gusts lift the murmur layer in step with the snow. Wide: a bunk under a
+  second window, the door with a wreath, a woodpile, a reading corner. Plays the two gentlest
+  lo-fi recordings.
+- **Sunset Beach** (`js/lounge-beach.js`): a tropical beach from a deckchair as the sun sinks over
+  ten minutes, golden hour through coral and rose to violet dusk, stars and a crescent moon. A
+  glittering path on the water, a sailboat crossing, waves that stand up lit through, break, wash
+  up in lacy foam and draw back leaving glossy sand and bubbles; a palm, a pier whose lanterns
+  come on one by one, gulls, crabs, sandpipers. The surf's sound is read from the same wave
+  timeline the picture uses (a roar at each break, a fizz in the run-up, 0.45 s ahead to land
+  with it). Shells to collect, a sandcastle the next wave softens, dolphins, a shooting star.
+  Wide (whole bays only): a hammock, tide pools, a bonfire with friends, a lifeguard hut, dunes,
+  a lighthouse. Plays warm lo-fi recordings.
+- **Forest Cabin** (`js/lounge-woods.js`): a timber A-frame in a temperate rainforest, from an
+  armchair under string lights along the rafters. A tall gabled window onto a porch puddle under
+  the eaves, a creek with stepping stones, ferns, a fallen log with mushrooms, firs fading into
+  drifting mist; a deer, an owl, a frog now and then; glowing mushrooms and fireflies at night. A
+  cast-iron stove on green tiles with a copper kettle, a record player, plants, a ginger cat on
+  the window seat. One rain level (off, soft, heavy, with a slow gathering wave) drives the
+  streaks, rivulets, rings, fireflies and the rain sound; eave drips land on their own timer with
+  a drip each. Wide: a kitchen corner, a bed nook under the eaves, the door with a yellow
+  raincoat, a woodpile. Plays soft, slow lo-fi recordings.
+- **The shelf as a mosaic.** Games and lounges are picture tiles in a few sizes (big, wide,
+  square, a full-width banner), laid out for how many there are so the rows always fill the
+  frame; the title and a line sit over a soft shade, the controls slide up on hover or focus.
+  Choosing one, the picture grows out of its tile into the square (kept in proportion: a square
+  copy scaled to cover the tile and clipped to its shape, easing out together) and gives way
+  to the live piece; back on the shelf it eases in. Reduced motion skips it. The interface-size
+  zoom on the root is divided out of the measurements so the picture lands exactly.
+- **The page switch moves to the bottom-left corner**, mirroring the peek button on the right.
+- **Koi Garden** (`js/lounge-garden.js`): a garden seen from a wooden veranda in late
+  afternoon, the sun sinking to evening over ten minutes. A koi pond (six koi, nine when wide)
+  with reflections, lily pads, a lotus and a frog; a stone lantern, a red arched bridge, a red
+  maple, a bamboo spout into a stone basin, raked gravel, a calico cat dozing by its tea. Wind
+  chimes under the eaves are played by the scene itself: each breeze swings the clapper, and a
+  rod sounds only when it is struck, so what you hear is what you see. Touch the water and the
+  koi come for food; the lantern lights, the maple sheds, the spout tips, the cat stretches.
+- **Night Train** (`js/lounge-train.js`): a compartment on a rainy evening journey. Through the
+  window, rain slants with the speed and drops run back along the glass; hills, a village, a
+  river with a stone bridge, fields, pines and telegraph wires pass at their own speeds. Now and
+  then a lit halt slides by as the train slows, a tunnel darkens the glass to the carriage's own
+  reflection, or lightning glows over the hills with soft thunder after. Inside: a reading lamp,
+  tea that trembles on every rail joint, a ticket (single to Port Ellery, coach C, seat 14), a
+  paperback, a pocket watch, a luggage rack, a dripping umbrella, Mim the cat in her basket.
+  The clickety-clack is timed to the joints passing the window (two knocks, a pause, two more),
+  slowing with the train. Wide: the corridor door, a timetable, the next bay with a sleeper.
+- **Music for the new lounges** (`js/arcade-kit.js`): the Temple keeps its composed raga (the
+  owner chose it over the free recordings found); the Garden plays the koto-style "Sumi"; the
+  Night Train rotates all four CC0 lo-fi recordings; the Reading Room gets "Pages", a slow
+  piano waltz in D major written for it (32 bars, 90 s, about 1.5 dB under the lo-fi loop).
+  Lounge scores are now looked up from one table, `LOUNGE_SCORES`.
+- **Brush Stroke, with or without the stroke.** The end card's painting has a switch, "Brush
+  stroke shown / hidden": hidden saves the paper, the trace and the inscription without the
+  black stroke. The thumbnail redraws as it flips; the choice is remembered.
+
+## Zen, round five: music and the Buddha, motion tied to the picture, the wallpaper on the board (2026-11-17)
+
+The owner asked that every wallpaper visibly move, for two musical and two Buddha scenes, for the
+wallpaper to be shown outside Zen too (a switch), and for artistic icons on both wallpaper buttons.
+
+- **Checked by looking, scene by scene.** A headless run of the real extension screenshots each
+  wallpaper twice, three seconds apart, with Zen's furniture hidden and the wall's breathing
+  paused, and counts the pixels that changed. All 18 move (Plain and your own image included).
+  Night, Aurora and Bamboo moved least (0.2–0.3% of the screen), so Night gained a shooting star
+  every 13 s and a thin cloud crossing near the moon, Aurora a second rippling curtain, Bamboo
+  two shafts of sun leaning through the grove. With reduced motion, or the switch off, every
+  scene measures 0% change.
+- **Four new scenes** (`js/wallpapers.js`, drawn SVG like the rest): **Nocturne** (dark), an
+  upright piano under an arched window at night, one candle on the lid, a metronome, sheet
+  music; **Serenade** (light), a guitar leant against a warm wall in a window's afternoon light,
+  a stool, a snake plant; **Lotus** (dark), a seated Buddha on a lotus throne in a pond at dusk,
+  the rising moon as his halo, pads, flowers and floating lanterns; **Shrine** (light), a mossy
+  stone Buddha head among bamboo with three sticks of incense before it.
+- **Motion tied to the picture.** Their effects sit on points in the drawing: the flame flickers
+  on the wick and its light breathes on the wall while notes rise off the keys (`candle`); notes
+  drift out of the sound hole while leaf shade sways in the window light (`notes`); rings spread
+  on the near water, petals drift, the halo breathes, lanterns flicker (`ripples`); three threads
+  of smoke rise from the stick tips and break into curls over glowing embers (`incense`). The
+  unit is the scene's own (`--k`, one viewBox unit as the wall draws it); it is measured in
+  container units on `.zen-fx`, not `vw`, because the interface-size zoom on `<html>` scales `vw`
+  away from the wall's pixels (a first try missed the incense tips by ~10 px). For these four
+  the overlay breathes with the wall, one keyframe pair started together, so a flame stays on its
+  wick across the whole 80 s cycle (checked at 0, 40 and 80 s). Under reduced motion the notes,
+  smoke, ripples and shooting star are left out rather than frozen mid-air.
+- **The wallpaper outside Zen.** Settings › Zen › "Show it outside Zen too" (`boardWallpaper`,
+  off by default; `js/wallboard.js`). The chosen picture lies under the frame, held still. A
+  first version frosted the whole main panel (70%, heavily blurred), and the owner's screenshot
+  showed the board still reading as its own grey ground, so the panel now paints almost nothing
+  (16% of the theme's colour) and the picture shows plainly between the columns. What carries
+  text turns to frosted glass instead: the header, the live-tabs strip, section heads and the
+  Settings index (74%), the collection columns (66%), the sidebar (58% of the frame), and in the
+  other views one soft pane behind the page (56%, lightly blurred); the dot lattice is dropped.
+  Cards and fields keep their paper. Checked in all three themes across the eight views, light
+  and dark pictures. It follows Zen's shuffle; Plain shows no picture. `boot.js` puts the last drawn scene up before first paint (`stacknest:wall`,
+  `stacknest:wallcss`), so a new tab does not flash; your own photo is too large to keep there
+  and arrives a moment later.
+- **Icons.** Shuffle: an open ensō whose end becomes an arrow, round a ridge and a sun. The
+  corner "look at the wallpaper" button: a frame left open at one corner, hills inside and the
+  crescent moon rising out of it.
+- The web bridge's `zen.wallpaper` now lists `nocturne`, `serenade`, `lotus`, `shrine`.
+
+## StackNest on the web: one connected site can show the new tab (2026-11-17)
+
+The owner wants a future StackNest website (no domain yet) to work as a home page showing
+exactly what the new tab shows, and wants the switch in place now so it can be turned on later
+without another release.
+
+- **Settings › 07 StackNest on the web.** A web address (empty; the placeholder
+  `https://stacknest.example (example only)` uses a reserved name, so it can't be a real
+  site), a **Connect** switch, and a status that only says what StackNest knows: *not
+  connected* (nothing is shared), *waiting for the site* (connected, no page has asked yet),
+  or *connected* with when a page last asked, plus "not a sign the site is up now". If Chrome's
+  own site access is removed, it reads *not connected* and says so. The address must be an
+  https origin (bare names get `https://`; paths, credentials, IPs, wildcards and http are
+  refused in words). It is read-only while connected.
+- **Mechanism.** The domain is chosen at run time, so nothing static works:
+  `externally_connectable` and web-accessible resources take fixed `matches`, and a wildcard
+  for any domain isn't allowed (or would expose the extension to every site). Instead the
+  manifest gains `scripting` and `optional_host_permissions: ["https://*/*"]`. Both add no
+  install warning: `getPermissionWarningsByManifest` gives the same four warnings with and
+  without them (Chrome 157), so existing users aren't asked to re-approve. Connect requests
+  the one origin (`chrome.permissions.request`, Chrome's prompt names the site) and registers a
+  content script for it (`chrome.scripting.registerContentScripts`, top frame,
+  `document_start`, persists across restarts). It is also injected into tabs of that site
+  already open.
+- **Trust lives in the worker.** `js/webbridge-content.js` is a relay: no storage reads, no
+  data, only protocol-1 types forwarded. `js/webbridge.js` in the service worker answers only
+  the top frame of a tab on the connected origin, while connected and while Chrome still grants
+  it. `chrome.storage.local` is set to `TRUSTED_CONTEXTS`, so a content script can't read
+  storage at all (verified refused). The worker's `auth:*` token handler and the offscreen
+  chime now answer only StackNest's own pages, since a content script can send runtime messages.
+- **Protocol 1** (`docs/specs/stacknest-web-bridge.md`): `window.postMessage` on the page's own
+  origin. `hello`, `get` (sections board, library, myspace, notes, tags, zen, settings, and
+  wallpaper by name), `subscribe` (change events carry section names, never values),
+  `todo.setDone` (the only write: tick a reminder or a list row), `open` (StackNest in a new
+  tab, only after a click). The site detects the relay by `data-stacknest-bridge="1"` on
+  `<html>`, set before its own scripts run.
+- **Privacy.** Nothing is registered, requested or sent until Connect. The Vault, its count,
+  the PIN record, the Google email, tokens and Drive state are never read into an answer, and
+  Vault URLs are filtered out of Zen pins, the Zen arrangement and tags. A change inside the
+  Vault alone sends no event. Disconnect stores `connected: false` first (the worker stops
+  answering and tells open pages), then unregisters the script and removes the permission. The
+  connection is kept under its own key `stacknest:web`, outside settings and backups: a grant
+  belongs to one browser, so a restore elsewhere must not claim to be connected.
+- **Not carried:** the colour theme (it lives in the page's `localStorage`), open tabs and
+  windows, history, the Duplicates "forgotten" list, arcade scores.
+- **Checked** headlessly against `https://localhost:8443` (self-signed): 39 checks covering
+  connect, every section, the Vault/PIN/token/email never appearing, the write, change events,
+  refusals, disconnect (unregistered, permission handed back, open page told, nothing after a
+  reload) and the "turned off in Chrome" status. The test copy grants the origin in its
+  manifest so Chrome's prompt resolves without a dialog, and records `permissions.remove`,
+  which Chrome refuses for a manifest grant. `scripts/smoke-test.mjs .` is clean.
+
+## Zen, round four: a kind ending, back to the list, a painting to keep, real lo-fi (2026-11-17)
+
+The owner asked that every game end with an uplifting word and the top three to-dos (so rest
+leads back into focus), that Brush Stroke's old strokes fade, its paper look real and different
+every time, and its painting can be saved; that the lounges fill a full screen, play recorded
+open-licence lo-fi, carry far more detail, and keep the rain low; and that every wallpaper moves.
+
+- **The end card** (`js/arcade.js`), over the stage after any round: a short uplifting line (never
+  the same twice running), the round's stats, then **up to three to-dos**: open reminders and
+  unticked checklist rows, soonest due first (then pinned, then list order), each with its due
+  time. Tick one there; or follow it, and Zen opens with that row scrolled into view, glowing
+  once, its tick box focused. Games that end (Llama Trail, Brush Stroke, Pebbles) show it on
+  their own; the endless ones and the lounges have a **Done** button on the player bar.
+- **Brush Stroke.** The trace fades with age (a half-life of about 40 s toward a faint floor, so
+  the whole path stays legible). Each painting gets a fresh sheet, seeded at random from four
+  stocks (rice paper, tea-stained, old letter, kraft) with its own mottling, fibres, laid lines,
+  an occasional fold, coffee rings, water blooms, foxing and handled edges. **Save painting**
+  writes a 1600 px PNG of the sheet, trace and last stroke with a seal and a pencilled date.
+- **Lounges, redrawn as detailed pixel art** (original scenes; the owner pointed at lo-fi
+  pixel rooms for the mood). Both paint into a 320-tall buffer, scaled up in whole steps, lit
+  with short warm and cool palette ramps (dither only where steps meet).
+  - *Night Room:* a desk in perspective with lamp, lava lamp, record player, keyboard and
+    mat; a rainy neon city beyond the window with shops, traffic and umbrellas at street
+    level; the cat on the sill; a bed, nightstand, monstera, neon moon and a standing lamp at
+    the sides when wide. Most things answer a click; lifting the needle fades the music.
+  - *Pixel Café:* a window seat over a rainy street, the counter and menu board, a barista
+    who comes and goes through the kitchen curtain, a refill brought by hand, guests at
+    their own tables, a sleeping dog; weather fades between rain, snow and clear.
+- **Lounges** draw into a wide canvas in full screen, so a 16:9 screen is filled, not
+  letterboxed. Music is now four **CC0 recordings** shipped in `audio/` (two per lounge,
+  credited in `audio/CREDITS.txt` though CC0 asks for none), played as a playlist that starts at
+  random and fades with pause and the sound switch; the synthesised loops remain as the
+  fallback. The rain bed sits at a fifth of its old level.
+- **The painting carries its word.** A saved painting is inscribed along its foot with the
+  card's kind line, in a formal copperplate script: Petit Formal Script (SIL OFL, shipped
+  unmodified in `fonts/`, credited in `fonts/OFL.txt`), in iron-gall brown with a halo of the
+  paper's own colour so it reads over the trace.
+- **Forest Drive.** The car is now an open-top tourer seen from behind (the soft top folded
+  on the rear deck, the driver's hair and scarf in the wind), and about one drive in three is
+  on a motorbike instead (the rider leans into the bends; one headlamp at night). The verge
+  still only slows you, but steering on into the trees (1.8 road half-widths out) ends the
+  drive softly among ferns and falling leaves, and the card brings its own word, about the
+  journey mattering more than the destination. "Back on the road" starts a fresh journey;
+  the hour and weather carry on. Hands off the wheel, the car mostly follows the bend and
+  drifts back to its lane, so a calm, idle drive never ends in the trees by accident.
+- **Weather on Space.** Six weathers: sunny (a deeper sky, a bigger glow, slow rays), clear,
+  cloudy, rain, a thunderstorm (darker light, harder slanting rain, forked lightning that
+  lights the whole scene, thunder a moment later), and snow. Space deals the next from a
+  shuffled deck, so each comes round before any repeats, and the change arrives in a few
+  seconds with its name shown; left alone the weather still drifts by itself. Rain and storms
+  now have their own soft rain sound under the Canon, at the lounges' lowered level.
+- **Llama Trail, remade as a downhill ride.** The owner asked for the feel of the endless
+  snowboarding genre (Alto's Adventure was the reference); the mechanics are the genre's, the
+  look, characters and music are StackNest's own. The llama rides a red sled down an endless
+  mountainside (swells, crests that throw it into the air, the odd kicker). A tap jumps;
+  holding on in the air flips it backwards; landing level with the snow keeps the flow and
+  each flip adds speed. Rocks are hopped, apples hang in arcs to jump for, and a bad landing
+  or a rock is a tumble into soft snow, then the card. The sky turns through dawn, day, gold,
+  dusk and a starry night over three parallax ranges; snow sprays and the sled leaves a track.
+- **Your own wallpapers, a small gallery.** Up to six of your own images (resized to about
+  1.6 MB each so they fit the storage quota), each with a × on its swatch to remove it; the
+  one in use is the gallery's `active` and the setting stays `custom`, so a single image saved
+  before the gallery carries straight over (and the web bridge still reads it). Removing the
+  one in use hands over to the next of yours, or back to Mist when none are left. The picker
+  rereads the gallery before every change, since Zen's shuffle can switch the active image.
+- **The wallpaper button shuffles.** In Zen the picture button no longer leaves for Settings:
+  each press deals the next scene from a shuffled deck (your own image too, if set), the old
+  one crossfading away and the new one's name shown a moment. Shift-click or right-click
+  still opens every wallpaper in Settings. Its icon is a small picture inside a ring of two
+  arrows (`wallShuffle` in `js/ui.js`), and the ring turns half a circle on each press.
+- **Panes fold.** Collection, To-do and Pinned each have a chevron beside the drag grip that
+  folds the pane to its header (title, count and picker stay), like the calendar; the fold is
+  kept in the Zen layout (`folded`). Going to a to-do from an end-of-round card opens the panes
+  it could be in first, so the row can be found and lit.
+- **A peek at the wallpaper.** A round button in Zen's bottom-right corner fades the whole
+  page (header, clock and calendar, panes, page switch) to 20% and lifts the contrast veil, so
+  the picture can be seen; the faded page is inert, and only the button stays lit, in the
+  accent, with a brief "Esc to come back". Esc or the button brings it back (Esc only leaves
+  Zen once the page is back); changing to the arcade or leaving Zen ends a peek too.
+- **Every wallpaper moves.** The three that only breathed now have motion of their own: leaf
+  shade swaying over the Garden's gravel with the odd leaf falling, dust turning in a shaft of
+  light across the Ensō paper, sand wisps blowing over the Dunes under a shimmering sun. A
+  person's own photo gets drifting soft light (bokeh), and the plain theme ground, which had
+  nothing, gets slow accent-tinted glows. Reduced motion and the Settings switch still stop it all.
+
+## Zen, round three: the arcade, the lounge, reminders with a chime, more wallpapers (2026-11-17)
+
+The owner asked, over one long session, for a second Zen page with calm games, a lounge, timed
+reminders from the calendar with a notification and a chime, more and animated wallpapers,
+Stoic quotes that can be starred, and a full-screen player.
+
+- **Pages.** A small switch at the bottom centre of Zen: Zen · Arcade · Lounge. The arcade page
+  keeps the clock, the calendar (a second view of the same one) and Leave zen beside a square
+  frame (`js/arcade.js`) with two shelves, Games and Lounge, each picked from a still of itself.
+- **Games** (each its own module, sharing `js/arcade-kit.js`: a 640×640 drawing space rendered
+  at the screen's real resolution, a self-pausing loop, synthesised notes and music):
+  Llama Trail (slides down a snowy slope, then hops stones; Bach's Prelude in C), Forest Drive
+  (a perspective road through dense forest across a whole day: sunrise, sunset, night with
+  headlights, and changing weather; Pachelbel's Canon), Lantern Drift, Ripple Pond, Brush
+  Stroke (the snake game as one ink stroke on old paper; laid along a path fixed to the paper
+  so it never wobbles, quarter-circle bends taken with an eased, honey-like speed, a 22% trace
+  that turns every game into a painting; original koto-style music), and Pebbles (tic-tac-toe
+  on lily pads; each landing pebble rings the next note of do-re-mi, and a win resolves on a
+  chord). Nothing ends harshly: a stumble is a rest, and any key carries on.
+- **Lounge.** Night Room (a desk by a rainy window: lava lamp, fairy lights, a sleeping cat, a
+  screen that types, a backlit keyboard; a lo-fi loop over rain and vinyl crackle) and Pixel Café
+  (a 160×160 pixel scene scaled up crisply; a gentle bossa over café murmur). Things answer a click.
+  All music is public-domain or written here, played on a synthesised voice: nothing is shipped.
+- **Full screen** on the player bar; Esc steps back (a game to its shelf, the shelf to Zen).
+- **Reminders.** The calendar takes a timed reminder for today or a later day (folded behind
+  one button). It lands in Notes and arms the usual alarm; when due, the worker opens an
+  offscreen document (`offscreen.html`, permission `offscreen`) to play a soft synthesised bell
+  (`js/chime.js`) and posts a notification that stays until seen. Settings → Zen → "Chime with
+  reminders" turns the bell off; the eye-rest pause ends on it too.
+- **Wallpapers.** Twelve drawn scenes (Lake, Sakura, Dunes, Ocean, Forest and Aurora added). Each
+  names a slow motion laid over it by CSS: mist, petals, leaves, fireflies, stars, aurora,
+  waves, or a plain drift. Off with Settings → Zen → "Animate the wallpaper", and always off
+  under reduced motion.
+- **Thoughts.** Stoic and classical lines (with their authors) joined ours. A star keeps one;
+  "starred only" narrows the daily rotation; the label shows only on hover. Kept under
+  `stacknest:thoughts` and in backups.
+
+## Zen, round two: pins everywhere, calendar, arranging, eye rest, new tab choice (2026-11-17)
+
+The owner: let any link from a collection or the Library be pinned or unpinned for Zen, not only
+notes; a collapsible calendar on the side under the time and date; drag-and-drop arranging of
+Zen's panes and items; a good thought at the top; a 30-second eye rest every 30 minutes of screen
+time in Zen, switchable; and, last in Settings, a switch for whether StackNest is the new tab
+page at all, or opens only from the toolbar button.
+
+- **Pins** (`js/zenpins.js`, key `stacknest:zenpins`). A link pin is keyed by URL, so one page is
+  one pin wherever it is shown; a Library folder pin is keyed by bookmark id and lists the
+  folder's links live in Zen. The pin button sits on every collection link, Library bookmark and
+  folder, My Space link and on each row of Zen's collection pane. The Vault gets none: pinning
+  would show its links outside the PIN. Every pin button carries `data-zenpin` and repaints in
+  place when the store changes, so no view re-renders for it. Notes keep their own `pinned` flag.
+- **Layout** (key `stacknest:zenlayout`): pane order, per-list item order (`todo`, `pinned`,
+  `col:<collectionId>`) and whether the calendar is open. Items the saved order has not seen go
+  on top in To-do and Pinned (newest first), at the end in a collection (its own order). Both keys
+  ride in backups.
+- **Arranging**: a pane moves by the grip in its caption (so its text stays selectable), an item
+  from anywhere on it; Alt+arrow keys (or plain arrows on a grip) do the same from the keyboard.
+- **Calendar** (`js/zencal.js`): the month under the clock in a side column; dots on days with a
+  reminder due, a picked day lists them. Week start follows the locale. Folds to its header.
+- **Thought** (`js/thoughts.js`): one original line per day across the top, the same in every
+  tab; a button shows another.
+- **Eye rest** (`js/zenrest.js`, setting `zenEyeRest`, on by default): screen time counts only
+  while a Zen page is visible, through one shared `{ acc, last }` in localStorage so several tabs
+  add up to one clock. Five minutes with no visible Zen resets it. Esc skips the pause, not Zen.
+- **New tab** (setting `newTab`, plate 06, the last): Chrome has no way to switch an override off
+  at runtime, so with it off `boot.js` hands a plain new tab to `chrome://new-tab-page/` before
+  paint. It tells a plain new tab apart from StackNest opened on purpose by the URL: the toolbar
+  button then opens `newtab.html?open=1`, and notifications use `#notes`. The choice is mirrored
+  to localStorage (`stacknest:ntp`) because boot.js cannot wait for chrome.storage. If Chrome
+  refuses the hand-over, the page shows after at most 1.5 s, so a tab is never left blank.
+
+## Zen mode + wallpapers (2026-11-16)
+
+The owner: a zen button by the theme that shows an uncluttered page — one collection, the to-dos
+and other pinned items side by side — on a zen wallpaper, or one chosen in Settings.
+
+- **The switch.** `#zen-btn` sits right after the theme segment (a labelled pill; icon-only below
+  1000px of panel and on phones, where the theme segment itself folds away). On/off is
+  `stacknest:zen` in localStorage; `boot.js` writes `data-zen` on `<html>` before first paint so a
+  new tab opened in Zen never flashes the board. Esc leaves (the first Esc only blurs a field);
+  ⌘K / `/` are inert in Zen. While on, `.app` is `inert` and `display:none`.
+- **The page** (`js/zen.js`, `#zen`): clock + greeting + date set straight on the wallpaper, then
+  three frosted panes — **Collection** (a picker in the pane title, remembered as
+  `settings.zenCollection`; plain click goes, ⌘/Ctrl-click opens behind; "Open all"), **To-do**
+  (open reminders and unfinished checklists, tick in place, an add box that creates a reminder),
+  **Pinned** (any note / list / reminder pinned from Notes). 3 → 2 → 1 columns at 1100 / 700px.
+- **Pinning.** Notes cards gained a pin action (lit in lava when on). `pinned` is in the notes
+  `normalize()` base, so all three kinds keep it. A pinned card moves from To-do to Pinned.
+- **Wallpapers** (`js/wallpapers.js`) are drawn SVG data URIs — Mist, Garden (karesansui), Ensō,
+  Bamboo, Dusk, Night — so they ship with no new files and no network. Each carries a `tone`, which
+  sets the clock's ink. "Plain" uses the theme ground; "Your image" is downscaled (2400px, JPEG,
+  ≤3MB) and stored under `stacknest:wallpaper` on this device only — deliberately not in backups.
+  Picked in **Settings → 05 Zen**. The panes stay theme surfaces, so their text keeps the theme's
+  contrast whatever is behind them. CSP already allows `img-src data:`.
+
 ## Design-chief polish + launch readiness (2026-10-09)
 
 The owner: "fix minor indentation and placement, also font size issues, and make this app launch
@@ -1101,6 +2023,6 @@ console errors.
 manifest.json          newtab.html
 css/newtab.css         js/app.js (boot, search, events)
 js/tabs.js             js/bookmarks.js
-js/ui.js (dom helpers, toast, favicon)   js/mock.js (dev-only shim)
+js/ui.js (dom helpers, toast, favicon)
 fonts/ icons/          README.md (install steps)
 ```

@@ -5,6 +5,7 @@ import { el, icon, actionBtn, toast, tile, domainOf, debounce, addDropTarget, co
 import { TAGS_KEY, loadTags, tagChips, openTagEditor } from './tags.js';
 import { moveFromLibrary } from './myspace.js';
 import { hasPin } from './lock.js';
+import { zenPinBtn } from './zenpins.js';
 
 const BM_MIME = 'text/x-stacknest-bm';
 const TAB_MIME = 'text/x-stacknest-tab';
@@ -231,6 +232,7 @@ function folderCard(node) {
     ),
     el('span', { class: 'acts' },
       actionBtn('window', 'Open all as a new window', () => openAll(node)),
+      zenPinBtn({ folderId: node.id, title: node.title || 'Folder', from: 'library' }),
       permanent ? null : moveOutBtn(node),
       permanent ? null : actionBtn('rename', 'Rename', () => startRename(card, node)),
       permanent ? null : deleteBtn(node, `Delete folder and its ${count} items`),
@@ -257,6 +259,7 @@ function bookmarkCard(node, tagsMap) {
     ),
     el('span', { class: 'acts' },
       actionBtn('tag', 'Edit tags', (_, btn) => openTagEditor(btn, { url: node.url, title: node.title || node.url })),
+      zenPinBtn({ url: node.url, title: node.title || node.url, from: 'library' }),
       moveOutBtn(node),
       actionBtn('rename', 'Rename', () => startRename(card, node)),
       deleteBtn(node, 'Delete bookmark'),

@@ -1,0 +1,23 @@
+StackNest lounge music
+======================
+
+All four tracks are dedicated to the public domain under CC0 1.0 Universal
+(https://creativecommons.org/publicdomain/zero/1.0/). No credit is required;
+it is given here with thanks. Files are unmodified apart from their names.
+
+Night Room
+  room-chill-lofi-loop.ogg
+    "Chill lofi inspired [loop edit]" by qubodup, a loop edit of
+    "Chill lofi inspired" by omfgdude (OMF-Games)
+    https://opengameart.org/content/chill-lofi-inspired-loop-edit
+  room-softly.ogg
+    "Softly" by Loyalty Freak Music
+    https://commons.wikimedia.org/wiki/File:Loyalty_Freak_Music_-_06_-_Softly.ogg
+
+Pixel Café
+  cafe-lofi-hip-hop-loop.ogg
+    "Lofi Hip Hop Loop" by omfgdude (OMF-Games)
+    https://opengameart.org/content/lofi-hip-hop-loop
+  cafe-lofi-hip-hop.ogg
+    "lofi hip hop" by omfgdude (OMF-Games)
+    https://opengameart.org/content/lofi-hip-hop

@@ -9,6 +9,14 @@
   font-style: normal;
   font-display: swap;
 }
+/* a formal copperplate script: the inscription on a saved Brush Stroke painting */
+@font-face {
+  font-family: 'Petit Formal Script';
+  src: url('../fonts/PetitFormalScript-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: 'JetBrains Mono';
   src: url('../fonts/JetBrainsMono-var.woff2') format('woff2');
@@ -1175,6 +1183,19 @@ kbd {
   column-gap: 8px;
 }
 .tray-count { display: contents; }   /* its two spans join the grid above */
+
+/* the open-tabs bar switch (horizontal / vertical), js/app.js: first in the board's head, left of
+   the space readout; and at the head of the bar itself while it is vertical, so it can be turned
+   back from any view. The horizontal strip doesn't carry one: the board's is right under it. */
+.board-lead { grid-area: state; display: flex; align-items: center; gap: var(--s5); min-width: 0; }
+.board-lead > .sec-state { flex: 1; }
+.bar-seg { flex: none; }
+.board-bar-seg { padding-right: 2px; }
+.tray-bar-seg { display: none; }
+:root[data-tabsbar='side'] .tray-bar-seg { display: flex; margin-left: auto; min-height: 0; }
+:root[data-tabsbar='side'] .tray-bar-seg .chipx { width: 26px; height: 26px; }
+:root[data-tabsbar='side'] .tray-live-copy { min-width: 0; }
+:root[data-tabsbar='side'] .tray-unit { overflow: hidden; text-overflow: ellipsis; }
 .tray-label { grid-area: label; align-self: end; color: var(--accent-text); line-height: 1.2; }
 /* the large light numeral — the live tab count here, every section head's counts (.sec-num) —
    and its mono unit. --readout follows the Small text dial, as Settings says. */
@@ -2128,6 +2149,21 @@ kbd {
 .cloud-meta { font: 500 var(--t2)/1.45 var(--grot); color: var(--text-mut); margin-top: 8px; }
 .cloud-provider .set-actions { margin-top: var(--s3); }
 
+/* ——— StackNest on the web (Settings › 07): an address field, a switch, an honest status ——— */
+.set-input { width: 300px; max-width: 100%; font: 600 var(--t3) var(--grot); color: var(--text); background: var(--bg-card);
+  border: 1px solid var(--edge); border-radius: var(--pill); padding: 8px 14px; outline: none; }
+.set-input::placeholder { color: var(--text-mut); font-weight: 500; opacity: 1; }
+.set-input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.set-input[readonly] { background: var(--bg-inset); color: var(--text-soft); cursor: default; }   /* connected: switch off to change it */
+.set-input[aria-invalid="true"] { border-color: var(--red); }
+.set-fieldnote { margin-top: var(--s1); font: 500 var(--t2)/1.45 var(--grot); color: var(--red); max-width: 52ch; }
+.set-fieldnote:empty { display: none; }
+.web-status { display: flex; align-items: flex-start; gap: 8px; margin: var(--s2) 0 0; max-width: 56ch; font: 500 var(--t2)/1.45 var(--grot); color: var(--text-body); }
+.web-status .cloud-dot { margin-top: 0.42em; }
+/* grey: off · a ring: connected, not yet asked · green: the site has asked (when, the text says) */
+.web-dot.is-waiting { background: transparent; box-shadow: inset 0 0 0 2px var(--text-soft); }
+.web-dot.is-seen { background: var(--green); }
+
 /* ——— ticker config chips (Settings › Market ticker) ——— */
 .tick-checks { display: flex; flex-wrap: wrap; gap: 6px; max-width: 320px; justify-content: flex-end; }
 .tick-check { font: 700 var(--t2) var(--mono); color: var(--text-soft); background: var(--bg-card); border: 1px solid var(--card-line-2); border-radius: var(--pill); padding: 5px 11px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
@@ -2141,6 +2177,7 @@ kbd {
   .set-seg { width: 100%; flex-wrap: wrap; }   /* four options at a large interface size still fit a phone */
   .set-seg-btn { flex: 1 1 auto; padding-inline: 6px; text-align: center; }
   .set-select { width: 100%; }
+  .set-input { width: 100%; }
   .tick-checks { justify-content: flex-start; max-width: none; }
   .cloud-row { flex-wrap: wrap; }
   .cloud-btns { justify-content: flex-start; }
@@ -2745,6 +2782,1000 @@ kbd {
   .app.drawer-open .side { visibility: visible; transition: transform .22s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s; }
 }
 
+/* ————— Zen —————
+   One switch (the zen button beside the theme segment) swaps the whole workspace for a quiet
+   page on a wallpaper: a clock, one collection, the to-dos, the pinned cards. The panes are
+   frosted theme surfaces, so the text inside them keeps the theme's contrast whatever picture
+   is behind; only the clock sits on the picture itself, and data-tone picks its ink. */
+.icb.zen-toggle {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  width: auto; height: var(--ctl-h); padding: 0 13px 0 11px;
+  border: 1px solid var(--card-line-2); border-radius: var(--pill);
+  background: var(--bg-card); color: var(--text-mut);
+  font: 600 var(--t3) var(--grot);
+  transition: background .13s, color .13s, border-color .13s;
+}
+.icb.zen-toggle:hover { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-card); }
+.zen-toggle svg { flex: none; }
+@media (min-width: 881px) { @container main (max-width: 1000px) { .icb.zen-toggle { width: var(--ctl-h); padding: 0; justify-content: center; } .zen-toggle-label { display: none; } } }
+@media (max-width: 880px) { .icb.zen-toggle { width: 36px; height: 36px; padding: 0; justify-content: center; } .zen-toggle-label { display: none; } }
+
+.zen { display: none; --zen-ink: var(--text-strong); --zen-ink-soft: var(--text-soft); --zen-ink-on: var(--bg-card); }   /* data-tone overrides these below */
+:root[data-zen='on'] .app,
+:root[data-zen='on'] .drawer-scrim { display: none; }
+:root[data-zen='on'] .zen {
+  --zen-glass: color-mix(in srgb, var(--bg-card) 78%, transparent);
+  --zen-glass-line: color-mix(in srgb, var(--bg-card) 55%, transparent);
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden;   /* a page drawn aside by a swipe never makes the screen scroll sideways */
+  overscroll-behavior: contain;
+  background: var(--frame);
+  color: var(--text);
+}
+.zen[data-tone='theme'] { background: var(--bg); }
+
+/* the wallpaper's own layer, a little larger than the screen so it can breathe without edges */
+.zen-wall { position: fixed; inset: -4%; background: var(--zen-wall, none); pointer-events: none; will-change: transform; }
+.zen[data-tone='theme'] .zen-wall { display: none; }
+.zen:not([data-motion='none']) .zen-wall { animation: zen-breathe 80s ease-in-out infinite alternate; }
+@keyframes zen-breathe { from { transform: scale(1) translate3d(0, 0, 0); } to { transform: scale(1.06) translate3d(-1.4%, -0.9%, 0); } }
+
+/* the motion over it: one set of specks, dressed per wallpaper */
+.zen-fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.zen-fx i { position: absolute; left: var(--x); top: var(--y); display: none; }
+.zen-fx::before, .zen-fx::after { content: ''; position: absolute; display: none; }
+/* mist: two soft banks of fog crossing slowly */
+.zen[data-motion='mist'] .zen-fx::before, .zen[data-motion='mist'] .zen-fx::after {
+  display: block; width: 90vw; height: 26vh; left: -30vw; top: 52vh; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0)); filter: blur(10px);
+  animation: zen-fog 70s linear infinite;
+}
+.zen[data-motion='mist'] .zen-fx::after { top: 68vh; width: 120vw; height: 22vh; opacity: .7; animation-duration: 110s; animation-delay: -40s; }
+@keyframes zen-fog { from { transform: translateX(-40vw); } to { transform: translateX(150vw); } }
+/* stars (and aurora skies): a slow twinkle */
+.zen:is([data-motion='stars'], [data-motion='aurora']) .zen-fx i {
+  display: block; top: calc(var(--y) * 0.6); width: calc(3px * var(--s)); height: calc(3px * var(--s)); border-radius: 50%;
+  background: #fff; box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.7); opacity: 0; animation: zen-twinkle calc(var(--t) * 0.35) ease-in-out infinite; animation-delay: var(--d);
+}
+@keyframes zen-twinkle { 0%, 100% { opacity: 0; } 50% { opacity: .95; } }
+/* aurora: the light itself sways */
+.zen[data-motion='aurora'] .zen-fx::before {
+  display: block; inset: 4vh -10vw auto; height: 46vh; border-radius: 50%;
+  background: radial-gradient(60% 50% at 50% 50%, rgba(110, 240, 190, 0.32), rgba(110, 240, 190, 0)); filter: blur(24px);
+  mix-blend-mode: screen; animation: zen-aurora 26s ease-in-out infinite alternate;
+}
+@keyframes zen-aurora { from { transform: translateX(-6vw) skewX(-8deg) scaleY(.9); opacity: .55; } to { transform: translateX(6vw) skewX(8deg) scaleY(1.15); opacity: 1; } }
+/* fireflies: warm points wandering and breathing */
+.zen[data-motion='fireflies'] .zen-fx i {
+  display: block; top: calc(35% + var(--y) * 0.6); width: calc(5px * var(--s)); height: calc(5px * var(--s)); border-radius: 50%;
+  background: #f4ffb0; box-shadow: 0 0 12px 4px rgba(225, 255, 140, 0.55);
+  animation: zen-wander var(--t) ease-in-out infinite alternate, zen-glow calc(var(--t) * 0.25) ease-in-out infinite; animation-delay: var(--d);
+}
+@keyframes zen-wander { 0% { transform: translate(0, 0); } 33% { transform: translate(5vw, -4vh); } 66% { transform: translate(-3vw, -9vh); } 100% { transform: translate(4vw, 3vh); } }
+@keyframes zen-glow { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
+/* petals and leaves: drifting down, turning as they go */
+.zen:is([data-motion='petals'], [data-motion='leaves']) .zen-fx i {
+  display: block; top: -6vh; width: calc(13px * var(--s)); height: calc(9px * var(--s)); border-radius: 60% 0 60% 0;
+  background: #f4b9c9; opacity: .85; animation: zen-fall var(--t) linear infinite; animation-delay: var(--d);
+}
+.zen[data-motion='leaves'] .zen-fx i { background: #7fa86a; opacity: .7; }
+.zen[data-motion='leaves'] .zen-fx i:nth-child(n + 12) { display: none; }
+@keyframes zen-fall {
+  0% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(4vw, 28vh) rotate(120deg); }
+  50% { transform: translate(-2vw, 56vh) rotate(220deg); }
+  75% { transform: translate(5vw, 84vh) rotate(320deg); }
+  100% { transform: translate(1vw, 112vh) rotate(420deg); }
+}
+/* waves: light lines shimmering across the water */
+.zen[data-motion='waves'] .zen-fx::before {
+  display: block; left: -20vw; right: -20vw; top: 56vh; bottom: 0;
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, 0) 0 18px, rgba(255, 255, 255, 0.22) 18px 20px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+  animation: zen-swell 14s ease-in-out infinite alternate;
+}
+@keyframes zen-swell { from { transform: translateX(-6vw) translateY(0); opacity: .5; } to { transform: translateX(6vw) translateY(6px); opacity: 1; } }
+/* dapple: the shade of a tree just out of frame swaying over the raked gravel, and now and
+   then one of its leaves coming down */
+.zen[data-motion='dapple'] .zen-fx i {
+  display: block; left: calc(var(--x) * 0.42 - 9vw); top: calc(var(--y) * 0.42 - 12vh);
+  width: calc(15vw * var(--s)); height: calc(10vw * var(--s)); border-radius: 46% 54% 60% 40% / 50% 42% 58% 50%;
+  background: radial-gradient(closest-side, rgba(66, 74, 46, 0.15), rgba(66, 74, 46, 0)); filter: blur(10px);
+  animation: zen-sway calc(7s + var(--s) * 3s) ease-in-out infinite alternate; animation-delay: calc(var(--d) * 0.15);
+}
+@keyframes zen-sway { from { transform: translate(-1.6vw, -1vh) rotate(-7deg) scale(.93); } to { transform: translate(1.9vw, 1.2vh) rotate(8deg) scale(1.07); } }
+.zen[data-motion='dapple'] .zen-fx i:nth-child(n + 18) {
+  left: var(--x); top: -6vh; width: calc(12px * var(--s)); height: calc(8px * var(--s)); border-radius: 60% 0 60% 0;
+  background: #b4733f; filter: none; opacity: .7; animation: zen-fall calc(var(--t) * 1.5) linear infinite; animation-delay: calc(var(--d) * 2);
+}
+/* motes: a shaft of morning light across the paper, dust turning slowly in it */
+.zen[data-motion='motes'] .zen-fx::before {
+  display: block; left: 8vw; top: -30vh; width: 34vw; height: 170vh; transform-origin: 50% 0;
+  background: linear-gradient(90deg, rgba(255, 248, 228, 0), rgba(255, 248, 228, 0.75) 45%, rgba(255, 248, 228, 0.75) 55%, rgba(255, 248, 228, 0)); filter: blur(22px);
+  animation: zen-shaft 22s ease-in-out infinite alternate;
+}
+@keyframes zen-shaft { from { transform: rotate(-32deg) translateX(-3vw); opacity: .35; } to { transform: rotate(-25deg) translateX(4vw); opacity: 1; } }
+.zen[data-motion='motes'] .zen-fx i {
+  display: block; width: calc(3px * var(--s)); height: calc(3px * var(--s)); border-radius: 50%;
+  background: rgba(118, 98, 70, 0.6); box-shadow: 0 0 5px 1px rgba(255, 246, 222, 0.9); opacity: 0;
+  animation: zen-mote var(--t) ease-in-out infinite; animation-delay: var(--d);
+}
+@keyframes zen-mote {
+  0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: .9; }
+  50% { transform: translate(3vw, -8vh); } 85% { opacity: .8; }
+  100% { transform: translate(-1vw, -17vh); opacity: 0; }
+}
+/* sand: wisps blown off the crests, and the low sun shimmering in the heat */
+.zen[data-motion='sand'] .zen-fx::before {
+  display: block; left: calc(72% - 24vw); top: calc(42% - 24vw); width: 48vw; height: 48vw; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 243, 220, 0.6), rgba(255, 243, 220, 0)); animation: zen-heat 9s ease-in-out infinite alternate;
+}
+@keyframes zen-heat { from { transform: scale(.93); opacity: .5; } to { transform: scale(1.07); opacity: 1; } }
+.zen[data-motion='sand'] .zen-fx i {
+  display: block; left: 0; top: calc(60% + var(--y) * 0.38); width: calc(15vw * var(--s)); height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 236, 205, 0), rgba(255, 236, 205, 0.8), rgba(255, 236, 205, 0));
+  animation: zen-gust calc(var(--t) * 0.8) linear infinite; animation-delay: var(--d);
+}
+@keyframes zen-gust {
+  0% { transform: translate(-30vw, 0); opacity: 0; } 12% { opacity: .9; }
+  50% { transform: translate(50vw, -1.4vh); } 88% { opacity: .7; }
+  100% { transform: translate(130vw, .6vh); opacity: 0; }
+}
+/* bokeh (your own photo) and glow (the theme's plain ground): soft rounds of light drifting
+   upward and breathing, white over a photo, tinted with the accent over the theme */
+.zen:is([data-motion='bokeh'], [data-motion='glow']) .zen-fx i {
+  display: block; width: calc(5vw * var(--s)); aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.14) 70%, rgba(255, 255, 255, 0));
+  animation: zen-bokeh calc(var(--t) * 1.4) ease-in-out infinite alternate, zen-glow calc(var(--t) * 0.5) ease-in-out infinite; animation-delay: var(--d);
+}
+.zen[data-motion='glow'] .zen-fx i {
+  width: calc(9vw * var(--s)); filter: blur(6px);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 6%, transparent) 70%, transparent);
+}
+@keyframes zen-bokeh { from { transform: translate(-2vw, 4vh); } to { transform: translate(3vw, -7vh); } }
+@media (prefers-reduced-motion: reduce) { .zen-wall, .zen-fx i, .zen-fx::before, .zen-fx::after { animation: none !important; } .zen-fx i { opacity: .6; } }
+.zen[data-tone='dark'] { --zen-ink: #fbfbf8; --zen-ink-soft: rgba(251, 251, 248, 0.82); --zen-ink-on: #16151a; }
+.zen[data-tone='light'] { --zen-ink: #16151a; --zen-ink-soft: rgba(22, 21, 26, 0.72); --zen-ink-on: #fbfbf8; }
+.zen-veil { position: fixed; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--frame) 22%, transparent)); }
+.zen[data-tone='theme'] .zen-veil { display: none; }
+
+/* a peek at the wallpaper: resting on the wallpaper button for 2 s fades everything else to a
+   fifth; the button itself stays lit (moving away or Esc brings it all back) */
+.zen > .zen-bar > *, .zen-tools > *, .zen > .zen-stage, .zen > .zen-pager, .zen > .zen-qn, .zen > .zen-veil { transition: opacity .45s ease; }
+.zen.is-peek > .zen-bar > :not(.zen-tools), .zen.is-peek .zen-tools > :not(.zen-wall-btn),
+.zen.is-peek > .zen-stage, .zen.is-peek > .zen-pager, .zen.is-peek > .zen-qn { opacity: .2; }
+.zen.is-peek > .zen-veil { opacity: 0; }
+.zen-icb.zen-wall-btn[aria-pressed='true'] { background: var(--accent); color: #fff; border-color: transparent;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent), 0 10px 30px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
+.zen-peek-hint { position: absolute; top: calc(100% + 8px); right: 0; transform: translateY(-4px); white-space: nowrap; pointer-events: none;
+  padding: 5px 11px; border-radius: 999px; font: 600 12px var(--grot, system-ui); background: var(--zen-glass); color: var(--text-strong);
+  border: 1px solid var(--zen-glass-line); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  opacity: 0; transition: opacity .3s ease .2s, transform .3s ease .2s; }
+.zen-peek-hint.is-on { opacity: 1; transform: none; animation: zen-peek-hint 3.2s ease forwards; }
+@keyframes zen-peek-hint { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .zen > .zen-bar > *, .zen-tools > *, .zen > .zen-stage, .zen > .zen-pager, .zen > .zen-qn, .zen > .zen-veil, .zen-peek-hint { transition: none; }
+  .zen-peek-hint.is-on { animation: none; }
+}
+
+.zen-bar {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--s5);
+  width: 100%; max-width: 1640px; margin: 0 auto;
+  padding: clamp(18px, 3.4vh, 40px) clamp(16px, 4vw, 56px) clamp(14px, 2.6vh, 28px);
+}
+/* the thought for the day: on the picture itself, so it takes the wallpaper's ink */
+.zen-thought { display: flex; align-items: center; gap: 12px; min-width: 0; margin: 0; color: var(--zen-ink); }
+.zen-thought-mark { flex: none; display: inline-flex; opacity: .55; }
+.zen-thought-mark svg { stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.zen-thought-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.zen-thought-text { margin: 0; font: 500 clamp(16px, 1.55vw, 21px)/1.35 var(--grot); letter-spacing: -0.01em; text-wrap: balance; }
+.zen-thought-by { font: 500 var(--t2) var(--mono); color: var(--zen-ink-soft); letter-spacing: 0.02em; }
+.zen-thought-by[hidden] { display: none; }
+.zen-thought-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; align-self: center; }
+.zen-thought-btn {
+  width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--zen-ink-soft); opacity: .55; transition: opacity .15s, background .13s, color .13s, transform .2s;
+}
+.zen-thought:hover .zen-thought-btn, .zen-thought-btn:focus-visible, .zen-thought-star[aria-pressed='true'] { opacity: 1; }
+.zen-thought-btn:hover { background: color-mix(in srgb, var(--zen-ink) 14%, transparent); color: var(--zen-ink); }
+.zen-thought-btn svg, .zen-thought-only svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-thought-star[aria-pressed='true'] { color: #f2b33d; }
+.zen-thought-star[aria-pressed='true'] svg { fill: currentColor; }
+.zen-thought-star:active { transform: scale(1.25); }
+.zen-thought-only {
+  display: inline-flex; align-items: center; gap: 0; height: 26px; margin-left: 4px; padding: 0 8px; border-radius: var(--pill);
+  border: 1px solid color-mix(in srgb, var(--zen-ink) 25%, transparent); color: var(--zen-ink-soft); font: 600 var(--t1) var(--grot); white-space: nowrap;
+  opacity: 0; transition: opacity .15s, gap .2s;
+}
+/* the "starred" label stays out of the way: only the star shows (and only when it matters)
+   until the thought is hovered or the control is focused */
+.zen-thought-n { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; transition: max-width .22s ease, opacity .18s; }
+.zen-thought:hover .zen-thought-only, .zen-thought-only:focus-visible, .zen-thought-only[aria-pressed='true'] { opacity: 1; }
+.zen-thought:hover .zen-thought-only, .zen-thought-only:focus-visible { gap: 5px; }
+.zen-thought:hover .zen-thought-n, .zen-thought-only:focus-visible .zen-thought-n { max-width: 160px; opacity: 1; }
+.zen-thought-only[hidden] { display: none; }
+.zen-thought-only:hover { color: var(--zen-ink); border-color: var(--zen-ink); }
+.zen-thought-only[aria-pressed='true'] { background: var(--zen-ink); color: var(--zen-ink-on, #fff); border-color: var(--zen-ink); }
+.zen-thought-only[aria-pressed='true'] svg { fill: #f2b33d; stroke: #f2b33d; }
+@media (hover: none) { .zen-thought-btn { opacity: 1; } .zen-thought-only:not([hidden]) { opacity: 1; } }
+.zen[data-tone='dark'] .zen-thought, .zen[data-tone='dark'] .zen-clock { text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35); }
+.zen[data-tone='light'] .zen-thought, .zen[data-tone='light'] .zen-clock { text-shadow: 0 1px 14px rgba(255, 255, 255, 0.5); }
+
+/* the stage: clock and calendar on the side, the panes beside them */
+.zen-stage {
+  position: relative; flex: 1 0 auto;
+  display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr); gap: clamp(16px, 2vw, 32px); align-items: start;
+  width: 100%; max-width: 1640px; margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 56px) clamp(24px, 5vh, 56px);
+}
+.zen-side { display: flex; flex-direction: column; gap: clamp(16px, 2.6vh, 26px); min-width: 0; position: sticky; top: 16px; }
+.zen-clock { color: var(--zen-ink); padding-top: 4px; }
+.zen-side { container-type: inline-size; }
+.zen-time { display: flex; align-items: baseline; gap: .14em; white-space: nowrap; font: 300 clamp(44px, 28cqi, 96px)/0.95 var(--grot); letter-spacing: -0.045em; font-variant-numeric: tabular-nums; }
+.zen-ampm { font-size: .34em; font-weight: 500; letter-spacing: 0.02em; opacity: .8; }
+.zen-sub { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 12px; font: 500 var(--t4) var(--grot); color: var(--zen-ink-soft); }
+@media (max-width: 900px) {
+  .zen-stage { grid-template-columns: minmax(0, 1fr); }
+  .zen-side { position: static; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); align-items: start; }
+}
+@media (max-width: 600px) { .zen-side { grid-template-columns: minmax(0, 1fr); } }
+
+/* the calendar card: folds to its header */
+.zen-cal {
+  border-radius: 20px; background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow: 0 30px 60px -36px rgba(0, 0, 0, 0.45); color: var(--text);
+}
+.zen[data-tone='theme'] .zen-cal { background: var(--bg-col); border-color: var(--card-line); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.zen-cal-head { display: flex; align-items: center; gap: 4px; padding: 8px 8px 8px 6px; }
+.zen-cal.is-open .zen-cal-head { border-bottom: 1px solid var(--line); }
+.zen-cal-toggle {
+  flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: var(--r4);
+  font: 700 var(--t4) var(--grot); color: var(--text-strong); text-align: left;
+}
+.zen-cal-toggle:hover { background: var(--hov); }
+.zen-cal-month { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zen-cal-chev { display: inline-flex; color: var(--text-mut); transition: transform .18s; }
+.zen-cal.is-open .zen-cal-chev { transform: rotate(90deg); }
+.zen-cal-navs { display: inline-flex; align-items: center; gap: 2px; }
+.zen-cal:not(.is-open) .zen-cal-navs { display: none; }
+.zen-cal-nav { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--text-soft); }
+.zen-cal-prev svg { transform: scaleX(-1); }
+.zen-cal-nav:hover, .zen-cal-today:hover { background: var(--hov); color: var(--text-strong); }
+.zen-cal-today { height: 26px; padding: 0 9px; border-radius: var(--pill); font: 600 var(--t2) var(--grot); color: var(--accent-text); }
+.zen-cal-today[hidden] { display: none; }
+.zen-cal svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.zen-cal-body { padding: 8px 10px 12px; }
+.zen-cal-body[hidden] { display: none; }
+.zen-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.zen-cal-wd { text-align: center; padding: 2px 0 6px; font: 600 var(--t1) var(--mono); color: var(--text-mut); }
+.zen-cal-day {
+  position: relative; aspect-ratio: 1; min-height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font: 500 var(--t2) var(--grot); font-variant-numeric: tabular-nums; color: var(--text-body);
+}
+.zen-cal-day:hover { background: var(--hov); }
+.zen-cal-day.is-out { color: var(--text-faint); }
+.zen-cal-day.is-today { color: var(--accent-text); font-weight: 800; }
+/* today keeps a ghost ring while another day is picked, as a point of reference */
+.zen-cal-day.is-today:not(.is-sel) { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
+.zen-cal-day.is-sel { background: var(--text-strong); color: var(--bg-card); font-weight: 700; }
+.zen-cal-day.has-due::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
+.zen-cal-day.is-sel.has-due::after { background: var(--bg-card); }
+.zen-cal-day:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.zen-cal-agenda { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.zen-cal-agenda-h { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); text-transform: lowercase; }
+.zen-cal-item { display: flex; gap: 10px; align-items: baseline; font: 500 var(--t3)/1.35 var(--grot); color: var(--text-body); }
+.zen-cal-item.is-done .zen-cal-what { color: var(--text-faint); text-decoration: line-through; }
+.zen-cal-time { flex: none; font: 500 var(--t2) var(--mono); color: var(--text-mut); min-width: 58px; }
+.zen-cal-what { min-width: 0; overflow-wrap: anywhere; }
+.zen-cal-none { font: 500 var(--t3) var(--grot); color: var(--text-mut); }
+.zen-cal-list { display: flex; flex-direction: column; gap: 6px; }
+/* quick reminder for the picked day */
+.zen-cal-addtoggle {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; margin-top: 2px; padding: 0 10px 0 9px; border-radius: var(--pill);
+  border: 1px dashed var(--card-line-2); font: 600 var(--t2) var(--grot); color: var(--text-soft);
+}
+.zen-cal-addtoggle[hidden] { display: none; }
+.zen-cal-addtoggle:hover { border-style: solid; color: var(--text-strong); background: var(--hov); }
+.zen-cal-addtoggle[aria-expanded='true'] { border-style: solid; color: var(--text-strong); }
+.zen-cal-addtoggle svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-cal-addchev { display: inline-flex; transition: transform .18s; }
+.zen-cal-addtoggle[aria-expanded='true'] .zen-cal-addchev { transform: rotate(90deg); }
+.zen-cal-form { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.zen-cal-form[hidden] { display: none; }
+.zen-cal-form-row { display: flex; gap: 6px; }
+.zen-cal-in, .zen-cal-tin {
+  min-width: 0; height: 34px; padding: 0 12px; border-radius: var(--pill);
+  border: 1px solid var(--card-line-2); background: var(--bg-card); color: var(--text);
+  font: 500 var(--t3) var(--grot); outline: 0;
+}
+.zen-cal-in { width: 100%; }
+.zen-cal-tin { flex: 1; font-variant-numeric: tabular-nums; color-scheme: light dark; }
+.zen-cal-in:focus, .zen-cal-tin:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.zen-cal-in::placeholder { color: var(--text-faint); }
+.zen-cal-add {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: var(--pill);
+  background: var(--text-strong); color: var(--bg-card); font: 600 var(--t2) var(--grot);
+}
+.zen-cal-add:hover { background: var(--accent); color: var(--accent-contrast); }
+.zen-cal-add:disabled { opacity: .6; }
+.zen-cal-hint { margin: 0; font: 500 var(--t2)/1.4 var(--grot); color: var(--text-mut); }
+.zen-cal-hint:empty { display: none; }
+.zen-cal-hint.is-error { color: var(--red); }
+.zen-dot { opacity: .6; }
+.zen-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.zen-icb, .zen-btn-pill {
+  height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border-radius: var(--pill); background: var(--zen-glass); color: var(--text-strong);
+  border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+  font: 600 var(--t3) var(--grot); transition: background .13s, color .13s;
+}
+.zen-icb { width: 38px; }
+/* the wallpaper button's name tag, shown a moment after each shuffle; and the old scene fading */
+.zen-wall-btn { position: relative; }
+.zen-wall-btn.is-spin svg { animation: zen-wall-spin .55s cubic-bezier(.3, .7, .3, 1); }   /* the ring turns once per shuffle */
+@keyframes zen-wall-spin { from { transform: rotate(0); } to { transform: rotate(180deg); } }
+.zen-wall-name { position: absolute; top: calc(100% + 8px); left: 50%; transform: translate(-50%, -4px); white-space: nowrap; pointer-events: none;
+  padding: 4px 10px; border-radius: 999px; font: 600 12px var(--grot, system-ui); background: var(--text-strong); color: var(--bg-card);
+  opacity: 0; transition: opacity .25s ease, transform .25s ease; }
+.zen-wall-name.is-on { opacity: 1; transform: translate(-50%, 0); }
+.zen-wall-ghost { animation: zen-wall-out 1.1s ease forwards !important; z-index: 0; }
+@keyframes zen-wall-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .zen-wall-name { transition: none; } .zen-wall-btn.is-spin svg { animation: none; } }
+.zen-btn-pill { padding: 0 16px 0 13px; }
+.zen-icb:hover, .zen-btn-pill:hover { background: var(--text-strong); color: var(--bg-card); }
+/* eye rest: the pill is a switch. Off: muted, eye struck through, knob left.
+   On: accent ring and eye, knob slides right on an accent track, label counts down. */
+.zen-eye { gap: 8px; padding: 0 8px 0 12px; font-variant-numeric: tabular-nums; color: var(--text-mut); }
+.zen-eye-ic { position: relative; display: inline-flex; }
+.zen-eye-ic::after {   /* the strike through the eye while it is off */
+  content: ''; position: absolute; left: -1px; top: 50%; width: 17px; height: 1.8px; border-radius: 2px;
+  background: currentColor; transform: rotate(-40deg); transition: transform .2s ease, opacity .2s ease;
+}
+.zen-eye.is-on .zen-eye-ic::after { transform: rotate(-40deg) scaleX(0); opacity: 0; }
+.zen-eye-track {
+  position: relative; width: 30px; height: 18px; flex: none; border-radius: 999px;
+  background: color-mix(in srgb, var(--text-mut) 30%, transparent); transition: background .2s ease;
+}
+.zen-eye-knob {
+  position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--bg-card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform .22s cubic-bezier(.3, 1.4, .5, 1);
+}
+.zen-eye.is-on { color: var(--text-strong); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.zen-eye.is-on .zen-eye-ic { color: var(--accent-text); }
+.zen-eye.is-on .zen-eye-track { background: var(--accent); }
+.zen-eye.is-on .zen-eye-knob { transform: translateX(12px); }
+.zen-eye:hover { background: var(--zen-glass); color: var(--text-strong); }
+.zen-eye:hover .zen-eye-track { filter: brightness(1.08); }
+.zen-eye:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 520px) { .zen-eye-label { display: none; } }
+.zen-icb svg, .zen-btn-pill svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+.zen-grid {
+  position: relative; min-width: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: clamp(12px, 1.6vw, 20px); align-items: start;
+}
+@media (max-width: 700px) { .zen-bar { flex-direction: column-reverse; align-items: stretch; } .zen-tools { align-self: flex-end; } }
+
+.zen-pane {
+  display: flex; flex-direction: column; min-width: 0;
+  max-height: calc(100vh / var(--app-zoom) - 110px - var(--zen-dock)); min-height: 220px;   /* ends above the switch */
+  border-radius: 22px; background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow: 0 30px 60px -36px rgba(0, 0, 0, 0.45);
+}
+@media (max-width: 900px) { .zen-pane { max-height: none; } }
+.zen[data-tone='theme'] .zen-pane { background: var(--bg-col); border-color: var(--card-line); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.zen-pane-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 16px 18px 12px; border-bottom: 1px solid var(--line);
+}
+.zen-cap { flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 20px; font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); }
+/* folding a pane to its header: the chevron turns like the calendar's */
+.zen-cap-acts { display: inline-flex; align-items: center; gap: 2px; }
+.zen-fold {
+  width: 26px; height: 22px; border-radius: var(--r3); display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-faint); opacity: .7; transition: opacity .13s, background .13s, color .13s;
+}
+.zen-fold svg { stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; transform: rotate(90deg); transition: transform .18s; }
+.zen-pane:hover .zen-fold, .zen-fold:focus-visible { opacity: 1; }
+.zen-fold:hover { background: var(--hov); color: var(--text-strong); }
+.zen-pane.is-folded .zen-fold svg { transform: rotate(0deg); }
+.zen-pane-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.zen-pane-body[hidden] { display: none; }
+.zen-pane.is-folded { min-height: 0; }
+.zen-pane.is-folded > .zen-pane-head { border-bottom-color: transparent; }
+/* drag to arrange: a pane moves by its grip, an item from anywhere on it */
+.zen-grip {
+  width: 26px; height: 22px; margin-right: -6px; border-radius: var(--r3); display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-faint); cursor: grab; opacity: .55; transition: opacity .13s, background .13s, color .13s;
+}
+.zen-pane:hover .zen-grip, .zen-grip:focus-visible { opacity: 1; }
+.zen-grip:hover { background: var(--hov); color: var(--text-strong); }
+.zen-grip:active { cursor: grabbing; }
+.zen-grip svg { stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.zen-pane.is-dragging, .zen-body > .is-dragging { opacity: .35; }
+.zen-body > [draggable='true'] { cursor: grab; }
+.zen-body > [draggable='true']:active { cursor: grabbing; }
+.zen-body > [draggable='true'] :is(a, button) { cursor: pointer; }
+.zen-h { margin: 0; font: 700 var(--t6)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
+.zen-count { font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.zen-pick {
+  min-width: 0; max-width: 100%; flex: 0 1 auto; appearance: none; cursor: pointer;
+  margin: 0; padding: 0 22px 0 0; border: 0; background: transparent;
+  font: 700 var(--t6)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 9px) 55%, calc(100% - 4px) 55%; background-size: 5px 5px; background-repeat: no-repeat;
+  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+.zen-pick option { font: 500 var(--t3) var(--grot); color: var(--text); background: var(--bg-side); }
+.zen-pick:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+.zen-mini {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px;
+  border-radius: var(--pill); border: 1px solid var(--edge); font: 600 var(--t2) var(--grot); color: var(--text-strong);
+}
+.zen-mini:hover { background: var(--text-strong); color: var(--bg-card); border-color: var(--text-strong); }
+.zen-mini svg, .zen-row svg, .zen-unpin svg, .zen-due svg, .zen-addrow svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.zen-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 10px 14px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; }
+.zen-quiet { margin: 8px 8px 4px; font: 500 var(--t3)/var(--lh-body) var(--grot); color: var(--text-mut); }
+
+.zen-links { gap: 2px; }
+.zen-linkrow, .zen-pinlink { display: flex; align-items: center; gap: 4px; min-width: 0; border-radius: var(--r5); }
+.zen-linkrow > .zen-link, .zen-pinlink > .zen-link { flex: 1; min-width: 0; }
+.zen-linkrow:hover { background: var(--hov); }
+.zen-linkrow:hover .zen-link { background: transparent; }
+.zen-rowpin {
+  flex: none; width: 28px; height: 28px; margin-right: 6px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-faint); opacity: 0; transition: opacity .13s, background .13s;
+}
+.zen-linkrow:hover .zen-rowpin, .zen-linkrow:focus-within .zen-rowpin, .zen-rowpin.on { opacity: 1; }
+.zen-rowpin:hover { background: var(--bg-card); color: var(--text-strong); }
+.zen-rowpin.on { color: var(--accent-text); }
+.zen-rowpin svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-rowpin.on svg { fill: currentColor; fill-opacity: .25; }
+@media (hover: none) { .zen-rowpin { opacity: 1; } }
+.zen-pinlink { padding-right: 6px; background: var(--bg-card); border: 1px solid var(--card-line); border-radius: 16px; }
+.zen-pinlink .zen-link:hover { background: transparent; }
+.zen-pinlink:hover { border-color: var(--hovbr); }
+.zen-folder .zen-link { padding: 6px 4px; }
+.zen-folder-ic { display: inline-flex; color: var(--text-mut); }
+.zen-folder-ic svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-col-dot { flex: none; width: 10px; height: 10px; margin: 0 2px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 8%, transparent); }
+.zen-more { margin: 4px 6px 2px; font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.zen-todos > .zen-row { padding: 6px 8px; }
+.zen-todos > .zen-row:hover { background: var(--hov); }
+.zen-link {
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--r5);
+  color: inherit; text-decoration: none; transition: background .12s;
+}
+.zen-link:hover { background: var(--hov); }
+.zen-link:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.zen-link-meta { display: flex; flex-direction: column; min-width: 0; }
+.zen-link-title { font: 600 var(--t3)/1.3 var(--grot); color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zen-link-dom { font: 500 var(--t2) var(--mono); color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.zen-addrow {
+  display: flex; align-items: center; gap: 8px; margin: 12px 14px 0; padding: 0 14px; height: 40px;
+  border-radius: var(--pill); background: var(--bg-card); border: 1px solid var(--card-line-2); color: var(--text-mut);
+}
+.zen-addrow:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.zen-add { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 500 var(--t3) var(--grot); color: var(--text); }
+.zen-add::placeholder { color: var(--text-faint); }
+
+.zen-rems { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; }
+.zen-row { display: flex; align-items: flex-start; gap: 10px; padding: 5px 4px; border-radius: var(--r3); }
+.zen-row-text { flex: 1; min-width: 0; font: 500 var(--t3)/1.45 var(--grot); color: var(--text-body); overflow-wrap: anywhere; }
+.zen-row.is-done .zen-row-text { color: var(--text-faint); text-decoration: line-through; text-decoration-color: var(--text-ghost); }
+.zen-check {
+  width: 18px; height: 18px; flex: none; margin-top: 1px; border: 1.6px solid var(--edge); border-radius: var(--r2);
+  display: flex; align-items: center; justify-content: center; color: var(--accent-contrast); transition: background .12s, border-color .12s;
+}
+.zen-check:hover { border-color: var(--accent); background: var(--accent-soft); }
+.zen-check.is-done { background: var(--accent); border-color: var(--accent); }
+.zen-check svg { stroke-width: 3 !important; }
+.zen-due { display: inline-flex; align-items: center; gap: 4px; flex: none; margin-top: 2px; font: 500 var(--t1) var(--mono); color: var(--text-mut); }
+.zen-due.past { color: var(--red); }
+
+.zen-list {
+  padding: 10px 10px 8px; border-radius: 16px;
+  background: linear-gradient(var(--tint, transparent), var(--tint, transparent)), var(--bg-card);
+  border: 1px solid var(--card-line);
+}
+.zen-list-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 6px; }
+.zen-list-title { flex: 1; min-width: 0; font: 700 var(--t4)/1.3 var(--grot); color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zen-list-n { font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.zen-unpin { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--accent-text); flex: none; }
+.zen-unpin:hover { background: var(--hov); color: var(--text-strong); }
+.zen-unpin svg { fill: currentColor; fill-opacity: .25; }
+.zen-note-md { padding: 0 4px 4px; font: 500 var(--t3)/var(--lh-body) var(--grot); color: var(--text-body); overflow-wrap: anywhere; }
+.zen-note-md > :first-child { margin-top: 0; }
+.zen-note-md > :last-child { margin-bottom: 0; }
+.zen-note-md a { color: var(--accent-text); }
+
+/* ——— Notes cards edit in place: rendered text at rest, a text box when you click in ——— */
+.zen-field { flex: 1; min-width: 0; display: flex; }
+.zen-field > .zen-view { cursor: text; border-radius: 6px; transition: background .12s; }
+.zen-field > .zen-view:hover { background: color-mix(in srgb, var(--hov) 70%, transparent); }
+.zen-field > .zen-view:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zen-field > [hidden] { display: none; }
+.zen-in, .zen-area {
+  flex: 1; min-width: 0; width: 100%; margin: 0; padding: 0; border: 0; outline: 0; background: transparent;
+  color: var(--text-strong); border-radius: 0; box-shadow: inset 0 -1.5px 0 transparent; transition: box-shadow .12s;
+}
+/* an empty field at rest is just its placeholder; the line shows on hover and in accent while typing */
+.zen-in:hover, .zen-area:hover { box-shadow: inset 0 -1.5px 0 var(--edge); }
+.zen-in:focus, .zen-area:focus { box-shadow: inset 0 -1.5px 0 var(--accent); }
+.zen-in::placeholder, .zen-area::placeholder { color: var(--text-faint); }
+.zen-row-text-field .zen-in { font: 500 var(--t3)/1.45 var(--grot); color: var(--text-body); }
+.zen-list-title-field .zen-in { font: 700 var(--t4)/1.3 var(--grot); }
+.zen-area-field { display: block; }
+.zen-area { display: block; resize: none; padding: 0 4px 4px; font: 500 var(--t3)/var(--lh-body) var(--grot); color: var(--text-body); overflow-y: auto; }
+.zen-row.is-done .zen-in { color: var(--text-faint); text-decoration: line-through; }
+/* the card's own buttons — reminder, pin, delete — and a row's remove: on hover or focus */
+.zen-acts { display: inline-flex; align-items: center; gap: 1px; flex: none; opacity: 0; transition: opacity .13s; }
+.zen-list:is(:hover, :focus-within) > .zen-list-head .zen-acts,
+.zen-todos > .zen-row:is(:hover, :focus-within) .zen-acts,
+.zen-row:is(:hover, :focus-within) > .zen-row-x { opacity: 1; }
+.zen-act {
+  width: 26px; height: 26px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-mut); transition: background .12s, color .12s, opacity .13s;
+}
+.zen-act:hover { background: var(--hov); color: var(--text-strong); }
+.zen-act-del:hover { color: var(--red); }
+.zen-act.on { color: var(--accent-text); }
+.zen-act svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-act.on svg { fill: currentColor; fill-opacity: .25; }
+.zen-act:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.zen-row-x { width: 22px; height: 22px; opacity: 0; }
+.zen-row > .zen-row-x { margin-top: -1px; }
+@media (hover: none) { .zen-acts, .zen-row-x { opacity: 1; } }
+button.zen-due { padding: 1px 6px; margin-top: 0; border-radius: var(--pill); transition: background .12s, color .12s; }
+button.zen-due:hover { background: var(--hov); color: var(--text-strong); }
+button.zen-due.past:hover { color: var(--red); }
+.zen-list-head > .zen-due { margin-top: 0; }
+.zen-additem {
+  display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 0 2px; padding: 4px 8px;
+  border-radius: var(--pill); font: 600 var(--t2) var(--grot); color: var(--text-mut); transition: background .12s, color .12s;
+}
+.zen-additem:hover { background: var(--hov); color: var(--text-strong); }
+.zen-additem svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; flex: none; }
+
+/* ——— the quick-note corner: a note button at the bottom right; hover opens a small box upward ——— */
+.zen-qn { position: fixed; right: 22px; bottom: 18px; z-index: 4; }
+.zen-qn > .zen-qn-btn { width: 40px; height: 40px; box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5); }
+.zen:not([data-page='home']) > .zen-qn { display: none; }
+.zen-qn.is-open > .zen-qn-btn { background: var(--text-strong); color: var(--bg-card); }
+.zen-qn-pop {
+  position: absolute; bottom: 100%; right: 0; z-index: 6; width: min(360px, calc(100vw - 32px));
+  padding-bottom: 10px;   /* an invisible bridge, so the pointer can cross from the button without it folding */
+  opacity: 0; visibility: hidden; transform: translateY(6px); transform-origin: bottom right;
+  transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s;
+}
+.zen-qn.is-open > .zen-qn-pop { opacity: 1; visibility: visible; transform: none; transition: opacity .16s ease, transform .16s ease, visibility 0s; }
+.zen-qn-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 14px;
+  max-height: calc(100vh / var(--app-zoom, 1) - 80px - var(--zen-dock)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  border-radius: 20px; background: color-mix(in srgb, var(--bg-card) 90%, transparent); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.55);
+}
+.zen[data-tone='theme'] .zen-qn-card { background: var(--bg-side); border-color: var(--card-line-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.zen-qn-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px; }
+.zen-qn-h { font: 700 var(--t4)/1.2 var(--grot); letter-spacing: -0.01em; color: var(--text-strong); }
+.zen-qn-saved { font: 600 var(--t2) var(--grot); color: var(--accent-text); opacity: 0; }
+.zen-qn-saved.is-on { animation: zen-qn-saved 2.4s ease forwards; }
+@keyframes zen-qn-saved { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.zen-qn-box {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 8px; border-radius: 14px;
+  background: var(--bg-card); border: 1px solid var(--card-line-2); transition: border-color .12s, box-shadow .12s;
+}
+.zen-qn-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.zen-qn-in {
+  width: 100%; min-height: 64px; max-height: 220px; resize: vertical; margin: 0; padding: 0; border: 0; outline: 0; background: transparent;
+  font: 500 var(--t3)/var(--lh-body) var(--grot); color: var(--text);
+}
+.zen-qn-in::placeholder { color: var(--text-faint); }
+.zen-qn-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.zen-qn-tip { min-width: 0; font: 500 var(--t1)/1.3 var(--grot); color: var(--text-mut); }
+.zen-qn-save {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px 0 9px; border-radius: var(--pill);
+  background: var(--accent); color: var(--accent-contrast); font: 600 var(--t2) var(--grot);
+}
+.zen-qn-save:hover { filter: brightness(1.08); }
+.zen-qn-save svg { stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+@media (prefers-reduced-motion: reduce) { .zen-qn-pop { transform: none !important; transition: none !important; } }
+/* ——— Zen's Notes page (the fourth page of the switch): every Notes card on the wallpaper ——— */
+.zen-np { display: none; }
+.zen[data-page='notes'] .zen-bar, .zen[data-page='notes'] .zen-stage { display: none; }
+.zen[data-page='notes'] .zen-np { position: relative; flex: 1 0 auto; display: flex; flex-direction: column; min-height: 100%; }
+.zen-a-bar.zen-np-bar { justify-content: space-between; align-items: center; }   /* the clock on the left, as on Zen's home page */
+.zen-np-stage { flex: 1; width: 100%; max-width: 1640px; margin: 0 auto; padding: 18px clamp(16px, 4vw, 56px) var(--zen-dock); }
+.zen-np-pane { max-height: none; min-height: 0; }   /* the page scrolls, not the pane */
+.zen-np-head {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+  padding: 16px 20px 14px; border-bottom: 1px solid var(--line);
+}
+.zen-np-tools { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-left: auto; }
+.zen-np-kinds {
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pill);
+  background: var(--bg-card); border: 1px solid var(--card-line-2);
+}
+.zen-np-kinds .zen-page-btn { padding: 0 12px; }
+.zen-np-search {
+  display: flex; align-items: center; gap: 8px; height: 36px; width: 240px; padding: 0 14px;
+  border-radius: var(--pill); background: var(--bg-card); border: 1px solid var(--card-line-2); color: var(--text-mut);
+}
+.zen-np-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.zen-np-search svg { flex: none; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; }
+.zen-np-q { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 500 var(--t3) var(--grot); color: var(--text); }
+.zen-np-q::placeholder { color: var(--text-faint); }
+.zen-np-q::-webkit-search-cancel-button { cursor: pointer; }
+.zen-np-news { display: inline-flex; gap: 6px; }
+.zen-np-new { margin-left: 0; height: 34px; }
+/* the cards as a masonry: columns, each card kept whole */
+.zen-np-grid { columns: 300px; column-gap: 14px; padding: 16px 16px 6px; }
+.zen-np-grid > * { break-inside: avoid; margin-bottom: 14px; }
+.zen-np-grid > .zen-quiet { column-span: all; }
+@media (max-width: 700px) { .zen-np-tools { margin-left: 0; } .zen-np-search { width: 100%; } }
+
+/* a page on the move (following a two-finger swipe, going, coming in, springing back): zen.js
+   moves it by transform and opacity alone, so nothing else animates under it meanwhile */
+.zen.is-turning > :is(.zen-bar, .zen-stage, .zen-arcade, .zen-np) { transition: none; will-change: transform, opacity; }
+/* the page a swipe is heading for lights up in the switch, more as the swipe nears its turn */
+.zen-page-btn[data-swipe-to] { background: color-mix(in srgb, var(--text-strong) calc(var(--swipe-p, 0) * 26%), transparent); color: var(--text-strong); }
+
+/* toasts ("Reminder set") show over Zen, under its dialogs, and just above the switch */
+:root[data-zen='on'] .toast { z-index: 45; bottom: calc(var(--zen-dock) - 6px); }
+
+/* ——— Zen's pages: the little switch at the bottom centre, and the arcade page ——— */
+/* --zen-dock is the strip the switch keeps clear at the bottom of every page (18 px below it, its
+   38 px, 16 px above): each page's last edge stops there, so nothing rests under the switch */
+:root { --zen-dock: 72px; }
+.zen-pager {
+  position: fixed; left: 0; right: 0; bottom: 18px; z-index: 3;   /* centred: the same width either side */
+  width: max-content; margin-inline: auto;
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pill);
+  background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5);
+}
+.zen-page-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 10px; border-radius: var(--pill);
+  font: 600 var(--t2) var(--grot); color: var(--text-mut); transition: background .15s, color .15s;
+}
+.zen-page-btn:hover { color: var(--text-strong); }
+.zen-page-btn[aria-pressed='true'] { background: var(--text-strong); color: var(--bg-card); }
+.zen-page-btn svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.zen-page-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.zen .zen-stage { padding-bottom: var(--zen-dock); }
+/* narrow: the switch keeps its icons only (the names stay for screen readers), so it never meets
+   the peek button in the corner */
+@media (max-width: 560px) {
+  .zen-pager .zen-page-btn { padding: 0 10px; }
+  .zen-pager .zen-page-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+.zen-arcade { display: none; }
+.zen[data-page='arcade'] .zen-bar, .zen[data-page='arcade'] .zen-stage { display: none; }
+.zen[data-page='arcade'] .zen-arcade { position: relative; flex: 1 0 auto; display: flex; flex-direction: column; min-height: 100%; }
+.zen-a-bar {
+  display: flex; align-items: flex-start; justify-content: flex-end; gap: 16px;
+  width: 100%; max-width: 1640px; margin: 0 auto; padding: clamp(18px, 3.4vh, 40px) clamp(16px, 4vw, 56px) 0;
+}
+.zen-a-clock { color: var(--zen-ink); }
+.zen[data-tone='dark'] .zen-a-clock { text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35); }
+.zen[data-tone='light'] .zen-a-clock { text-shadow: 0 1px 12px rgba(255, 255, 255, 0.5); }
+.zen-a-time { font: 300 clamp(34px, 3.6vw, 52px)/1 var(--grot); letter-spacing: -0.04em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.zen-a-date { margin-top: 6px; font: 500 var(--t3) var(--grot); color: var(--zen-ink-soft); }
+.zen-a-stage {
+  flex: 1; display: grid; grid-template-columns: minmax(240px, 290px) minmax(0, 1fr); gap: clamp(16px, 2.4vw, 40px); align-items: start;
+  width: 100%; max-width: 1640px; margin: 0 auto; padding: 14px clamp(16px, 4vw, 56px) var(--zen-dock);
+}
+.zen-a-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; margin-top: -68px; container-type: inline-size; }
+.zen-a-stage > .arc-frame { justify-self: center; }
+@media (max-width: 1000px) {
+  .zen-a-stage { grid-template-columns: minmax(0, 1fr); }
+  .zen-a-side { margin-top: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); align-items: start; }
+}
+@media (max-width: 600px) { .zen-a-side { grid-template-columns: minmax(0, 1fr); } }
+
+/* the square frame */
+.arc-frame {
+  width: min(860px, calc(100vh / var(--app-zoom) - 90px - var(--zen-dock)), 100%); aspect-ratio: 1; min-width: 280px;   /* square, ending above the switch */
+  display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 26px; background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2); backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.55); color: var(--text);
+}
+.zen[data-tone='theme'] .arc-frame { background: var(--bg-col); border-color: var(--card-line); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.arc-menu { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: clamp(16px, 3.4%, 26px); gap: 14px; overflow-y: auto; }
+.arc-menu[hidden], .arc-play[hidden] { display: none; }
+.arc-head { display: flex; flex-direction: column; gap: 4px; }
+.arc-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.arc-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pill); background: var(--bg-inset); border: 1px solid var(--card-line); }
+.arc-tab {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px 0 10px; border-radius: var(--pill);
+  font: 600 var(--t2) var(--grot); color: var(--text-mut); transition: background .15s, color .15s;
+}
+.arc-tab:hover { color: var(--text-strong); }
+.arc-tab[aria-pressed='true'] { background: var(--text-strong); color: var(--bg-card); }
+.arc-tab svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.arc-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.arc-cap { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); }
+.arc-h { margin: 0; font: 700 var(--t7)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
+.arc-sub { margin: 0; font: 500 var(--t3)/1.45 var(--grot); color: var(--text-soft); }
+/* the shelf: a mosaic of picture tiles. Rows are a quarter of the shelf's width (half on a
+   narrow screen), so square tiles are square and the big, wide and tall ones keep true shapes */
+.arc-menu { container-type: inline-size; }
+.arc-shelf {
+  --gap: 10px; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(118px, 1fr);   /* the rows share the frame's height, so a long shelf still shows every tile */
+  grid-auto-flow: dense; gap: var(--gap); align-content: stretch;
+}
+@container (max-width: 520px) { .arc-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(118px, 1fr); } }
+.arc-card {
+  position: relative; display: block; padding: 0; overflow: hidden; border-radius: 18px; text-align: left; isolation: isolate;
+  background: var(--bg-inset); border: 1px solid var(--card-line); box-shadow: 0 14px 28px -24px rgba(0, 0, 0, 0.6);
+  transition: transform .25s cubic-bezier(.22, .8, .24, 1), box-shadow .25s ease;
+}
+.arc-card.is-big { grid-column: span 2; grid-row: span 2; }
+.arc-card.is-wide { grid-column: span 2; }
+.arc-card.is-tall { grid-row: span 2; }
+.arc-card.is-banner { grid-column: 1 / -1; }
+.arc-card:hover { transform: translateY(-2px); box-shadow: 0 22px 36px -24px rgba(0, 0, 0, 0.65); }
+.arc-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.arc-thumb { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.22, .8, .24, 1); }
+.arc-card:hover .arc-thumb, .arc-card:focus-visible .arc-thumb { transform: scale(1.05); }
+.arc-card-cap {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 3px; padding: 36px 14px 12px;
+  background: linear-gradient(180deg, rgba(10, 10, 16, 0), rgba(10, 10, 16, 0.42) 38%, rgba(10, 10, 16, 0.78));
+}
+.arc-card-t { font: 700 var(--t4)/1.2 var(--grot); color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4); }
+.arc-card.is-big .arc-card-t { font-size: var(--t6); }
+.arc-card-s { font: 500 var(--t2)/1.35 var(--grot); color: rgba(255, 255, 255, 0.86); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.arc-card.is-sq .arc-card-s, .arc-card.is-tall .arc-card-s { display: none; }
+.arc-card-k { font: 500 var(--t1)/1.35 var(--mono); color: rgba(255, 255, 255, 0.72); max-height: 0; opacity: 0; overflow: hidden; transition: max-height .3s ease, opacity .25s ease; }
+.arc-card:hover .arc-card-k, .arc-card:focus-visible .arc-card-k { max-height: 3em; opacity: 1; }
+.arc-card:is(.is-sq, .is-tall):is(:hover, :focus-visible) .arc-card-s { display: -webkit-box; }
+/* the picture growing from its tile into the square as the piece opens */
+.arc-zoom { position: fixed; z-index: 60; pointer-events: none; transform-origin: 50% 50%; border-radius: 16px; will-change: transform, clip-path, opacity; }
+@media (prefers-reduced-motion: reduce) { .arc-card, .arc-thumb, .arc-card-k { transition: none; } .arc-card:hover .arc-thumb { transform: none; } }
+
+.arc-play { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.arc-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.arc-title { font: 700 var(--t4) var(--grot); color: var(--text-strong); white-space: nowrap; }
+.arc-score { flex: 1; min-width: 0; text-align: right; font: 500 var(--t2) var(--mono); color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arc-btn {
+  display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border-radius: var(--pill);
+  border: 1px solid var(--card-line-2); background: var(--bg-card); font: 600 var(--t2) var(--grot); color: var(--text-strong);
+}
+.arc-btn:hover { background: var(--text-strong); color: var(--bg-card); border-color: var(--text-strong); }
+.arc-btn svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.arc-back-ic svg { transform: scaleX(-1); display: block; }
+.arc-sound[aria-checked='false'] { color: var(--text-mut); }
+/* full screen: the player fills the screen on a dark ground, the picture as large as fits */
+.arc-play:fullscreen { background: #0c0c10; color: #eee; display: flex; flex-direction: column; }
+.arc-play:fullscreen .arc-bar { border-color: rgba(255,255,255,.08); background: rgba(20,20,26,.9); }
+.arc-play:fullscreen .arc-title { color: #f3f3f3; }
+.arc-play:fullscreen .arc-btn { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); color: #f3f3f3; }
+.arc-play:fullscreen .arc-btn:hover { background: #f3f3f3; color: #111; }
+.arc-play:fullscreen .arc-stage { padding: 12px; }
+.arc-play:fullscreen .arc-canvas { border-radius: 10px; }
+/* the end-of-round card, over the picture */
+.arc-stage { position: relative; }
+.arc-over {
+  position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; padding: 18px;
+  background: color-mix(in srgb, #0c0c12 38%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: arc-over-in .35s ease both;
+}
+.arc-over[hidden] { display: none; }
+@keyframes arc-over-in { from { opacity: 0; } }
+.arc-over-card {
+  width: min(430px, 100%); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 22px 22px 18px; border-radius: 22px; background: var(--bg-card); border: 1px solid var(--card-line-2); color: var(--text);
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.6); animation: arc-card-in .45s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+@keyframes arc-card-in { from { opacity: 0; transform: translateY(12px) scale(.97); } }
+.arc-over-cap { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--accent-text); text-transform: lowercase; }
+.arc-over-h { margin: 0; font: 700 var(--t6)/1.25 var(--grot); letter-spacing: -0.015em; color: var(--text-strong); text-wrap: balance; }
+.arc-over-stats { margin: 0; font: 500 var(--t2) var(--mono); color: var(--text-mut); }
+.arc-over-stats[hidden] { display: none; }
+.arc-over-art { display: flex; align-items: center; gap: 12px; }
+.arc-over-art:empty { display: none; }
+.arc-over-thumb { width: 84px; height: 84px; border-radius: 10px; border: 1px solid var(--card-line-2); object-fit: cover; box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.5); }
+.arc-over-todos { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.arc-over-todo-h { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--text-mut); text-transform: lowercase; }
+.arc-over-quiet { margin: 0; font: 500 var(--t3)/1.4 var(--grot); color: var(--text-soft); }
+.arc-over-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.arc-over-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 12px; transition: opacity .3s, background .15s; }
+.arc-over-item:hover { background: var(--hov); }
+.arc-over-item.is-done { opacity: .45; }
+.arc-over-item.is-done .arc-over-text { text-decoration: line-through; }
+.arc-over-tick {
+  width: 18px; height: 18px; flex: none; border: 1.6px solid var(--edge); border-radius: var(--r2);
+  display: flex; align-items: center; justify-content: center; color: var(--accent-contrast);
+}
+.arc-over-tick:hover { border-color: var(--accent); background: var(--accent-soft); }
+.arc-over-tick[aria-checked='true'] { background: var(--accent); border-color: var(--accent); }
+.arc-over-tick svg { stroke: currentColor; fill: none; stroke-width: 3; }
+.arc-over-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; text-align: left; padding: 4px 0; }
+.arc-over-text { flex: 1; min-width: 0; font: 600 var(--t3)/1.35 var(--grot); color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arc-over-from { flex: none; max-width: 30%; font: 500 var(--t1) var(--mono); color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arc-over-due { flex: none; font: 500 var(--t1) var(--mono); color: var(--text-mut); }
+.arc-over-due.is-late { color: var(--red); }
+.arc-over-arrow { flex: none; display: inline-flex; color: var(--text-faint); }
+.arc-over-arrow svg { stroke: currentColor; fill: none; stroke-width: 2; }
+.arc-over-go:hover .arc-over-arrow { color: var(--accent-text); }
+.arc-over-go:focus-visible, .arc-over-tick:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 8px; }
+.arc-over-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--pill); border: 1px dashed var(--card-line-2); font: 600 var(--t2) var(--grot); color: var(--text-soft); }
+.arc-over-link:hover { border-style: solid; color: var(--text-strong); }
+.arc-over-link svg { stroke: currentColor; fill: none; stroke-width: 2; }
+.arc-over-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.arc-over-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 15px; border-radius: var(--pill);
+  border: 1px solid var(--card-line-2); background: var(--bg-card); font: 600 var(--t3) var(--grot); color: var(--text-strong);
+}
+.arc-over-btn:hover { background: var(--text-strong); color: var(--bg-card); border-color: var(--text-strong); }
+.arc-over-btn.is-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.arc-over-btn.is-primary:hover { filter: brightness(1.07); background: var(--accent); color: var(--accent-contrast); }
+.arc-over-btn.is-saved { color: var(--accent-text); }
+.arc-over-btn svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.arc-over-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.arc-done svg { stroke: currentColor; fill: none; stroke-width: 2; }
+.arc-btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+
+/* the painting's side of the card: Save, and (Brush Stroke) whether the black stroke is in it */
+.arc-over-artside { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.arc-over-switch { display: inline-flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: var(--pill); font: 500 var(--t2) var(--grot); color: var(--text-mut); }
+.arc-over-switch:hover { color: var(--text-strong); }
+.arc-over-switch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.arc-over-switch-track { position: relative; width: 30px; height: 18px; flex: none; border-radius: 999px; background: color-mix(in srgb, var(--text-mut) 30%, transparent); transition: background .2s ease; }
+.arc-over-switch-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg-card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform .22s cubic-bezier(.3, 1.4, .5, 1); }
+.arc-over-switch[aria-checked='true'] { color: var(--text-strong); }
+.arc-over-switch[aria-checked='true'] .arc-over-switch-track { background: var(--accent); }
+.arc-over-switch[aria-checked='true'] .arc-over-switch-knob { transform: translateX(12px); }
+
+/* the meditation timer (Temple lounge): its bar button, the panel, and the quiet dial while sitting */
+.arc-med[hidden] { display: none; }   /* .arc-btn's own display would otherwise show it on every piece */
+.arc-med.is-on { border-color: var(--accent); color: var(--accent-text); }
+.med { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.med > * { pointer-events: auto; }
+.med-panel {
+  position: absolute; top: 14px; right: 14px; width: min(320px, calc(100% - 28px)); display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 16px 14px; border-radius: 20px; background: color-mix(in srgb, var(--bg-card) 92%, transparent); border: 1px solid var(--card-line-2);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: var(--text); box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.6);
+  animation: arc-card-in .35s cubic-bezier(.2, .9, .3, 1.1) both;
+}
+.med-panel[hidden], .med-hud[hidden] { display: none; }
+.med-head { display: flex; align-items: center; justify-content: space-between; }
+.med-cap { font: 500 var(--t1) var(--mono); letter-spacing: var(--tr-label); color: var(--accent-text); }
+.med-x { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--text-mut); }
+.med-x:hover { background: var(--hov); color: var(--text-strong); }
+.med-x svg, .med-start svg, .med-ctl svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.med-h { margin: 0; font: 700 var(--t6)/1.2 var(--grot); letter-spacing: -0.015em; color: var(--text-strong); }
+.med-sub, .med-today, .med-quiet { margin: 0; font: 500 var(--t2)/1.45 var(--grot); color: var(--text-mut); }
+.med-quiet { color: var(--accent-text); }
+.med-today[hidden], .med-quiet[hidden] { display: none; }
+.med-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.med-chip { height: 34px; text-align: center; border-radius: 12px; border: 1px solid var(--card-line-2); font: 600 var(--t3) var(--grot); color: var(--text-strong); background: transparent; }
+.med-chip:hover { background: var(--hov); }
+.med-chip[aria-checked='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.med-chip:focus-visible, .med-start:focus-visible, .med-ctl:focus-visible, .med-x:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.med-every { display: flex; align-items: center; gap: 8px; font: 500 var(--t2) var(--grot); color: var(--text); cursor: pointer; }
+.med-every-box { accent-color: var(--accent); width: 15px; height: 15px; }
+.med-start { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; border-radius: var(--pill); background: var(--accent); color: var(--accent-contrast); font: 600 var(--t3) var(--grot); }
+.med-start:hover { filter: brightness(1.07); }
+.med-hud {
+  position: absolute; top: 14px; right: 14px; display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 999px;
+  background: color-mix(in srgb, #0c0c12 42%, transparent); border: 1px solid rgba(255, 255, 255, 0.14); color: #f4f1ea;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: .78; transition: opacity .3s ease;
+}
+.med-hud:hover, .med-hud:focus-within, .med-hud.is-done { opacity: 1; }
+.med-dial { position: relative; width: 48px; height: 48px; display: grid; place-items: center; }
+.med-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.med-ring-track { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 3; }
+.med-ring-prog { fill: none; stroke: #f2c46d; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset .25s linear; }
+.med-time { position: relative; font: 600 12px var(--mono); font-variant-numeric: tabular-nums; }
+.med-side { display: flex; flex-direction: column; gap: 4px; }
+.med-label { font: 500 12px var(--grot); color: rgba(244, 241, 234, 0.85); white-space: nowrap; }
+.med-ctls { display: flex; gap: 4px; }
+.med-ctl { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #f4f1ea; background: rgba(255, 255, 255, 0.08); }
+.med-ctl:hover { background: rgba(255, 255, 255, 0.2); }
+.med-hud.is-done .med-ctls { display: none; }
+.med-hud.is-paused .med-ring-prog { stroke: rgba(242, 196, 109, 0.5); }
+@media (prefers-reduced-motion: reduce) { .med-panel { animation: none; } .med-ring-prog, .med-hud, .arc-over-switch-knob, .arc-over-switch-track { transition: none; } }
+@media (max-width: 640px) { .arc-done span { display: none; } }
+
+/* coming back from the arcade to a to-do: it glows once, gently */
+/* a ring drawn as an outline, which follows each element's own corners and leaves its shadow alone */
+.zen-flash { outline: 3px solid transparent; outline-offset: 3px; animation: zen-flash 2.4s ease both; }
+@keyframes zen-flash { 0%, 100% { outline-color: transparent; } 20%, 60% { outline-color: var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .arc-over, .arc-over-card { animation: none; } .zen-flash { animation: none; outline-color: var(--accent); } }
+
+/* a lounge in full screen fills the screen's own shape (its scene widens to fit) */
+.arc-play:fullscreen .arc-stage { padding: 0; }
+.arc-play:fullscreen .arc-canvas.is-wide { width: 100%; height: 100%; max-width: none; aspect-ratio: auto; border-radius: 0; }
+@media (max-width: 520px) { .arc-fs span { display: none; } }
+.arc-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 10px; }
+.arc-canvas { height: 100%; max-width: 100%; aspect-ratio: 1; border-radius: 16px; touch-action: none; cursor: pointer; display: block; }
+.arc-canvas:focus { outline: none; }
+.arc-canvas:focus-visible { outline: 2px solid color-mix(in srgb, var(--focus) 40%, transparent); outline-offset: 3px; }
+@media (max-width: 700px) {
+  .zen-a-bar { flex-direction: column-reverse; align-items: stretch; }
+  .zen-a-bar .zen-btn-pill { align-self: flex-end; }
+  .arc-frame { width: 100%; aspect-ratio: auto; min-height: 560px; }
+}
+
+/* the pin on a Notes card, a link or a folder: lit when it is pinned to Zen */
+.mos-acts .pin-btn.on, .acts .pin-btn.on { color: var(--accent-text); }
+.mos-acts .pin-btn.on svg, .acts .pin-btn.on svg { fill: currentColor; fill-opacity: .25; }
+
+/* the eye-rest pause: over everything in Zen */
+.zen-rest {
+  position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: color-mix(in srgb, var(--frame) 55%, transparent);
+  -webkit-backdrop-filter: blur(26px) saturate(1.1); backdrop-filter: blur(26px) saturate(1.1);
+  animation: zen-rest-in .5s ease both;
+}
+.zen-rest[hidden] { display: none; }
+@keyframes zen-rest-in { from { opacity: 0; } }
+.zen-rest-card {
+  width: min(440px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;
+  padding: 36px 32px 30px; border-radius: 28px; background: var(--zen-glass); border: 1px solid var(--zen-glass-line);
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.5); color: var(--text);
+}
+.zen-rest-dial { position: relative; width: 128px; height: 128px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.zen-rest-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.zen-rest-track { fill: none; stroke: var(--line); stroke-width: 5; }
+.zen-rest-prog { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.zen-rest-eye { position: absolute; top: 30px; color: var(--text-mut); display: inline-flex; }
+.zen-rest-eye svg { stroke: currentColor; fill: none; stroke-width: 1.8; }
+.zen-rest-secs { margin-top: 18px; font: 300 42px/1 var(--grot); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--text-strong); }
+.zen-rest-h { margin: 0; font: 700 var(--t7)/var(--lh-tight) var(--grot); letter-spacing: -0.02em; color: var(--text-strong); }
+.zen-rest-msg { margin: 0; max-width: 34ch; font: 500 var(--t4)/var(--lh-body) var(--grot); color: var(--text-soft); }
+.zen-rest-skip { margin-top: 6px; }
+
+/* Settings → New tab off: a plain new tab is handed to Chrome's page before it paints (boot.js) */
+:root[data-ntp='away'] body { visibility: hidden; }
+
+/* Settings → Zen: the wallpaper swatches */
+.wall-acts { display: inline-flex; gap: 6px; }
+.wall-acts [hidden] { display: none; }
+.wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; padding: 4px 0 2px; }
+.wall-sw { display: flex; flex-direction: column; gap: 7px; border-radius: 14px; padding: 4px; }
+.wall-thumb {
+  aspect-ratio: 16 / 10; border-radius: 10px; border: 1px solid var(--card-line-2);
+  background-size: cover !important; background-position: center !important;
+  display: flex; align-items: center; justify-content: center; color: var(--text-mut);
+}
+.wall-thumb.is-theme { background: linear-gradient(135deg, var(--bg) 50%, var(--bg-col) 50%); }
+.wall-thumb:empty:not(.is-theme) { background: var(--bg-inset); }
+.wall-thumb svg { stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.wall-name { font: 600 var(--t2) var(--grot); color: var(--text-soft); padding: 0 2px; }
+.wall-sw:hover .wall-thumb { border-color: var(--hovbr); }
+.wall-sw.is-active .wall-thumb { box-shadow: 0 0 0 2px var(--bg-col), 0 0 0 4px var(--accent); border-color: transparent; }
+/* your own images: the swatch with a small × in its corner to remove it */
+.wall-own { position: relative; display: flex; }
+.wall-own > .wall-sw { flex: 1; min-width: 0; }
+.wall-own-x { position: absolute; top: 0; right: 0; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bg-card); color: var(--text-strong); border: 1px solid var(--edge, var(--line-strong)); box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  opacity: .85; transition: opacity .15s ease, transform .15s ease; }
+.wall-own-x svg { stroke: currentColor; fill: none; stroke-width: 2.2; }
+.wall-own-x:hover, .wall-own-x:focus-visible { opacity: 1; transform: scale(1.08); background: var(--text-strong); color: var(--bg-card); }
+.wall-sw.is-active .wall-name { color: var(--text-strong); }
+.wall-sw:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zen-link, .zen-check, .zen-icb, .zen-btn-pill, .zen-toggle, .zen-grip, .zen-fold, .zen-fold svg, .zen-rowpin, .zen-thought-btn, .zen-cal-chev, .zen-rest-prog, .zen-page-btn, .arc-card, .zen-eye-ic::after, .zen-eye-track, .zen-eye-knob { transition: none; }
+  .zen-rest { animation: none; }
+}
+
 /* ————— reduced motion — kept LAST on purpose: a media query adds no specificity, so this block
    only wins against the transition/animation rules above by coming after them ————— */
 @media (prefers-reduced-motion: reduce) {
@@ -2758,4 +3789,490 @@ kbd {
   .check-prog::after { transition: none; }
   .colcard.highlight { animation: none; }
   .side, .top, .tray, .view { animation: none; }
+}
+
+/* ————— Zen wallpapers, round five: every scene moves, and four scenes move by the picture —————
+   (one block, kept apart from the motion rules above.) Night gains a shooting star and a cloud
+   across the moon, Aurora a rippling curtain, Bamboo slow shafts of sun. The four new scenes
+   (js/wallpapers.js: Nocturne, Serenade, Lotus, Shrine) tie their motion to a place in the
+   drawing: --k is one unit of the scene's 1600×1000 viewBox as the wall draws it (cover, on a
+   layer 108% of the screen), so calc(50% + (X - 800) * var(--k)) is the scene's x = X. For
+   those four the overlay breathes with the wall — one keyframe pair, started together when the
+   motion changes — so a flame stays on its wick and smoke on its stick. */
+.zen {
+  --zen-note-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cellipse cx='8' cy='26' rx='6.6' ry='4.7' transform='rotate(-22 8 26)'/%3E%3Crect x='13' y='3' width='2' height='23.5'/%3E%3Cpath d='M15 3c1 6 8 8 6 16-1-5-3-7-6-8z'/%3E%3C/svg%3E");
+  --zen-note-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cellipse cx='7' cy='26' rx='6.4' ry='4.6' transform='rotate(-22 7 26)'/%3E%3Cellipse cx='24' cy='23' rx='6.4' ry='4.6' transform='rotate(-22 24 23)'/%3E%3Crect x='11.8' y='6' width='2' height='20.5'/%3E%3Crect x='28.8' y='3' width='2' height='20.5'/%3E%3Cpath d='M11.8 6 30.8 3v4.6L11.8 10.6z'/%3E%3C/svg%3E");
+  --zen-smoke: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 70 220' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='b' x='-50%25' y='-10%25' width='200%25' height='120%25'%3E%3CfeGaussianBlur stdDeviation='1.6'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round' filter='url(%23b)'%3E%3Cpath d='M35 220C14 183 56 147 35 110S56 37 35 0' stroke-width='3' stroke-opacity='.8'/%3E%3Cpath d='M35 220C52 178 20 140 38 106S16 32 35 0' stroke-width='1.6' stroke-opacity='.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* night: now and then a shooting star, and a thin cloud crossing near the moon */
+.zen[data-motion='stars'] .zen-fx::before {
+  display: block; left: 60vw; top: 7vh; width: 13vw; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95));
+  rotate: 158deg; opacity: 0; animation: zen-shoot 13s ease-in infinite; animation-delay: 3s;
+}
+@keyframes zen-shoot { 0%, 86% { transform: translateX(0); opacity: 0; } 87% { opacity: 1; } 94%, 100% { transform: translateX(30vw); opacity: 0; } }
+.zen[data-motion='stars'] .zen-fx::after {
+  display: block; left: 0; top: 21vh; width: 46vw; height: 7vh; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(160, 175, 215, 0.26), rgba(160, 175, 215, 0)); filter: blur(4px);
+  animation: zen-cloud 120s linear infinite; animation-delay: -50s;
+}
+@keyframes zen-cloud { from { transform: translateX(-50vw); } to { transform: translateX(110vw); } }
+/* aurora: a second, rippling curtain over the light */
+.zen[data-motion='aurora'] .zen-fx::after {
+  display: block; left: -12vw; right: -12vw; top: 5vh; height: 42vh;
+  background: repeating-linear-gradient(90deg, rgba(120, 255, 200, 0) 0, rgba(120, 255, 200, 0.2) 2.2vw, rgba(120, 255, 200, 0) 3.4vw);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 35%, #000 55%, transparent); mask-image: linear-gradient(180deg, transparent, #000 35%, #000 55%, transparent);
+  filter: blur(5px); mix-blend-mode: screen;
+  animation: zen-curtain 17s ease-in-out infinite alternate, zen-curtain-glow 9s ease-in-out infinite;
+}
+@keyframes zen-curtain { from { transform: translateX(-5vw) skewX(-16deg) scaleY(.9); } to { transform: translateX(5vw) skewX(14deg) scaleY(1.1); } }
+@keyframes zen-curtain-glow { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+/* bamboo: two shafts of sun leaning through the grove */
+.zen[data-motion='leaves'] .zen-fx::before, .zen[data-motion='leaves'] .zen-fx::after {
+  display: block; left: 16vw; top: -30vh; width: 9vw; height: 170vh; transform-origin: 50% 0;
+  background: linear-gradient(90deg, rgba(255, 255, 232, 0), rgba(255, 255, 232, 0.55) 50%, rgba(255, 255, 232, 0)); filter: blur(14px);
+  animation: zen-beam 19s ease-in-out infinite alternate;
+}
+.zen[data-motion='leaves'] .zen-fx::after { left: 50vw; width: 6vw; animation-duration: 27s; animation-delay: -9s; }
+@keyframes zen-beam { from { transform: rotate(-24deg) translateX(-2vw); opacity: .3; } to { transform: rotate(-18deg) translateX(3vw); opacity: .95; } }
+
+/* the four scenes with anchored motion: the overlay breathes with the wall */
+.zen:is([data-motion='candle'], [data-motion='notes'], [data-motion='ripples'], [data-motion='incense']) .zen-wall { animation: zen-breathe-sync 80s ease-in-out infinite alternate; }
+.zen:is([data-motion='candle'], [data-motion='notes'], [data-motion='ripples'], [data-motion='incense']) .zen-fx {
+  --k: max(0.0675cqw, 0.108cqh); container-type: size;   /* container units, not vw: they follow the interface-size zoom */
+  animation: zen-breathe-sync-fx 80s ease-in-out infinite alternate;
+}
+@keyframes zen-breathe-sync { from { transform: scale(1) translate3d(0, 0, 0); } to { transform: scale(1.06) translate3d(-1.4%, -0.9%, 0); } }
+@keyframes zen-breathe-sync-fx { from { transform: scale(1) translate3d(0, 0, 0); } to { transform: scale(1.06) translate3d(-1.512%, -0.972%, 0); } }
+.zen:is([data-motion='candle'], [data-motion='notes']) .zen-fx i::before { content: ''; position: absolute; inset: 0; -webkit-mask: var(--zen-note-1) center / contain no-repeat; mask: var(--zen-note-1) center / contain no-repeat; }
+.zen:is([data-motion='candle'], [data-motion='notes']) .zen-fx i:nth-child(even)::before { -webkit-mask-image: var(--zen-note-2); mask-image: var(--zen-note-2); }
+
+/* candle (Nocturne): the flame on the piano flickers and its light breathes on the wall; notes
+   rise off the keys toward the window; a few stars in the panes twinkle */
+.zen[data-motion='candle'] .zen-fx::before {
+  display: block; left: calc(50% + (870 - 800 - 330) * var(--k)); top: calc(50% + (440 - 500 - 330) * var(--k));
+  width: calc(660 * var(--k)); height: calc(660 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 190, 110, 0.24), rgba(255, 160, 80, 0.07) 55%, rgba(255, 160, 80, 0));
+  mix-blend-mode: screen; animation: zen-candle-light 3.7s ease-in-out infinite;
+}
+@keyframes zen-candle-light { 0%, 100% { opacity: .7; transform: scale(1); } 23% { opacity: 1; transform: scale(1.03); } 41% { opacity: .8; } 58% { opacity: .95; transform: scale(.98); } 77% { opacity: .66; } }
+.zen[data-motion='candle'] .zen-fx i:nth-child(1) {
+  display: block; left: calc(50% + (870 - 800 - 11) * var(--k)); top: calc(50% + (416 - 500) * var(--k));
+  width: calc(22 * var(--k)); height: calc(44 * var(--k)); border-radius: 50% 50% 46% 46% / 64% 64% 36% 36%;
+  background: radial-gradient(60% 48% at 50% 70%, #fffbe6 0 28%, #ffd57e 60%, rgba(255, 170, 70, 0) 100%);
+  transform-origin: 50% 100%; animation: zen-flicker 1.9s ease-in-out infinite;
+}
+.zen[data-motion='candle'] .zen-fx i:nth-child(1)::before { display: none; }
+@keyframes zen-flicker { 0%, 100% { transform: scaleY(1) skewX(0); } 18% { transform: scaleY(1.09) skewX(-4deg); } 34% { transform: scaleY(.93) skewX(2deg); } 52% { transform: scaleY(1.13) skewX(5deg); } 70% { transform: scaleY(.97) skewX(-3deg); } 86% { transform: scaleY(1.05) skewX(1deg); } }
+.zen[data-motion='candle'] .zen-fx i:nth-child(n + 2):nth-child(-n + 13) {
+  display: block; left: calc(50% + (840 - 800) * var(--k) + var(--x) * 0.3); top: calc(50% + (690 - 500) * var(--k));
+  width: calc(24 * var(--k) * var(--s)); height: calc(32 * var(--k) * var(--s));
+  filter: drop-shadow(0 0 3px rgba(255, 200, 120, 0.75)); opacity: 0;
+  animation: zen-note-rise calc(var(--t) * 0.8) ease-in-out infinite; animation-delay: var(--d);
+}
+.zen[data-motion='candle'] .zen-fx i:nth-child(n + 2):nth-child(-n + 13)::before { background: rgba(255, 226, 172, 0.92); }
+.zen[data-motion='candle'] .zen-fx i:nth-child(odd):nth-child(n + 2):nth-child(-n + 13) { animation-name: zen-note-rise-b; }
+@keyframes zen-note-rise {
+  0% { transform: translate(0, 0) rotate(-8deg) scale(.7); opacity: 0; } 12% { opacity: .95; }
+  45% { transform: translate(2.5vw, -14vh) rotate(7deg) scale(1); } 80% { opacity: .5; }
+  100% { transform: translate(-1vw, -30vh) rotate(-5deg) scale(1.08); opacity: 0; }
+}
+@keyframes zen-note-rise-b {
+  0% { transform: translate(0, 0) rotate(6deg) scale(.7); opacity: 0; } 12% { opacity: .95; }
+  45% { transform: translate(-2vw, -13vh) rotate(-7deg) scale(1); } 80% { opacity: .5; }
+  100% { transform: translate(2vw, -28vh) rotate(5deg) scale(1.08); opacity: 0; }
+}
+.zen[data-motion='candle'] .zen-fx i:nth-child(n + 14) {
+  display: block; left: calc(50% + (990 - 800) * var(--k) + var(--x) * 0.17); top: calc(50% + (200 - 500) * var(--k) + var(--y) * 0.26);
+  width: calc(3px * var(--s)); height: calc(3px * var(--s)); border-radius: 50%;
+  background: #fff; box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.7); opacity: 0;
+  animation: zen-twinkle calc(var(--t) * 0.35) ease-in-out infinite; animation-delay: var(--d);
+}
+.zen[data-motion='candle'] .zen-fx i:nth-child(n + 14)::before { display: none; }
+
+/* notes (Serenade): notes drift out of the guitar's sound hole up toward the light; the leaf
+   shade of a tree outside sways in the window's light on the wall, which brightens and dims */
+.zen[data-motion='notes'] .zen-fx i:nth-child(-n + 12) {
+  display: block; left: calc(50% + (1156 - 800 - 14) * var(--k)); top: calc(50% + (718 - 500 - 18) * var(--k));
+  width: calc(28 * var(--k) * var(--s)); height: calc(36 * var(--k) * var(--s));
+  filter: drop-shadow(0 1px 2px rgba(255, 248, 230, 0.9)); opacity: 0;
+  animation: zen-note-drift calc(var(--t) * 0.9) ease-in-out infinite; animation-delay: var(--d);
+}
+.zen[data-motion='notes'] .zen-fx i:nth-child(-n + 12)::before { background: rgba(98, 58, 28, 0.78); }
+.zen[data-motion='notes'] .zen-fx i:nth-child(3n):nth-child(-n + 12) { animation-name: zen-note-drift-b; }
+@keyframes zen-note-drift {
+  0% { transform: translate(0, 0) rotate(0) scale(.45); opacity: 0; } 10% { opacity: .9; }
+  35% { transform: translate(-5vw, -11vh) rotate(-10deg) scale(.9); }
+  65% { transform: translate(-9vw, -23vh) rotate(8deg) scale(1); opacity: .75; }
+  100% { transform: translate(-15vw, -38vh) rotate(-6deg) scale(1.1); opacity: 0; }
+}
+@keyframes zen-note-drift-b {
+  0% { transform: translate(0, 0) rotate(0) scale(.45); opacity: 0; } 10% { opacity: .9; }
+  40% { transform: translate(2vw, -13vh) rotate(9deg) scale(.95); }
+  70% { transform: translate(-1vw, -24vh) rotate(-6deg) scale(1); opacity: .7; }
+  100% { transform: translate(3vw, -36vh) rotate(6deg) scale(1.08); opacity: 0; }
+}
+.zen[data-motion='notes'] .zen-fx::before, .zen[data-motion='notes'] .zen-fx i:nth-child(13) {
+  display: block; left: calc(50% + (960 - 800) * var(--k)); top: calc(50% + (190 - 500) * var(--k));
+  width: calc(440 * var(--k)); height: calc(520 * var(--k));
+  clip-path: polygon(0 0, 100% 11.5%, 100% 100%, 0 88.5%);
+}
+.zen[data-motion='notes'] .zen-fx::before { background: rgba(255, 251, 238, 0.42); filter: blur(3px); animation: zen-sunlight 16s ease-in-out infinite alternate; }
+@keyframes zen-sunlight { 0%, 30% { opacity: 0; } 100% { opacity: 1; } }
+.zen[data-motion='notes'] .zen-fx i:nth-child(13) { overflow: hidden; }
+.zen[data-motion='notes'] .zen-fx i:nth-child(13)::before {
+  inset: -12%; -webkit-mask: none; mask: none; filter: blur(7px);
+  background:
+    radial-gradient(22% 16% at 28% 30%, rgba(120, 86, 46, 0.2), transparent 70%),
+    radial-gradient(18% 20% at 70% 38%, rgba(120, 86, 46, 0.18), transparent 70%),
+    radial-gradient(26% 14% at 44% 70%, rgba(120, 86, 46, 0.16), transparent 70%),
+    radial-gradient(16% 13% at 82% 82%, rgba(120, 86, 46, 0.16), transparent 70%),
+    radial-gradient(14% 10% at 16% 58%, rgba(120, 86, 46, 0.14), transparent 70%);
+  animation: zen-sway 6.5s ease-in-out infinite alternate;
+}
+.zen[data-motion='notes'] .zen-fx i:nth-child(n + 14) {
+  display: block; left: calc(50% + (990 - 800) * var(--k) + var(--x) * 0.25); top: calc(50% + (330 - 500) * var(--k) + var(--y) * 0.32);
+  width: calc(3px * var(--s)); height: calc(3px * var(--s)); border-radius: 50%;
+  background: rgba(196, 150, 84, 0.7); box-shadow: 0 0 5px 1px rgba(255, 246, 222, 0.95); opacity: 0;
+  animation: zen-mote var(--t) ease-in-out infinite; animation-delay: var(--d);
+}
+.zen[data-motion='notes'] .zen-fx i:nth-child(n + 14)::before { display: none; }
+
+/* ripples (Lotus): rings spread on the near water and petals drift across it, the moon's halo
+   breathes behind the Buddha, its light shimmers below him, the floating lanterns flicker and a
+   few fireflies wander over the pond */
+.zen[data-motion='ripples'] .zen-fx::before {
+  display: block; left: calc(50% + (1120 - 800 - 260) * var(--k)); top: calc(50% + (470 - 500 - 260) * var(--k));
+  width: calc(520 * var(--k)); height: calc(520 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 222, 180, 0.3), rgba(255, 222, 180, 0.08) 60%, rgba(255, 222, 180, 0));
+  mix-blend-mode: screen; animation: zen-halo 9s ease-in-out infinite alternate;
+}
+@keyframes zen-halo { from { transform: scale(.9); opacity: .55; } to { transform: scale(1.08); opacity: 1; } }
+.zen[data-motion='ripples'] .zen-fx::after {
+  display: block; left: calc(50% + (900 - 800) * var(--k)); top: calc(50% + (772 - 500) * var(--k));
+  width: calc(440 * var(--k)); height: calc(240 * var(--k));
+  background: repeating-linear-gradient(180deg, rgba(255, 200, 170, 0) 0 calc(11 * var(--k)), rgba(255, 206, 176, 0.26) calc(11 * var(--k)) calc(13 * var(--k)));
+  -webkit-mask-image: radial-gradient(50% 60% at 50% 30%, #000, transparent); mask-image: radial-gradient(50% 60% at 50% 30%, #000, transparent);
+  animation: zen-swell 8s ease-in-out infinite alternate;
+}
+.zen[data-motion='ripples'] .zen-fx i:nth-child(-n + 8) {
+  display: block; left: calc(18% + var(--x) * 0.7); top: calc(50% + (782 - 500) * var(--k) + var(--y) * 0.17);
+  width: calc(150 * var(--k)); height: calc(38 * var(--k)); translate: -50% -50%;
+  border: 1.5px solid rgba(255, 214, 190, 0.55); border-radius: 50%; opacity: 0;
+  animation: zen-ripple calc(var(--t) * 0.45) ease-out infinite; animation-delay: var(--d);
+}
+.zen[data-motion='ripples'] .zen-fx i:nth-child(-n + 8)::before { content: ''; position: absolute; inset: 24%; border: 1px solid rgba(255, 214, 190, 0.45); border-radius: 50%; }
+@keyframes zen-ripple { 0% { transform: scale(.15); opacity: 0; } 12% { opacity: .9; } 100% { transform: scale(1.5); opacity: 0; } }
+.zen[data-motion='ripples'] .zen-fx i:nth-child(n + 9):nth-child(-n + 15) {
+  display: block; left: calc(var(--x) * 0.4); top: calc(50% + (790 - 500) * var(--k) + var(--y) * 0.16);
+  width: calc(14 * var(--k) * var(--s)); height: calc(7 * var(--k) * var(--s)); border-radius: 60% 0 60% 0;
+  background: #f1b2c4; opacity: 0;
+  animation: zen-petal-drift calc(var(--t) * 2.6) linear infinite; animation-delay: calc(var(--d) * 2);
+}
+@keyframes zen-petal-drift {
+  0% { transform: translate(-10vw, 0) rotate(0); opacity: 0; } 8% { opacity: .9; }
+  25% { transform: translate(14vw, .5vh) rotate(50deg); } 50% { transform: translate(38vw, -.3vh) rotate(100deg); }
+  75% { transform: translate(62vw, .4vh) rotate(150deg); } 92% { opacity: .9; }
+  100% { transform: translate(86vw, 0) rotate(200deg); opacity: 0; }
+}
+.zen[data-motion='ripples'] .zen-fx i:nth-child(n + 16):nth-child(-n + 18) {
+  display: block; width: calc(110 * var(--k)); height: calc(110 * var(--k)); translate: -50% -60%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 214, 140, 0.55), rgba(255, 170, 80, 0)); mix-blend-mode: screen;
+  animation: zen-candle-light 2.9s ease-in-out infinite;
+}
+.zen[data-motion='ripples'] .zen-fx i:nth-child(16) { left: calc(50% + (560 - 800) * var(--k)); top: calc(50% + (840 - 500) * var(--k)); }
+.zen[data-motion='ripples'] .zen-fx i:nth-child(17) { left: calc(50% + (780 - 800) * var(--k)); top: calc(50% + (905 - 500) * var(--k)); animation-duration: 3.4s; }
+.zen[data-motion='ripples'] .zen-fx i:nth-child(18) { left: calc(50% + (1430 - 800) * var(--k)); top: calc(50% + (860 - 500) * var(--k)); animation-duration: 2.3s; }
+.zen[data-motion='ripples'] .zen-fx i:nth-child(n + 19) {
+  display: block; left: calc(8% + var(--x) * 0.8); top: calc(50% + (560 - 500) * var(--k) + var(--y) * 0.22);
+  width: calc(4px * var(--s)); height: calc(4px * var(--s)); border-radius: 50%;
+  background: #ffe9a8; box-shadow: 0 0 10px 3px rgba(255, 214, 130, 0.5);
+  animation: zen-wander var(--t) ease-in-out infinite alternate, zen-glow calc(var(--t) * 0.25) ease-in-out infinite; animation-delay: var(--d);
+}
+
+/* incense (Shrine): three threads of smoke rise from the sticks and break into curls, the
+   embers breathe, sun leans through the bamboo and a leaf now and then comes down */
+.zen[data-motion='incense'] .zen-fx i:nth-child(-n + 3) {
+  display: block; top: calc(50% + (692 - 500 - 440) * var(--k));
+  width: calc(70 * var(--k)); height: calc(440 * var(--k)); overflow: hidden;
+  -webkit-mask-image: linear-gradient(0deg, transparent, #000 5%, #000 38%, transparent 96%); mask-image: linear-gradient(0deg, transparent, #000 5%, #000 38%, transparent 96%);
+  transform-origin: 50% 100%; animation: zen-smoke-sway 9s ease-in-out infinite alternate;
+}
+.zen[data-motion='incense'] .zen-fx i:nth-child(1) { left: calc(50% + (877 - 800 - 35) * var(--k)); }
+.zen[data-motion='incense'] .zen-fx i:nth-child(2) { left: calc(50% + (900 - 800 - 35) * var(--k)); top: calc(50% + (686 - 500 - 440) * var(--k)); animation-duration: 11s; animation-delay: -4s; }
+.zen[data-motion='incense'] .zen-fx i:nth-child(3) { left: calc(50% + (923 - 800 - 35) * var(--k)); top: calc(50% + (696 - 500 - 440) * var(--k)); animation-duration: 8s; animation-delay: -6s; }
+.zen[data-motion='incense'] .zen-fx i:nth-child(-n + 3)::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: calc(100% + 220 * var(--k));
+  background: var(--zen-smoke) 50% 0 / 100% calc(220 * var(--k)) repeat-y; opacity: .85;
+  animation: zen-smoke-rise 7s linear infinite;
+}
+.zen[data-motion='incense'] .zen-fx i:nth-child(2)::before { animation-duration: 8.4s; }
+.zen[data-motion='incense'] .zen-fx i:nth-child(3)::before { animation-duration: 6.2s; transform: scaleX(-1); }
+@keyframes zen-smoke-rise { from { transform: translateY(0); } to { transform: translateY(calc(-220 * var(--k))); } }
+@keyframes zen-smoke-sway { from { transform: rotate(-3deg) skewX(4deg); } to { transform: rotate(3deg) skewX(-5deg); } }
+.zen[data-motion='incense'] .zen-fx i:nth-child(n + 4):nth-child(-n + 11) {
+  display: block; left: calc(50% + (900 - 800 - 20) * var(--k)); top: calc(50% + (470 - 500) * var(--k));
+  width: calc(40 * var(--k) * var(--s)); height: calc(40 * var(--k) * var(--s)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)); filter: blur(3px); opacity: 0;
+  animation: zen-smoke-curl calc(var(--t) * 0.55) ease-out infinite; animation-delay: calc(var(--d) * 0.6);
+}
+.zen[data-motion='incense'] .zen-fx i:nth-child(even):nth-child(n + 4):nth-child(-n + 11) { animation-name: zen-smoke-curl-b; }
+@keyframes zen-smoke-curl { 0% { transform: translate(0, 0) scale(.4); opacity: 0; } 20% { opacity: .65; } 100% { transform: translate(4vw, -24vh) scale(2.8); opacity: 0; } }
+@keyframes zen-smoke-curl-b { 0% { transform: translate(0, 0) scale(.4); opacity: 0; } 20% { opacity: .6; } 100% { transform: translate(-3vw, -26vh) scale(2.5); opacity: 0; } }
+.zen[data-motion='incense'] .zen-fx i:nth-child(n + 12):nth-child(-n + 14) {
+  display: block; width: calc(16 * var(--k)); height: calc(16 * var(--k)); translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 150, 70, 0.95), rgba(255, 110, 40, 0)); animation: zen-ember 2.4s ease-in-out infinite alternate;
+}
+.zen[data-motion='incense'] .zen-fx i:nth-child(12) { left: calc(50% + (877 - 800) * var(--k)); top: calc(50% + (692 - 500) * var(--k)); }
+.zen[data-motion='incense'] .zen-fx i:nth-child(13) { left: calc(50% + (900 - 800) * var(--k)); top: calc(50% + (686 - 500) * var(--k)); animation-delay: -.8s; }
+.zen[data-motion='incense'] .zen-fx i:nth-child(14) { left: calc(50% + (923 - 800) * var(--k)); top: calc(50% + (696 - 500) * var(--k)); animation-delay: -1.7s; }
+@keyframes zen-ember { from { opacity: .45; transform: scale(.8); } to { opacity: 1; transform: scale(1.25); } }
+.zen[data-motion='incense'] .zen-fx::before, .zen[data-motion='incense'] .zen-fx::after {
+  display: block; left: 12vw; top: -30vh; width: 10vw; height: 170vh; transform-origin: 50% 0;
+  background: linear-gradient(90deg, rgba(255, 255, 238, 0), rgba(255, 255, 238, 0.5) 50%, rgba(255, 255, 238, 0)); filter: blur(16px);
+  animation: zen-beam 21s ease-in-out infinite alternate;
+}
+.zen[data-motion='incense'] .zen-fx::after { left: 36vw; width: 6vw; animation-duration: 29s; animation-delay: -12s; }
+.zen[data-motion='incense'] .zen-fx i:nth-child(n + 15):nth-child(-n + 19) {
+  display: block; left: var(--x); top: -6vh; width: calc(20 * var(--k) * var(--s)); height: calc(5 * var(--k) * var(--s)); border-radius: 50%;
+  background: #8aa25e; opacity: .8; animation: zen-fall calc(var(--t) * 1.6) linear infinite; animation-delay: calc(var(--d) * 2);
+}
+.zen[data-motion='incense'] .zen-fx i:nth-child(n + 20) {
+  display: block; width: calc(3px * var(--s)); height: calc(3px * var(--s)); border-radius: 50%; top: calc(20% + var(--y) * 0.5);
+  background: rgba(150, 140, 100, 0.6); box-shadow: 0 0 5px 1px rgba(255, 252, 232, 0.9); opacity: 0;
+  animation: zen-mote var(--t) ease-in-out infinite; animation-delay: var(--d);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zen-fx, .zen-fx i::before { animation: none !important; }
+  /* what only makes sense in motion (notes in the air, smoke, ripples, a shooting star) is left out */
+  .zen[data-motion='stars'] .zen-fx::before,
+  .zen[data-motion='candle'] .zen-fx i:nth-child(n + 2):nth-child(-n + 13),
+  .zen[data-motion='notes'] .zen-fx i:nth-child(-n + 12),
+  .zen[data-motion='ripples'] .zen-fx i:nth-child(-n + 15),
+  .zen[data-motion='incense'] .zen-fx i:nth-child(-n + 11) { display: none; }
+}
+/* ————— end of round five ————— */
+
+/* ————— four quiet weathers (2026-11-18): rain, snow, clouds, lanterns (js/wallpapers.js) —————
+   Anchored like round five: .zen-fx is a size container breathing with the wall, so a ring on
+   the pond or a lantern on the river keeps its spot at any interface size. */
+.zen:is([data-motion='rain'], [data-motion='snow'], [data-motion='clouds'], [data-motion='lanterns']) .zen-wall { animation: zen-breathe-sync 80s ease-in-out infinite alternate; }
+.zen:is([data-motion='rain'], [data-motion='snow'], [data-motion='clouds'], [data-motion='lanterns']) .zen-fx {
+  --k: max(0.0675cqw, 0.108cqh); container-type: size;
+  animation: zen-breathe-sync-fx 80s ease-in-out infinite alternate;
+}
+@keyframes zen-drift-cq { from { transform: translateX(-40cqw); } to { transform: translateX(150cqw); } }
+
+/* rain (Rain): fine slanted streaks over everything, rings opening on the pond, a bank of cloud
+   easing along the hills */
+.zen[data-motion='rain'] .zen-fx i {
+  display: block; left: calc(var(--x) * 1.3 - 5%); top: -14cqh; width: 1.4px; height: calc(9cqh * var(--s));
+  background: linear-gradient(rgba(214, 226, 240, 0), rgba(214, 226, 240, 0.6));
+  transform: rotate(12deg); animation: zen-rain calc(0.8s + var(--s) * 0.45s) linear infinite; animation-delay: calc(var(--d) * 0.07);
+}
+@keyframes zen-rain { from { transform: translate(0, 0) rotate(12deg); } to { transform: translate(-27cqh, 130cqh) rotate(12deg); } }
+.zen[data-motion='rain'] .zen-fx i:nth-child(n + 16) {
+  left: calc(var(--x) * 0.9 + 4%); top: calc(50% + (700 - 500) * var(--k) + var(--y) * 0.28);
+  width: calc(90 * var(--k) * var(--s)); height: calc(22 * var(--k) * var(--s)); background: none;
+  border: 1.5px solid rgba(214, 226, 240, 0.55); border-radius: 50%; transform: none;
+  animation: zen-ring 2.8s ease-out infinite; animation-delay: calc(var(--d) * 0.14);
+}
+@keyframes zen-ring { from { transform: scale(.08); opacity: .9; } to { transform: scale(1); opacity: 0; } }
+.zen[data-motion='rain'] .zen-fx::before {
+  display: block; width: 90cqw; height: 18cqh; left: -30cqw; top: calc(50% - 70 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(170, 182, 194, 0.55), rgba(170, 182, 194, 0)); filter: blur(12px);
+  animation: zen-drift-cq 90s linear infinite;
+}
+
+/* snow (Snowfall): flakes drifting down slowly, swaying, the nearest ones out of focus; a breath
+   of mist low over the slope */
+.zen[data-motion='snow'] .zen-fx i {
+  display: block; top: -4cqh; width: calc(7 * var(--k) * var(--s)); height: calc(7 * var(--k) * var(--s)); border-radius: 50%;
+  background: #fff; box-shadow: 0 0 calc(4 * var(--k)) rgba(84, 104, 134, 0.35); opacity: .92;
+  animation: zen-snow calc(var(--t) * 1.15) linear infinite; animation-delay: var(--d);
+}
+.zen[data-motion='snow'] .zen-fx i:nth-child(3n) { filter: blur(1.5px); opacity: .7; }
+@keyframes zen-snow {
+  0% { transform: translate(0, 0); } 25% { transform: translate(2.4cqw, 27cqh); } 50% { transform: translate(-1.6cqw, 54cqh); }
+  75% { transform: translate(2cqw, 81cqh); } 100% { transform: translate(0, 108cqh); }
+}
+.zen[data-motion='snow'] .zen-fx::before {
+  display: block; width: 110cqw; height: 16cqh; left: -40cqw; top: calc(50% + 170 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0)); filter: blur(12px);
+  animation: zen-drift-cq 120s linear infinite;
+}
+
+/* clouds (Cloud sea): two banks of cloud drifting below the peaks, a few gulls far off crossing
+   high up, their wings slowly beating */
+.zen[data-motion='clouds'] .zen-fx::before, .zen[data-motion='clouds'] .zen-fx::after {
+  display: block; width: 100cqw; height: 22cqh; left: -40cqw; top: calc(50% + 150 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 250, 244, 0.85), rgba(255, 250, 244, 0)); filter: blur(10px);
+  animation: zen-drift-cq 130s linear infinite;
+}
+.zen[data-motion='clouds'] .zen-fx::after { top: calc(50% + 300 * var(--k)); width: 130cqw; height: 26cqh; opacity: .85; animation-duration: 180s; animation-delay: -90s; }
+.zen[data-motion='clouds'] .zen-fx i:nth-child(-n + 4) {
+  display: block; left: -8cqw; top: calc(8% + var(--y) * 0.22); width: calc(26 * var(--k) * var(--s)); height: calc(9 * var(--k) * var(--s));
+  animation: zen-glide calc(var(--t) * 4) linear infinite; animation-delay: calc(var(--d) * 4);
+}
+.zen[data-motion='clouds'] .zen-fx i:nth-child(-n + 4)::before, .zen[data-motion='clouds'] .zen-fx i:nth-child(-n + 4)::after {
+  content: ''; position: absolute; top: 0; width: 52%; height: 100%;
+  border-top: 2px solid rgba(66, 60, 88, 0.6); border-radius: 50% 50% 0 0;
+  animation: zen-flap 1.8s ease-in-out infinite;
+}
+.zen[data-motion='clouds'] .zen-fx i:nth-child(-n + 4)::before { left: 0; transform-origin: 100% 100%; }
+.zen[data-motion='clouds'] .zen-fx i:nth-child(-n + 4)::after { right: 0; transform-origin: 0 100%; }
+@keyframes zen-glide { from { transform: translate(0, 0); } 50% { transform: translate(58cqw, -3cqh); } to { transform: translate(118cqw, 1cqh); } }
+@keyframes zen-flap { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.4); } }
+
+/* lanterns (Lanterns): paper lanterns lifting off the river, swaying as they rise, glowing and
+   fading high up; their light trembling on the water */
+.zen[data-motion='lanterns'] .zen-fx i {
+  display: block; left: calc(var(--x) * 0.92 + 4%); top: calc(50% + (760 - 500) * var(--k) + var(--y) * 0.18);
+  width: calc(16 * var(--k) * var(--s)); height: calc(22 * var(--k) * var(--s)); border-radius: 32% 32% 40% 40%;
+  background: radial-gradient(60% 55% at 50% 62%, #fff4c8, #ffbd5a 55%, #e2702a);
+  box-shadow: 0 0 calc(18 * var(--k)) calc(5 * var(--k)) rgba(255, 170, 70, 0.45), 0 0 calc(50 * var(--k)) calc(14 * var(--k)) rgba(255, 150, 60, 0.16);
+  opacity: 0; animation: zen-lantern calc(var(--t) * 2.4) linear infinite; animation-delay: calc(var(--d) * 2.4);
+}
+.zen[data-motion='lanterns'] .zen-fx i:nth-child(n + 15) { display: none; }
+@keyframes zen-lantern {
+  0% { transform: translate(0, 0) rotate(-3deg); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(1.6cqw, -32cqh) rotate(3deg); opacity: .95; }
+  85% { opacity: .55; }
+  100% { transform: translate(-1cqw, -62cqh) rotate(-2deg) scale(.55); opacity: 0; }
+}
+.zen[data-motion='lanterns'] .zen-fx::before {
+  display: block; left: -10cqw; right: -10cqw; top: calc(50% + 160 * var(--k)); bottom: 0;
+  background: repeating-linear-gradient(180deg, rgba(255, 186, 104, 0) 0 16px, rgba(255, 186, 104, 0.12) 16px 18px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent); mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+  animation: zen-swell 12s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .zen-fx i::after { animation: none !important; }
+  /* rings and rising lanterns only make sense in motion */
+  .zen[data-motion='rain'] .zen-fx i:nth-child(n + 16), .zen[data-motion='lanterns'] .zen-fx i { display: none; }
+}
+
+/* ————— storms far off and quiet snow (2026-11-18): thunder, storm, snowlight, snownight (js/wallpapers.js) —————
+   Anchored like the four weathers. The lightning is a soft glow inside the cloud, seldom: two
+   pulses close together at most (never three in a second), across part of the sky only, and
+   it exists only while animating, so under reduced motion there is none. */
+.zen:is([data-motion='thunder'], [data-motion='storm'], [data-motion='snowlight'], [data-motion='snownight']) .zen-wall { animation: zen-breathe-sync 80s ease-in-out infinite alternate; }
+.zen:is([data-motion='thunder'], [data-motion='storm'], [data-motion='snowlight'], [data-motion='snownight']) .zen-fx {
+  --k: max(0.0675cqw, 0.108cqh); container-type: size;
+  animation: zen-breathe-sync-fx 80s ease-in-out infinite alternate;
+}
+.zen { --zen-bolt: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 70 90'%3E%3Cdefs%3E%3Cfilter id='g' x='-60%25' y='-20%25' width='220%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='2.4'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M28 0 L39 27 L33 30 L45 56 L38 59 L49 90' stroke='%23cfcaff' stroke-width='6' filter='url(%23g)'/%3E%3Cpath d='M28 0 L39 27 L33 30 L45 56 L38 59 L49 90 M39 27 L49 37' stroke='%23fbfaff' stroke-width='1.6'/%3E%3C/g%3E%3C/svg%3E"); }
+
+/* thunder (Far storm): the tall cloud lights from inside now and then, and once in a while a far
+   bolt runs down to the sea; glints of the afterglow come and go on the water */
+.zen[data-motion='thunder'] .zen-fx::before {
+  display: block; left: calc(50% + (780 - 800) * var(--k)); top: calc(50% + (140 - 500) * var(--k));
+  width: calc(600 * var(--k)); height: calc(460 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(228, 224, 255, 0.7), rgba(196, 190, 238, 0.28) 55%, rgba(196, 190, 238, 0)); filter: blur(14px);
+  opacity: 0; animation: zen-thunder-glow 13s ease-out infinite; animation-delay: -5s;
+}
+.zen[data-motion='thunder'] .zen-fx::after {
+  display: block; left: calc(50% + (1098 - 800) * var(--k)); top: calc(50% + (540 - 500) * var(--k));
+  width: calc(70 * var(--k)); height: calc(84 * var(--k)); background: var(--zen-bolt) center / 100% 100% no-repeat;
+  opacity: 0; animation: zen-thunder-bolt 13s linear infinite; animation-delay: -5s;
+}
+@keyframes zen-thunder-glow {
+  0%, 18% { opacity: 0; } 19.5% { opacity: .35; } 22.5% { opacity: 0; }
+  60% { opacity: 0; } 61% { opacity: .8; } 62.2% { opacity: .2; } 63.4% { opacity: .65; } 67.5% { opacity: 0; } 100% { opacity: 0; }
+}
+@keyframes zen-thunder-bolt { 0%, 60.9% { opacity: 0; } 61.1% { opacity: .9; } 62.1% { opacity: 0; } 63.3% { opacity: .75; } 64.8% { opacity: 0; } 100% { opacity: 0; } }
+.zen[data-motion='thunder'] .zen-fx i:nth-child(-n + 12) {
+  display: block; left: calc(50% + (130 - 800) * var(--k) + var(--x) * 0.36); top: calc(50% + (630 - 500) * var(--k) + var(--y) * 0.14);
+  width: calc(46 * var(--k) * var(--s)); height: 1.5px; border-radius: 2px; background: rgba(246, 196, 170, 0.8);
+  opacity: 0; animation: zen-glint calc(var(--t) * 0.45) ease-in-out infinite; animation-delay: var(--d);
+}
+@keyframes zen-glint { 0%, 100% { opacity: 0; transform: translateX(0); } 50% { opacity: .9; transform: translateX(calc(10 * var(--k))); } }
+
+/* storm (Storm night): rain over everything, the cloud lit from behind now and then (a soft glow
+   over the upper sky), a bank of mist easing along the hills */
+.zen[data-motion='storm'] .zen-fx i {
+  display: block; left: calc(var(--x) * 1.3 - 5%); top: -14cqh; width: 1.4px; height: calc(10cqh * var(--s));
+  background: linear-gradient(rgba(200, 212, 232, 0), rgba(200, 212, 232, 0.5));
+  transform: rotate(12deg); animation: zen-rain calc(0.75s + var(--s) * 0.4s) linear infinite; animation-delay: calc(var(--d) * 0.07);
+}
+.zen[data-motion='storm'] .zen-fx::before {
+  display: block; left: calc(50% + (150 - 800) * var(--k)); top: calc(50% + (-140 - 500) * var(--k));
+  width: calc(1300 * var(--k)); height: calc(660 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(196, 204, 240, 0.48), rgba(196, 204, 240, 0)); filter: blur(20px);
+  opacity: 0; animation: zen-storm-glow 17s ease-out infinite; animation-delay: -3s;
+}
+@keyframes zen-storm-glow {
+  0%, 39% { opacity: 0; } 40% { opacity: .85; } 41.2% { opacity: .25; } 42.3% { opacity: .7; } 46% { opacity: 0; }
+  77% { opacity: 0; } 78.2% { opacity: .4; } 81% { opacity: 0; } 100% { opacity: 0; }
+}
+.zen[data-motion='storm'] .zen-fx::after {
+  display: block; width: 90cqw; height: 16cqh; left: -30cqw; top: calc(50% + 50 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(110, 122, 146, 0.5), rgba(110, 122, 146, 0)); filter: blur(12px);
+  animation: zen-drift-cq 100s linear infinite;
+}
+
+/* snowlight (Snow lake): a few flakes, small and slow, and mist breathing over the ice */
+.zen[data-motion='snowlight'] .zen-fx i {
+  display: block; top: -4cqh; width: calc(5.5 * var(--k) * var(--s)); height: calc(5.5 * var(--k) * var(--s)); border-radius: 50%;
+  background: #fff; box-shadow: 0 0 calc(3 * var(--k)) rgba(110, 118, 150, 0.4); opacity: .92;
+  animation: zen-snow calc(var(--t) * 1.9) linear infinite; animation-delay: calc(var(--d) * 1.6);
+}
+.zen[data-motion='snowlight'] .zen-fx i:nth-child(2n) { display: none; }
+.zen[data-motion='snowlight'] .zen-fx::before {
+  display: block; width: 110cqw; height: 14cqh; left: -40cqw; top: calc(50% + 200 * var(--k)); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0)); filter: blur(12px);
+  animation: zen-drift-cq 150s linear infinite;
+}
+
+/* snownight (Winter night): flakes catching the moonlight as they fall slowly; smoke rising
+   from the cabin's chimney (the Shrine's thread of smoke, wider and slower) */
+.zen[data-motion='snownight'] .zen-fx i:nth-child(n + 2) {
+  display: block; top: -4cqh; width: calc(6 * var(--k) * var(--s)); height: calc(6 * var(--k) * var(--s)); border-radius: 50%;
+  background: #f4f7ff; box-shadow: 0 0 calc(6 * var(--k)) rgba(190, 205, 255, 0.55); opacity: .88;
+  animation: zen-snow calc(var(--t) * 1.4) linear infinite; animation-delay: calc(var(--d) * 1.3);
+}
+.zen[data-motion='snownight'] .zen-fx i:nth-child(3n) { filter: blur(1.5px); opacity: .6; }
+.zen[data-motion='snownight'] .zen-fx i:nth-child(1) {
+  display: block; left: calc(50% + (1067 - 800 - 50) * var(--k)); top: calc(50% + (616 - 500 - 400) * var(--k));
+  width: calc(100 * var(--k)); height: calc(400 * var(--k)); overflow: hidden; opacity: .45;
+  -webkit-mask-image: linear-gradient(0deg, transparent, #000 4%, #000 35%, transparent 95%); mask-image: linear-gradient(0deg, transparent, #000 4%, #000 35%, transparent 95%);
+  transform-origin: 50% 100%; animation: zen-smoke-sway 12s ease-in-out infinite alternate;
+}
+.zen[data-motion='snownight'] .zen-fx i:nth-child(1)::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: calc(100% + 220 * var(--k));
+  background: var(--zen-smoke) 50% 0 / 100% calc(220 * var(--k)) repeat-y;
+  animation: zen-smoke-rise 10s linear infinite;
+}
+
+/* ————— the wallpaper outside Zen (Settings › Zen › "Show it outside Zen too"; js/wallboard.js) —————
+   The picture lies under the frame, held still, and the main panel no longer paints its own
+   ground over it: on the board it shows plainly between the columns. What carries text turns
+   to frosted glass instead (the header, the live-tabs strip, section heads and the Settings
+   index, the collection columns, and in the other views one soft pane behind the page), while
+   cards and fields keep their paper, so everything reads as before. */
+:root[data-wall='on'] body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--board-wall, none); }
+:root[data-wall='on'][data-zen='on'] body::before { display: none; }   /* Zen has its own, moving */
+:root[data-wall='on'] .side {
+  background: color-mix(in srgb, var(--frame) 58%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2);
+}
+:root[data-wall='on'] .main {
+  background: color-mix(in srgb, var(--bg) 16%, transparent);   /* a breath of the theme, no more */
+  box-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.55);
+}
+:root[data-wall='on'] :is(.top, .tray, .sec-top, .set-index) {
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2);
+}
+:root[data-wall='on'] .board-scroll { background-image: none; }   /* the dot lattice would only be noise on a picture */
+:root[data-wall='on'] .colcard {
+  background: color-mix(in srgb, var(--bg-col) 66%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+}
+:root[data-wall='on'] .view:not(.view-board) {
+  background: color-mix(in srgb, var(--bg) 56%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15); backdrop-filter: blur(10px) saturate(1.15);
 }
