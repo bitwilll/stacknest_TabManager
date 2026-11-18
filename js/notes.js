@@ -300,6 +300,29 @@ export async function deleteNoteCard(cardId) {
   const it = findItem(await load(), cardId);
   if (it) await removeCard(it);
 }
+// A card nobody has written in yet: no words (spaces don't count), no tags, no reminder time.
+const isBlank = (x) => !(x.tags || []).length && !x.reminder && (
+  x.kind === 'reminder' ? !String(x.text || '').trim()
+    : x.kind === 'todo' ? !String(x.title || '').trim() && (x.list || []).every((r) => !String(r.text || '').trim())
+      : !String(x.title || '').trim() && !String(x.body || '').trim());
+
+// A new, empty card at the top of Notes, as New ▾ makes one: a list starts with one blank row
+// so there is something to type into. But never a second blank one of the same kind: if one is
+// already waiting, that one is handed back instead (reused: true), for the caret to go to. The
+// check runs inside the queued write, after queued typing is flushed, so a burst of clicks makes
+// one card, and a card just typed into is not mistaken for blank. Resolves to { id, rowId, reused }.
+export async function addNoteCard(kind) {
+  const k = KIND_LABEL[kind] ? kind : 'note';
+  let id = uid(), rowId = uid(), reused = false;
+  await mutate((d) => {
+    const blank = d.items.find((x) => x.kind === k && isBlank(x));
+    if (blank) { id = blank.id; rowId = blank.list?.[0]?.id || null; reused = true; return; }
+    d.items.unshift(normalize(k === 'todo' ? { id, kind: k, list: [{ id: rowId, text: '' }] } : { id, kind: k }));
+  });
+  return { id, rowId, reused };
+}
+// the Notes view's own search: titles, bodies, reminder text, checklist rows and tags
+export const noteMatches = (it, q) => !q || matches(q, ...searchText(it));
 // a note card from Zen's quick-note corner, newest first like any new card
 export async function addQuickNote(text) {
   const body = String(text || '').replace(/\s+$/, '');
@@ -544,13 +567,7 @@ function composer() {
 }
 
 async function newItem(kind) {
-  const id = uid();
-  const rowId = uid();
-  await flushSaves();
-  await mutate((d) => {
-    // a new list starts with one blank row so there is something to type into
-    d.items.unshift(normalize(kind === 'todo' ? { id, kind, list: [{ id: rowId, text: '' }] } : { id, kind }));
-  });
+  const { id } = await addNoteCard(kind);   // mutate() flushes queued typing first
   focusItem(id);
 }
 

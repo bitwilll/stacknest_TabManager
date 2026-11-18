@@ -94,6 +94,11 @@ normal-profile window.
     when you opened Notes would be a board widget, not a tab bar.
   - **Hidden** — neither; expand a window in the sidebar to reach its tabs.
 
+  You don't have to open Settings to switch it: a two-icon switch (horizontal · vertical) sits
+  at the left of the board's head, before the space name, and the vertical rail carries the same
+  switch at its top, so you can turn it back from any view. In Hidden, neither icon is lit, and
+  either one brings the bar back.
+
   It is one element with two homes, re-parented rather than duplicated, so the ids,
   listeners and render path stay single. It used to render in both places at once, which
   is the same tabs twice and 64px of the board spent on the copy. Whichever you pick, the
@@ -200,7 +205,8 @@ three kinds of card:
 | **Reminder** | A single checkable line on its own card, optionally with a date/time notification. |
 
 Everything **auto-saves as you type** — there is no Save button. Quick-add a reminder from the bar at
-the top, or use **New ▾** for any of the three.
+the top, or use **New ▾** for any of the three. New never stacks up empty cards: if a blank card of
+that kind is already waiting (nothing typed, no tags, no time), New takes you to it instead.
 
 > **If you used StackNest before this:** what used to be called a *todo* — one checkable line per
 > card — is now a **reminder**, and *to-do list* is the new checklist card. Your existing tasks
@@ -229,6 +235,40 @@ a time, the time itself changes it, and the bin deletes (with Undo). The note bu
 top-right corner drops a **quick note** box down when you hover it: type, press Enter, and it is a
 new note in Notes. It shows only the box, no other notes. Moving the pointer away folds it up,
 unless you are typing in it.
+
+All of Notes is in Zen too: **Notes** on the switch at the bottom centre (Lounge · Arcade · Zen ·
+Notes) opens a Notes page on the wallpaper instead of leaving Zen. Every card is there in the
+Notes view's order, editable the same way, with a filter (All · Notes · Lists · Reminders), a
+search over the same fields, **Note / List / Reminder** buttons that start a card at the top
+(or go to the blank one already waiting), and a pin to put any card on Zen's home page. Esc goes
+back to Zen.
+
+Zen's wallpapers are drawn inside the extension (no downloads), and each one moves gently:
+mist and fog, petals, fireflies, stars, waves and more. There are twenty-four, plus your own
+images. Among the newest are **Rain** (a pond at dusk, rain falling and rings opening on the
+water), **Snowfall** (a pagoda among snowy pines), **Cloud sea** (peaks above the clouds at
+sunrise, gulls crossing) and **Lanterns** (paper lanterns lifting off a river at night). Two
+are thunder, kept calm: **Far storm** (a storm far out over a dusk sea, its cloud glowing from
+inside now and then and once in a while a far bolt to the water, by a lighthouse) and **Storm
+night** (rain round a cabin with lit windows, the clouds lit softly from behind). Two are quiet
+snow: **Snow lake** (a frozen lake at dawn among birches, a few slow flakes) and **Winter
+night** (a cabin under the moon, snow falling and smoke rising from the chimney). The lightning
+is a soft glow over part of the sky, never more than two pulses close together, and there is
+none under reduced motion. Pick one in
+Settings › Zen, or press the wallpaper button in Zen to shuffle. Settings › Zen › Animate the
+wallpaper turns the motion off, and it stays still for anyone who has asked their system for
+reduced motion.
+
+The switch sits at the bottom centre of every Zen page, and each page stops above it, so
+nothing rests underneath. On a narrow window it shows its icons only.
+
+On a trackpad, a **two-finger sideways swipe** turns Zen's pages in the switch's order, one page
+per swipe: fingers to the left go towards Notes, to the right towards Lounge. The page follows
+your fingers as you swipe, and the switch lights up the page that's coming. Lift your fingers and
+the page either turns, if you swiped far enough or flicked, or springs back into place. At either
+end it gives a little and holds. You can swipe again straight away, even while a page is still
+settling. A swipe does nothing while a game or lounge is open, in a text field, or over something
+that scrolls sideways itself.
 
 **Formatting.** Click into any text field and a formatting bar docks at the bottom of that card —
 only while you're writing in it: **B / I / U / S**, **bullet / numbered / checklist** lines, and

@@ -6,9 +6,9 @@ async function main() {
   const { initTabs, stashCurrentWindow, saveCurrentWindow } = await import('./tabs.js');
   const { initSpaces } = await import('./spaces.js');
   const { initBookmarks, saveHere } = await import('./bookmarks.js');
-  const { addDropTarget } = await import('./ui.js');
+  const { addDropTarget, el, icon } = await import('./ui.js');
   const { ensureWorkspaces } = await import('./spacesStore.js');
-  const { initSettings, applySettings, loadSettings } = await import('./settings.js');
+  const { initSettings, applySettings, loadSettings, saveSettings } = await import('./settings.js');
   const { initHistory } = await import('./history.js');
   const { initDuplicates } = await import('./duplicates.js');
   const { initTags } = await import('./tags.js');
@@ -297,9 +297,49 @@ async function main() {
     wantParent.insertBefore(tabsBar, wantBefore);
   };
   mountTabsBar(document.documentElement.dataset.tabsbar);
+
+  /* ——— the bar's own switch: horizontal or vertical ———
+     Two icon buttons, in two places: left of the board's "space" readout, and at the head of
+     the bar itself while it is vertical, so it can be turned back from any view. Both write
+     the setting Settings › Open tabs bar writes; in Hidden neither is lit, and either one
+     brings the bar back. */
+  const BAR_MODES = [
+    { id: 'top', label: 'Horizontal', icon: 'barTop' },
+    { id: 'side', label: 'Vertical', icon: 'barSide' },
+  ];
+  const barSegs = [];
+  const barSeg = (cls) => {
+    const seg = el('div', { class: `theme-seg bar-seg ${cls}`, role: 'group', 'aria-label': 'Open tabs bar' },
+      ...BAR_MODES.map((m) => el('button', { class: 'chipx', type: 'button', dataset: { bar: m.id }, 'aria-pressed': 'false',
+        title: `${m.label} open tabs bar`, 'aria-label': `${m.label} open tabs bar`,
+        onclick: async (e) => {
+          if (document.documentElement.dataset.tabsbar === m.id) return;
+          const hadFocus = e.currentTarget === document.activeElement;
+          await saveSettings({ tabsBar: m.id });   // moves the bar (stacknest:tabsbar below)
+          // the pressed button may have just moved or hidden with the bar: keep focus on a twin
+          if (hadFocus) barSegs.map((s) => s.querySelector(`[data-bar="${m.id}"]`)).find((b) => b.offsetParent)?.focus({ preventScroll: true });
+        } }, icon(m.icon, 16))));
+    barSegs.push(seg);
+    return seg;
+  };
+  const paintBarSegs = (mode) => {
+    for (const seg of barSegs) {
+      for (const b of seg.children) {
+        const on = b.dataset.bar === mode;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', String(on));
+      }
+    }
+  };
+  document.getElementById('board-lead').prepend(barSeg('board-bar-seg'));
+  tabsBar.querySelector('.tray-live').append(barSeg('tray-bar-seg'));
+  paintBarSegs(document.documentElement.dataset.tabsbar);
+
   document.addEventListener('stacknest:tabsbar', (e) => {
     mountTabsBar(e.detail);
+    paintBarSegs(e.detail);
     tabsCol.render(); // the chips are built per mode, so the new home gets fresh ones
+    spacesCol.render(); // an empty board says where to drag a tab from ("the live strip above")
   });
 
   // dropping an open tab on the Library nav item bookmarks it in the open folder

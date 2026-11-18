@@ -96,6 +96,9 @@ const ICONS = {
   // the wallpaper itself (Zen's corner button)
   wallWindow: '<path d="M14.6 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5.4"/><path d="M4.5 16.4c2.4-2.6 4.4-3 6.6-1.2 1.8-2.2 4.3-2.7 8.4-.4"/><path d="M16.65 4.73A2.3 2.3 0 1 0 19.16 7.8 2 2 0 0 1 16.65 4.73z" fill="currentColor" stroke="none"/>',
   swap:     '<path d="M4 8h13m0 0-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7m0 0 3.5 3.5M7 16l3.5-3.5"/>',
+  // the open-tabs bar, as a window: a strip of tabs across the top, or a rail of them down the left
+  barTop:   '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M6.5 7h2.5M11 7h2.5"/>',
+  barSide:  '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15"/><path d="M5.8 8.5h1.7M5.8 12h1.7M5.8 15.5h1.7"/>',
 };
 
 export function icon(name, size = 15) {

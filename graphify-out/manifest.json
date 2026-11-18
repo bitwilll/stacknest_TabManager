@@ -1,8 +1,8 @@
 {
   "js/app.js": {
-    "mtime": 1794937634.6017063,
-    "seen": 1794937750.934531,
-    "ast_hash": "63ba1360cbed37be8458104bcf54f0e1",
+    "mtime": 1794996878.5757923,
+    "seen": 1794996990.413853,
+    "ast_hash": "352bc6c0d9de84b12a1e6a28c824e0cc",
     "semantic_hash": ""
   },
   "js/auth.js": {
@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "js/notes.js": {
-    "mtime": 1794995526.5511022,
-    "seen": 1794996186.2217631,
-    "ast_hash": "383413ea341cbe8572f3dab5b310e06b",
+    "mtime": 1794997560.2601998,
+    "seen": 1794998315.341781,
+    "ast_hash": "240188459224f088db6c623b6cd0ed61",
     "semantic_hash": ""
   },
   "js/settings.js": {
@@ -132,9 +132,9 @@
     "semantic_hash": ""
   },
   "js/ui.js": {
-    "mtime": 1794937634.602661,
-    "seen": 1794937750.934565,
-    "ast_hash": "166c6b15c30c891fc41400f3830ed586",
+    "mtime": 1794996748.1447954,
+    "seen": 1794996990.4138901,
+    "ast_hash": "60456347e8f811adfb367b0bbd519a9e",
     "semantic_hash": ""
   },
   "manifest.json": {
@@ -174,15 +174,15 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794996335.3346815,
-    "seen": 1794996418.33567,
-    "ast_hash": "8013d84df6570ab06241ffeaf809ceb6",
+    "mtime": 1794999653.871247,
+    "seen": 1795003072.916928,
+    "ast_hash": "ba4e2fe857707162346b046d5b908c38",
     "semantic_hash": ""
   },
   "docs/specs/2026-07-03-stacknest-design.md": {
-    "mtime": 1794996381.7974584,
-    "seen": 1794996418.335671,
-    "ast_hash": "3417f43ee54c2cfa44012197dc7b8e66",
+    "mtime": 1794999653.8709724,
+    "seen": 1795003072.916929,
+    "ast_hash": "011288da9237c31eb64966d60d8c4188",
     "semantic_hash": ""
   },
   "docs/store/launch-checklist.md": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "newtab.html": {
-    "mtime": 1794912654.0,
-    "seen": 1794937436.015289,
-    "ast_hash": "fdd8a72da3ea0882d103dcd1f53d22f7",
+    "mtime": 1794996760.1980758,
+    "seen": 1794996990.413908,
+    "ast_hash": "fc8ad449a460c290cea11fe0046cd12c",
     "semantic_hash": ""
   },
   "docs/store/promo/small-promo-440x280.png": {
@@ -324,15 +324,15 @@
     "semantic_hash": ""
   },
   "js/wallpapers.js": {
-    "mtime": 1794912654.0,
-    "seen": 1794937436.015276,
-    "ast_hash": "16df8dc86767346a8f2d1635af3bf3dd",
+    "mtime": 1795003067.7313004,
+    "seen": 1795003072.9169211,
+    "ast_hash": "4b7269d2511a97149b6d891ee6cd71fd",
     "semantic_hash": ""
   },
   "js/zen.js": {
-    "mtime": 1794996325.7481663,
-    "seen": 1794996418.335664,
-    "ast_hash": "e66f8be456b95395631c235c2ba65a0a",
+    "mtime": 1795002533.2305615,
+    "seen": 1795003072.9169228,
+    "ast_hash": "db1c979239b4d6f6bda890516d1cb0f8",
     "semantic_hash": ""
   },
   "js/thoughts.js": {

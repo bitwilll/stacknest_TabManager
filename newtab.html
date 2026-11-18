@@ -194,7 +194,10 @@
              primary stay put while the board scrolls sideways underneath. -->
         <div class="sec-top board-top">
           <header class="sec-head">
-            <p class="sec-state" id="board-state"></p>
+            <!-- the open-tabs bar switch (horizontal / vertical) goes first, from js/app.js -->
+            <div class="board-lead" id="board-lead">
+              <p class="sec-state" id="board-state"></p>
+            </div>
             <div class="sec-tools">
               <div class="theme-seg viewmode-seg" id="viewmode-seg" role="group" aria-label="Board layout">
                 <button class="chipx" id="view-columns" aria-pressed="false" title="Column layout" aria-label="Column layout">

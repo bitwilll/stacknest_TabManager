@@ -10,6 +10,11 @@
 //   Quick note                  the top-right corner: hover (or click) and a small box drops down
 //                               to jot a note into Notes
 //
+// The switch at the bottom centre turns the page: Lounge, Arcade, Zen, and Notes, which is the
+// whole of Notes on the wallpaper (every card, a filter, search, New note / list / reminder),
+// so Notes can be reached from Zen without leaving it. A two-finger sideways swipe on a
+// trackpad turns the same pages, one per swipe, in the switch's order.
+//
 // Notes cards edit in place here as they do in the Notes view: click a reminder, a list's title
 // or row, or a note to type; Enter adds the next row; the bell sets a time; the bin deletes (with
 // Undo). A field being typed in is never rebuilt under the caret: a render that would replace it
@@ -27,7 +32,7 @@ import { el, icon, tile, domainOf } from './ui.js';
 import { getKey, setKey, update } from './store.js';
 import { SPACES_KEY, ACTIVE_WS_KEY, WORKSPACES_KEY, DOT_COLORS, loadSpaces, loadActiveSpaces } from './spacesStore.js';
 import { NOTES_KEY, KIND_LABEL, loadNotes, toggleNoteDone, addQuickReminder, setNotePinned, saveNoteField, flushNoteSaves,
-  addNoteRow, removeNoteRow, openNoteReminder, deleteNoteCard, addQuickNote } from './notes.js';
+  addNoteRow, removeNoteRow, openNoteReminder, deleteNoteCard, addQuickNote, addNoteCard, noteMatches } from './notes.js';
 import { listContinuation, replaceText } from './format.js';
 import { SETTINGS_KEY, loadSettings, saveSettings } from './settings.js';
 import { WALLPAPERS, WALLPAPER_KEY, wallpaperFor, ownWallpapers } from './wallpapers.js';
@@ -49,6 +54,7 @@ let thoughtOffset = 0;
 let thoughtPrefs = { fav: [], only: false };
 let chimeOn = true;
 let renderPending = false;   // a render held back while a card's field was being typed in
+let lastNotes = null;        // the notes the last render saw, to fill the Notes page the moment it opens
 
 const isOn = () => document.documentElement.dataset.zen === 'on';
 // a Notes field being typed in, here in Zen (every one carries data-edit)
@@ -92,6 +98,7 @@ export function initZen({ root: r, openSettings }) {
     const typing = /^(input|textarea|select)$/i.test(document.activeElement?.tagName || '');
     if (typing) { document.activeElement.blur(); return; }   // first Esc leaves the field, the next leaves Zen
     if (document.querySelector('.modal-scrim')) return;       // a dialog owns Escape while it is up
+    if (root.dataset.page === 'notes') { e.preventDefault(); goPage('home'); return; }   // the Notes page goes back to Zen first
     setZen(false);
   });
   chrome.storage?.onChanged?.addListener((c, area) => {
@@ -104,6 +111,7 @@ export function initZen({ root: r, openSettings }) {
     chrome.bookmarks?.[ev]?.addListener?.(() => { if (isOn()) scheduleRender(); });
   }
   document.addEventListener('stacknest:imported', () => { if (isOn()) render(); });
+  root.addEventListener('wheel', onSwipeWheel, { passive: false });   // two-finger swipe between pages
   // leaving a card's field saves what was typed, then lets a held-back render through
   root.addEventListener('focusout', (e) => {
     if (!e.target.matches?.('[data-edit]')) return;
@@ -262,14 +270,16 @@ function buildShell(openSettings) {
       el('aside', { class: 'zen-a-side' }, el('div', { class: 'zen-a-clock' }, aTime, aDate), cal2.node),
       arcade.node));
 
-  // the little switch at the bottom centre: Zen ↔ Arcade
-  // the little switch at the bottom centre: Zen · Arcade · Lounge (the arcade page, on its lounge shelf)
-  const pageBtn = (id, label, ic, go) => el('button', { class: 'zen-page-btn', type: 'button', dataset: { page: id }, 'aria-pressed': 'false',
-    onclick: go }, icon(ic, 14), el('span', { text: label }));
-  const pager = el('nav', { class: 'zen-pager', 'aria-label': 'Zen pages' },
-    pageBtn('home', 'Zen', 'zen', () => setPage('home')),
-    pageBtn('arcade', 'Arcade', 'gamepad', () => { arcade.showShelf('games'); setPage('arcade'); }),
-    pageBtn('lounge', 'Lounge', 'lounge', () => { arcade.showShelf('lounge'); setPage('arcade'); }));
+  // the little switch at the bottom centre: Lounge · Arcade · Zen · Notes, the order a two-finger
+  // sideways swipe walks (Lounge and Arcade are the arcade page, on its lounge or games shelf)
+  const pageBtn = (id, label, ic) => el('button', { class: 'zen-page-btn', type: 'button', dataset: { page: id }, 'aria-pressed': 'false',
+    onclick: () => goPage(id) }, icon(ic, 14), el('span', { text: label }));
+  const pager = el('nav', { class: 'zen-pager', 'aria-label': 'Zen pages', title: 'Or swipe sideways with two fingers' },
+    pageBtn('lounge', 'Lounge', 'lounge'),
+    pageBtn('arcade', 'Arcade', 'gamepad'),
+    pageBtn('home', 'Zen', 'zen'),
+    pageBtn('notes', 'Notes', 'note'));
+  const np = createNotesPage();
 
   // the wallpaper on its own layer (so it can breathe), and the motion laid over it: a fixed
   // handful of specks the stylesheet turns into stars, fireflies, petals or leaves per wallpaper
@@ -296,6 +306,7 @@ function buildShell(openSettings) {
         cal.node),
       grid),
     arcadePage,
+    np.node,
     pager,
     peekBtn,
     rest.node,
@@ -307,7 +318,7 @@ function buildShell(openSettings) {
   sortable(todoBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { todo: keys } }) });
   sortable(pinBody, { item: '[data-key]', onSort: (keys) => saveLayout({ order: { pinned: keys } }) });
 
-  shell = { peekBtn, cal2, arcade, aTime, aDate, pager, time, date, greet, exit, qn, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, thoughtBy, thoughtStar, thoughtOnly, grid, panes, cal, rest, colKey: null };
+  shell = { peekBtn, cal2, arcade, aTime, aDate, np, pager, time, date, greet, exit, qn, pick, colCount, openAll, colBody, todoCount, todoBody, pinCount, pinBody, thoughtText, thoughtBy, thoughtStar, thoughtOnly, grid, panes, cal, rest, colKey: null };
   paintThought();
   setPage('home', { focus: false });
 }
@@ -381,6 +392,80 @@ function createQuickNote() {
   return { node, isOpen, close };
 }
 
+/* ————————————————————————— the Notes page —————————————————————————
+   Zen's fourth page (the switch at the bottom centre): all of Notes on the wallpaper, in the
+   Notes view's own order, every card editable in place like the cards on the home page. A
+   filter (All · Notes · Lists · Reminders), a search over the same fields the Notes view
+   searches, and New note / list / reminder, which start a card at the top and put the caret
+   in it. Esc goes back to Zen's home page (from a field, the first Esc leaves the field). */
+const NP_KINDS = [
+  { id: 'all', label: 'All' },
+  { id: 'note', label: 'Notes' },
+  { id: 'todo', label: 'Lists' },
+  { id: 'reminder', label: 'Reminders' },
+];
+
+function createNotesPage() {
+  let kind = 'all';
+  const time = el('div', { class: 'zen-a-time' });
+  const date = el('div', { class: 'zen-a-date' });
+  const count = el('span', { class: 'zen-count' });
+  const kinds = el('div', { class: 'zen-np-kinds', role: 'group', 'aria-label': 'Show' },
+    ...NP_KINDS.map((k) => el('button', { class: 'zen-page-btn', type: 'button', dataset: { kind: k.id }, 'aria-pressed': String(k.id === kind),
+      onclick: () => { kind = k.id; render(); } }, el('span', { text: k.label }))));
+  const search = el('input', { class: 'zen-np-q', type: 'search', placeholder: 'Search notes…', 'aria-label': 'Search notes', autocomplete: 'off' });
+  let searchTimer = null;
+  search.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(render, 90); });
+  // a new card lands at the top with the caret in it; a filter or search that would hide it steps aside
+  // A blank card of that kind already waiting is used instead of making another (addNoteCard),
+  // and lit up so it is clear where the caret went.
+  const make = async (k) => {
+    const { id, reused } = await addNoteCard(k);
+    if (kind !== 'all' && kind !== k) kind = 'all';
+    search.value = '';
+    await render({ force: true });
+    focusEdit(editKey('np', { id }, null, k === 'reminder' ? 'text' : 'title'));
+    if (reused) { const card = grid.querySelector(`[data-edit^="np|${CSS.escape(id)}|"]`)?.closest('.zen-list'); if (card) flash(card); }
+  };
+  const newBtn = (k, label, ic) => el('button', { class: 'zen-mini zen-np-new', type: 'button', onclick: () => make(k) }, icon(ic, 13), el('span', { text: label }));
+  const grid = el('div', { class: 'zen-np-grid' });
+  const node = el('section', { class: 'zen-np', 'aria-label': 'Notes' },
+    el('header', { class: 'zen-a-bar zen-np-bar' },
+      el('div', { class: 'zen-a-clock zen-np-clock' }, time, date),
+      el('button', { class: 'zen-btn-pill', type: 'button', title: 'Leave Zen', onclick: () => setZen(false) }, icon('close', 14), el('span', { text: 'Leave zen' }))),
+    el('div', { class: 'zen-np-stage' },
+      el('div', { class: 'zen-pane zen-np-pane' },
+        el('div', { class: 'zen-np-head' },
+          el('h2', { class: 'zen-h', text: 'Notes' }), count,
+          el('div', { class: 'zen-np-tools' },
+            kinds,
+            el('label', { class: 'zen-np-search' }, icon('search', 14), search),
+            el('div', { class: 'zen-np-news' }, newBtn('note', 'Note', 'note'), newBtn('todo', 'List', 'checklist'), newBtn('reminder', 'Reminder', 'bell')))),
+        grid)));
+
+  function paint(items) {
+    for (const b of kinds.children) b.setAttribute('aria-pressed', String(b.dataset.kind === kind));
+    const q = search.value.trim();
+    const shown = items.filter((it) => (kind === 'all' || it.kind === kind) && noteMatches(it, q));
+    const open = items.reduce((n, i) => n + (i.kind === 'reminder' ? (i.done ? 0 : 1) : (i.list || []).filter((r) => !r.done).length), 0);
+    count.textContent = q || kind !== 'all' ? `${shown.length} of ${items.length}` : `${items.length} ${items.length === 1 ? 'card' : 'cards'} · ${open} open`;
+    grid.replaceChildren(...(shown.length ? shown.map(notesPageCard)
+      : [quiet(!items.length ? 'Nothing in Notes yet. Start a note, a list or a reminder above.'
+        : q ? `Nothing matches “${q}”.` : `No ${NP_KINDS.find((k) => k.id === kind).label.toLowerCase()} yet.`)]));
+  }
+  return { node, time, date, paint };
+}
+
+// one card on the Notes page: what the home page shows for it, with a pin to Zen
+function notesPageCard(it) {
+  const pin = { pinnedCard: it.pinned, pinAct: !it.pinned };
+  if (it.kind === 'todo') return listCard(it, { scope: 'np', ...pin });
+  if (it.kind === 'note') return noteCard(it, { scope: 'np', ...pin });
+  return el('div', { class: `zen-list c-${it.color || 'none'}` },
+    el('div', { class: 'zen-list-head' }, el('span', { class: 'zen-list-title', text: 'Reminder' }), cardActs(it, { pin: pin.pinAct }), it.pinned ? unpinNoteBtn(it) : null),
+    reminderRow(it, { scope: 'np', acts: false }));
+}
+
 // a peek at the wallpaper: the page fades to 20% and can't be clicked or tabbed into; only the
 // corner button stays lit (and keeps focus)
 function setPeek(on, { focus = true } = {}) {
@@ -408,19 +493,285 @@ function paintFolds() {
   }
 }
 
+// where the switch is: the arcade page counts as Lounge or Arcade by its shelf
+const PAGE_ORDER = ['lounge', 'arcade', 'home', 'notes'];
+const pageNow = () => {
+  const page = root.dataset.page;
+  return page === 'arcade' ? (shell.arcade.shelf === 'lounge' ? 'lounge' : 'arcade') : page === 'notes' ? 'notes' : 'home';
+};
 function paintPager() {
-  const page = root.dataset.page, where = page === 'arcade' ? (shell.arcade.shelf === 'lounge' ? 'lounge' : 'arcade') : 'home';
+  const where = pageNow();
   for (const b of shell.pager.children) b.setAttribute('aria-pressed', String(b.dataset.page === where));
 }
+// one of the switch's four, from a button or a swipe; the page slides in from the side it lies on
+// (a swipe hands on its speed, so the page that comes keeps the pace the fingers set)
+function goPage(id, { focus = true, speed = 0 } = {}) {
+  const dir = Math.sign(PAGE_ORDER.indexOf(id) - PAGE_ORDER.indexOf(pageNow()));
+  if (id === 'lounge' || id === 'arcade') { shell.arcade.showShelf(id === 'lounge' ? 'lounge' : 'games'); setPage('arcade', { focus, dir, speed }); }
+  else setPage(id, { focus, dir, speed });
+}
 
-function setPage(page, { focus = true } = {}) {
+function setPage(page, { focus = true, dir = 0, speed = 0 } = {}) {
   const was = root.dataset.page;
+  if (!speed) dropSwipe();   // a click or a key takes over from a swipe still under way
   if (page !== 'home') { setPeek(false, { focus: false }); shell.qn.close(); }
   root.dataset.page = page;
   paintPager();
   if (page !== 'arcade') shell.arcade.stop();
   root.scrollTop = 0;
-  if (focus && was !== page) requestAnimationFrame(() => (page === 'arcade' ? shell.arcade.focus() : shell.pager.children[0].focus({ preventScroll: true })));
+  if (page === 'notes' && was !== 'notes') {   // the Notes page is only filled while it is open:
+    if (lastNotes) shell.np.paint(lastNotes);    // at once from the last render, so it never slides in empty,
+    render();                                    // then fresh
+  }
+  slideIn(dir, speed);
+  if (focus && was !== page) {
+    requestAnimationFrame(() => (page === 'arcade' ? shell.arcade.focus()
+      : [...shell.pager.children].find((b) => b.dataset.page === page)?.focus({ preventScroll: true })));
+  } else if (!focus) {   // (a swipe moves no focus, so no ring lights up; focus left on the page that went is let go)
+    const a = document.activeElement;
+    if (a && a !== root && root.contains(a) && !a.checkVisibility()) a.blur();
+  }
+}
+
+/* ——— the page in motion ———
+   Only the page's own content moves (the wallpaper, the switch and the corner button stay put),
+   by transform and opacity alone, from one requestAnimationFrame loop. turn.x is how far the
+   content sits from its place, in px. One loop for following, leaving, coming in and springing
+   back is what makes a turn interruptible: a new swipe takes hold of a page that is still
+   settling from wherever it is, so nothing ever jumps. Under reduced motion nothing moves; the
+   pages simply change. */
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+const PAGE_PARTS = { home: ':scope > .zen-bar, :scope > .zen-stage', arcade: ':scope > .zen-arcade', notes: ':scope > .zen-np' };
+const SPRING_K = 290, SPRING_C = 2 * Math.sqrt(SPRING_K);   // critically damped: at rest in about 0.4 s, no wobble
+const OUT_MS = 110;   // how long a page that was sent on takes to go, before the next one comes in
+const turn = { x: 0, v: 0, mode: '', parts: [], fade: () => 1, raf: 0, last: 0, t0: 0, o0: 1, then: null };
+
+function turnSize() {
+  const w = root.clientWidth || 1200, clamp = (lo, v, hi) => Math.min(hi, Math.max(lo, v));
+  return {
+    commit: clamp(64, w * 0.06, 110),   // fingers' travel that turns the page when they lift
+    reach: clamp(130, w * 0.16, 280),   // how far the page can be drawn aside (it eases off towards this)
+    edge: 56,                           // the give at either end of the row
+    enter: clamp(60, w * 0.065, 120),   // the side a swiped-to page comes in from
+  };
+}
+function turnParts() {
+  if (turn.parts.length) return;
+  turn.parts = [...root.querySelectorAll(PAGE_PARTS[root.dataset.page] || PAGE_PARTS.home)];
+  root.classList.add('is-turning');
+}
+function paintTurn(x, o) {
+  const dim = root.classList.contains('is-peek') ? 0.2 : 1;   // a peek keeps its fifth
+  for (const n of turn.parts) {
+    n.style.transform = Math.abs(x) < 0.05 ? '' : `translate3d(${x.toFixed(2)}px, 0, 0)`;
+    n.style.opacity = o >= 1 ? '' : (o * dim).toFixed(3);
+  }
+}
+function stopTurn() {   // at rest: the content in its place, its styles its own again
+  cancelAnimationFrame(turn.raf);
+  turn.raf = 0;
+  for (const n of turn.parts) { n.style.transform = ''; n.style.opacity = ''; }
+  turn.parts = [];
+  turn.x = 0; turn.v = 0; turn.mode = ''; turn.then = null;
+  root.classList.remove('is-turning');
+}
+function runTurn() {
+  turn.last = performance.now();
+  if (!turn.raf) turn.raf = requestAnimationFrame(stepTurn);
+}
+function stepTurn(now) {
+  turn.raf = 0;
+  let dt = Math.min(0.05, Math.max(0, (now - turn.last) / 1000));
+  turn.last = now;
+  if (turn.mode === 'out') {   // sent on: straight on at the fingers' pace, fading out
+    turn.x += turn.v * dt;
+    const p = (now - turn.t0) / OUT_MS;
+    if (p >= 1) { finishOut(); return; }
+    paintTurn(turn.x, turn.o0 * (1 - p));
+  } else if (turn.mode === 'spring') {   // coming in, or going back: a spring to its place
+    while (dt > 0) {
+      const h = Math.min(dt, 0.004);
+      turn.v += (-SPRING_K * turn.x - SPRING_C * turn.v) * h;
+      turn.x += turn.v * h;
+      dt -= h;
+    }
+    if (Math.abs(turn.x) < 0.5 && Math.abs(turn.v) < 20) { stopTurn(); return; }
+    paintTurn(turn.x, turn.fade(turn.x));
+  } else return;
+  turn.raf = requestAnimationFrame(stepTurn);
+}
+function finishOut() {
+  const then = turn.then;
+  turn.then = null; turn.mode = '';
+  then?.();
+}
+// the page that comes in, from the side it lies on: dir +1 from the right, -1 from the left
+function slideIn(dir, speed = 0) {
+  stopTurn();
+  if (!dir || calm.matches) return;
+  turnParts();
+  const start = dir * (speed ? turnSize().enter : 44);   // a click brings it from nearer by
+  turn.x = start;
+  turn.v = -dir * Math.min(speed, 2000);
+  turn.fade = (x) => 1 - Math.min(1, Math.max(0, x / start));
+  turn.mode = 'spring';
+  paintTurn(start, 0);
+  runTurn();
+}
+
+/* ——— two-finger sideways swipe: the pages in the switch's order ———
+   A trackpad's sideways scroll (wheel deltaX) walks the switch: fingers moving left go towards
+   Notes (Lounge → Arcade → Zen → Notes), fingers moving right go back. From the first delta the
+   page follows the fingers (nearly 1:1, easing off, fading a little) and the switch lights the
+   page that is coming. When the fingers lift (the deltas start dying away into momentum, or
+   stop) the page goes, if it travelled far enough or was flicked, or springs back into place.
+   Drawn far, it goes at once. At either end of the row it gives a little and holds.
+   A decided swipe's momentum is spent quietly, but fingers that go again (picking up speed once
+   the momentum has eased, or turning the other way) start the next swipe straight away, with
+   no pause needed, and take hold of the page wherever it is.
+   Left alone: an up-and-down scroll (the first delta decides), an open game or lounge (it owns
+   the pointer), anything that itself scrolls sideways that way, a text field, a dialog or
+   popover, the eye-rest pause, and pinch zoom. */
+const SWIPE_GAP = 110;   // ms without a delta: the fingers have lifted, or rest
+const swipe = { lock: '', done: false, raw: 0, raw0: 0, last: -1e9, prev: 0, rate: 0, peak: 0, fall: 0, rise: 0, sign: 0, hist: [], timer: 0, size: null };
+const neighbour = (s) => (s ? PAGE_ORDER[PAGE_ORDER.indexOf(pageNow()) + s] || null : null);
+
+// the fingers' travel (raw, + towards Notes) → where the page sits (x, + to the right): nearly
+// 1:1 at first, easing off towards reach; towards an end of the row, a short rubber-band give
+function toX(raw) {
+  const s = Math.sign(raw), a = Math.abs(raw), { reach, edge } = swipe.size;
+  return -s * (neighbour(s) ? reach * (1 - Math.exp(-a / reach)) : edge * (1 - 1 / (a * 0.55 / edge + 1)));
+}
+function toRaw(x) {   // the other way round, to take hold of a page that is still moving
+  const s = -Math.sign(x), { reach, edge } = swipe.size;
+  if (!s) return 0;
+  if (neighbour(s)) return -s * reach * Math.log(1 - Math.min(Math.abs(x), reach * 0.97) / reach);
+  return s * (edge / 0.55) * (1 / (1 - Math.min(Math.abs(x), edge * 0.97) / edge) - 1);
+}
+const trackFade = (x) => 1 - 0.55 * Math.min(1, Math.abs(x) / swipe.size.reach);
+
+function onSwipeWheel(e) {
+  if (!isOn() || e.ctrlKey) return;   // ctrl + wheel is a pinch: zoom, not a swipe
+  const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? root.clientWidth : 1;
+  const dx = e.deltaX * k, dy = e.deltaY * k, ax = Math.abs(dx), t = e.timeStamp;
+  const dt = t - swipe.last, prev = swipe.prev, rate = ax / Math.min(40, Math.max(4, dt));
+  let fresh = dt > SWIPE_GAP;
+  if (!fresh && swipe.done && swipe.lock === 'x') {
+    // a decided swipe's momentum, easing off; fingers that go again are the next swipe
+    if (dx && swipe.sign && Math.sign(dx) !== swipe.sign && ax >= 2) fresh = true;   // the other way
+    else if (ax >= 3 && prev <= swipe.peak * 0.6 && rate > swipe.rate * 1.2 + 0.05) fresh = ++swipe.rise >= 2;   // faster again
+    else swipe.rise = 0;
+  }
+  swipe.last = t; swipe.prev = ax; swipe.rate = rate;
+  if (fresh) { swipe.lock = ''; swipe.done = false; }
+  if (!swipe.lock) {
+    if (!ax && !dy) return;   // nothing yet to tell a swipe from a scroll
+    swipe.lock = ax > Math.abs(dy) && e.cancelable && !swipeBlocked(e.target, dx) ? 'x' : 'y';
+    if (swipe.lock === 'x') beginSwipe();
+  }
+  if (swipe.lock !== 'x') return;   // an up-and-down scroll, or a swipe that isn't Zen's: left alone
+  e.preventDefault();               // and the browser's own back / forward swipe stays out of Zen
+  if (!swipe.done) followSwipe(dx, ax, prev, t);
+}
+
+function beginSwipe() {
+  clearTimeout(swipe.timer);
+  swipe.size = turnSize();
+  swipe.peak = 0; swipe.fall = 0; swipe.rise = 0; swipe.sign = 0; swipe.hist = [];
+  shell.qn.close();
+  if (turn.mode === 'out') finishOut();   // the page that was going is gone; catch the next one coming in
+  cancelAnimationFrame(turn.raf);
+  turn.raf = 0; turn.mode = 'hold';
+  if (!calm.matches) turnParts();
+  swipe.raw = swipe.raw0 = toRaw(turn.x);
+}
+
+function followSwipe(dx, ax, prev, t) {
+  swipe.raw += dx;
+  if (dx) swipe.sign = Math.sign(dx);
+  swipe.hist.push([t, dx]);
+  while (t - swipe.hist[0][0] > 70) swipe.hist.shift();
+  if (ax > swipe.peak) { swipe.peak = ax; swipe.fall = 0; }
+  else if (ax < prev || (ax === prev && ax < swipe.peak)) swipe.fall++;
+  else swipe.fall = 0;
+  turn.x = toX(swipe.raw);
+  if (!calm.matches) paintTurn(turn.x, trackFade(turn.x));
+  hintSwipe();
+  clearTimeout(swipe.timer);
+  swipe.timer = setTimeout(() => releaseSwipe(true), SWIPE_GAP);
+  const moved = swipe.raw - swipe.raw0;
+  if (neighbour(Math.sign(moved)) && Math.abs(moved) >= swipe.size.commit * 2.4) releaseSwipe();   // drawn far: it goes now
+  else if (swipe.fall >= 3 && swipe.peak >= 6 && ax <= swipe.peak * 0.7) releaseSwipe();   // dying away: the fingers lifted, the rest is momentum
+}
+
+function swipeSpeed() {   // px per ms over the last few deltas, + towards Notes
+  const h = swipe.hist;
+  if (!h.length) return 0;
+  return h.reduce((n, [, d]) => n + d, 0) / Math.max(16, h[h.length - 1][0] - h[0][0] + 16);
+}
+
+// the fingers have lifted (rested: they stopped first, so nothing is flung). What counts is
+// this swipe's own travel, not where the page sits: one that caught a page still coming in
+// turns the next page just as one from rest does. One swipe, one page.
+function releaseSwipe(rested = false) {
+  if (swipe.done || swipe.lock !== 'x') return;
+  swipe.done = true;
+  clearTimeout(swipe.timer);
+  hintSwipe(true);
+  const moved = swipe.raw - swipe.raw0, s = Math.sign(moved), to = neighbour(s);
+  const v = rested ? 0 : swipeSpeed();
+  const carried = moved + v * 100;   // about how far the momentum would carry it
+  if (to && Math.abs(moved) >= 12 && Math.sign(carried) === s && Math.abs(carried) >= swipe.size.commit) {
+    sendOn(to, s, Math.abs(v) * 1000);
+    return;
+  }
+  // not far enough: back into place, carrying on a moment the way it was going
+  if (calm.matches) { stopTurn(); return; }
+  const slope = (toX(swipe.raw + 1) - toX(swipe.raw - 1)) / 2;
+  turn.v = Math.max(-1500, Math.min(1500, slope * v * 1000));
+  turn.fade = trackFade;
+  turn.mode = 'spring';
+  runTurn();
+}
+
+// a decided swipe: the page goes on the way the fingers sent it, fading, and the next comes in
+function sendOn(to, s, speed) {
+  const pace = Math.min(2600, Math.max(900, speed));   // px per s
+  if (calm.matches) { stopTurn(); goPage(to, { speed: pace, focus: false }); return; }
+  turn.mode = 'out';
+  turn.v = -s * pace;
+  turn.o0 = trackFade(turn.x);
+  turn.t0 = performance.now();
+  turn.then = () => goPage(to, { speed: pace, focus: false });
+  runTurn();
+}
+
+// the switch lights the page that is coming, more as the swipe nears its turn
+function hintSwipe(off = false) {
+  const moved = swipe.raw - swipe.raw0, to = off ? null : neighbour(Math.sign(moved));
+  const p = to ? Math.min(1, Math.abs(moved) / swipe.size.commit) : 0;
+  for (const b of shell.pager.children) {
+    if (to && b.dataset.page === to) { b.dataset.swipeTo = ''; b.style.setProperty('--swipe-p', p.toFixed(3)); }
+    else if (b.dataset.swipeTo !== undefined) { delete b.dataset.swipeTo; b.style.removeProperty('--swipe-p'); }
+  }
+}
+function dropSwipe() {
+  if (swipe.lock === 'x') swipe.done = true;   // the rest of it is spent quietly
+  clearTimeout(swipe.timer);
+  if (shell) hintSwipe(true);
+}
+
+function swipeBlocked(target, dx) {
+  if (shell.rest.isShowing() || document.querySelector('.modal-scrim, .rem-pop')) return true;
+  if (root.dataset.page === 'arcade' && shell.arcade.playing) return true;
+  if (target.closest?.('input, textarea, select, [contenteditable="true"]')) return true;
+  for (let n = target; n && n !== root; n = n.parentElement) {   // something here scrolls sideways itself
+    if (n.scrollWidth <= n.clientWidth + 1) continue;
+    const ox = getComputedStyle(n).overflowX;
+    if (ox !== 'auto' && ox !== 'scroll') continue;
+    if (dx > 0 ? n.scrollLeft + n.clientWidth < n.scrollWidth - 1 : n.scrollLeft > 0) return true;
+  }
+  return false;
 }
 
 let thoughtDay = '';
@@ -453,6 +804,8 @@ function tick() {
   const h = d.getHours();
   shell.aTime.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   shell.aDate.textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  shell.np.time.textContent = shell.aTime.textContent;
+  shell.np.date.textContent = shell.aDate.textContent;
   shell.greet.textContent = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 22 ? 'Good evening' : 'Good night';
   if (d.toDateString() !== thoughtDay) { thoughtOffset = 0; paintThought(); }   // a new day brings a new thought
 }
@@ -657,6 +1010,7 @@ export async function render(opts) {
     loadSettings(), loadActiveSpaces(), loadNotes(), getKey(WALLPAPER_KEY, null), loadZenPins(), getKey(ZENLAYOUT_KEY, null), getKey(THOUGHTS_KEY, null), loadSpaces()]);
   if (!force && editingField()) { renderPending = true; return; }   // typing began while this was loading
   renderPending = false;
+  lastNotes = items;
   const focus = snapshotFocus();
   thoughtPrefs = normalizeThoughts(rawThoughts);
   paintThought();
@@ -701,6 +1055,7 @@ export async function render(opts) {
         : linkPin(x.pin, x.key))));
   shell.pinBody.replaceChildren(...(cards.length ? cards
     : [quiet('Pin anything here: the pin on a Notes card, on a collection, or on any link in Collections, the Library or My Space. Links in the collection pane have one too.')]));
+  if (root.dataset.page === 'notes') shell.np.paint(items);
   restoreFocus(focus);
 }
 
@@ -846,11 +1201,13 @@ async function rowRemoved(scope, it, rowId, { stepBack = false } = {}) {
 }
 
 /* ——— a card's actions: shown on hover or focus, always on a touch screen ——— */
-function cardActs(it) {
+function cardActs(it, { pin = false } = {}) {
   const name = it.title || it.text || KIND_LABEL[it.kind] || 'card';
   return el('span', { class: 'zen-acts' },
     !it.reminder ? el('button', { class: 'zen-act', type: 'button', title: 'Set a reminder', 'aria-label': `Set a reminder for ${name}`,
       onclick: (e) => openNoteReminder(e.currentTarget, it.id) }, icon('bell', 13)) : null,
+    pin ? el('button', { class: 'zen-act', type: 'button', title: 'Pin to Zen', 'aria-label': `Pin ${name} to Zen`,
+      onclick: () => setNotePinned(it.id, true).then(render) }, icon('pin', 13)) : null,
     el('button', { class: 'zen-act zen-act-del', type: 'button', title: `Delete ${KIND_LABEL[it.kind] || 'card'}`, 'aria-label': `Delete ${name}`,
       onclick: () => deleteNoteCard(it.id) }, icon('trash', 13)));
 }
@@ -873,7 +1230,7 @@ function dueChip(it) {
     onclick: (e) => openNoteReminder(e.currentTarget, it.id) }, icon('bell', 10), el('span', { text: when }));
 }
 
-function listCard(it, { key = null, pinnedCard = false, scope } = {}) {
+function listCard(it, { key = null, pinnedCard = false, pinAct = false, scope } = {}) {
   const rows = it.list || [];
   const done = rows.filter((r) => r.done).length;
   const title = lineField({ key: editKey(scope, it, null, 'title'), value: it.title, placeholder: 'List title', label: 'List title', cls: 'zen-list-title',
@@ -897,20 +1254,20 @@ function listCard(it, { key = null, pinnedCard = false, scope } = {}) {
   return el('div', { class: `zen-list c-${it.color || 'none'}`, draggable: key ? 'true' : null, dataset: key ? { key } : null },
     el('div', { class: 'zen-list-head' }, title,
       rows.length ? el('span', { class: 'zen-list-n', text: `${done}/${rows.length}` }) : null,
-      dueChip(it), cardActs(it), pinnedCard ? unpinNoteBtn(it) : null),
+      dueChip(it), cardActs(it, { pin: pinAct }), pinnedCard ? unpinNoteBtn(it) : null),
     ...rowEls,
     el('button', { class: 'zen-additem', type: 'button', onclick: () => rowAdded(scope, it, null) }, icon('plus', 12), el('span', { text: 'Add item' })));
 }
 
 // a note: its title and its markdown body
-function noteCard(it, { key = null, scope, pinnedCard = false } = {}) {
+function noteCard(it, { key = null, scope, pinnedCard = false, pinAct = false } = {}) {
   const title = lineField({ key: editKey(scope, it, null, 'title'), value: it.title, placeholder: 'Title', label: 'Note title', cls: 'zen-list-title',
     onInput: (v) => saveNoteField(it.id, 'title', v),
     onKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); focusEdit(editKey(scope, it, null, 'body')); } } });
   const body = areaField({ key: editKey(scope, it, null, 'body'), value: it.body, placeholder: 'Write… (markdown works)', label: 'Note',
     onInput: (v) => saveNoteField(it.id, 'body', v) });
   return el('div', { class: `zen-list zen-note c-${it.color || 'none'}`, draggable: key ? 'true' : null, dataset: key ? { key } : null },
-    el('div', { class: 'zen-list-head' }, title, dueChip(it), cardActs(it), pinnedCard ? unpinNoteBtn(it) : null),
+    el('div', { class: 'zen-list-head' }, title, dueChip(it), cardActs(it, { pin: pinAct }), pinnedCard ? unpinNoteBtn(it) : null),
     body);
 }
 

@@ -538,6 +538,297 @@ const shrine = (() => {
 })();
 /* ————— end of round five's scenes ————— */
 
+/* ————— four quiet weathers (2026-11-18): rain on a pond, snow on a temple hill, a sea of cloud at
+   sunrise, lanterns on a river at night. Each has its own motion, anchored to the picture like
+   round five's (container units on .zen-fx, see newtab.css). ————— */
+
+// rain on a pond at dusk: hills going into cloud, a tea house on the far bank, lily pads and
+// reeds; the rain and the rings it makes on the water are the motion ('rain')
+const rain = (() => {
+  const house = `<path d='M262 566 Q350 544 438 566 L452 576 Q350 560 248 576Z'/><path d='M344 547 L350 534 L356 547Z'/>
+    <rect x='278' y='574' width='8' height='42'/><rect x='346' y='574' width='8' height='42'/><rect x='414' y='574' width='8' height='42'/>
+    <rect x='270' y='596' width='160' height='5'/>`;
+  const pad = (x, y, r) => `<path d='M${x} ${y} L${(x + r * 0.978).toFixed(1)} ${(y - r * 0.058).toFixed(1)} A${r} ${(r * 0.28).toFixed(1)} 0 1 0 ${(x + r * 0.978).toFixed(1)} ${(y + r * 0.058).toFixed(1)}Z'/>`;
+  const pads = [[520, 812, 44], [606, 848, 30], [1090, 762, 38], [1186, 894, 52], [262, 916, 40], [1430, 712, 26], [812, 944, 34]].map((p) => pad(...p)).join('');
+  const reeds = Array.from({ length: 15 }, (_, i) => {
+    const x = 1350 + i * 16, h = 150 + ((i * 37) % 120), lean = ((i % 3) - 1) * 16;
+    return `<path d='M${x} 1000 Q${x - 6} ${1000 - h / 2} ${x + lean} ${1000 - h}' stroke='#1d2925' stroke-width='3' fill='none'/>`
+      + (i % 4 === 1 ? `<ellipse cx='${x + lean}' cy='${1000 - h + 14}' rx='5' ry='16' fill='#2b2420'/>` : '');
+  }).join('');
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#2c3745'/><stop offset='.45' stop-color='#4b5a69'/><stop offset='.61' stop-color='#6f7d89'/></linearGradient>
+    <linearGradient id='w' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#5b6873'/><stop offset='.35' stop-color='#3e4a56'/><stop offset='1' stop-color='#222b35'/></linearGradient>
+    <linearGradient id='m' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#93a0aa' stop-opacity='0'/><stop offset='.5' stop-color='#93a0aa' stop-opacity='.6'/><stop offset='1' stop-color='#93a0aa' stop-opacity='0'/></linearGradient>
+    <radialGradient id='l' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#ffd79a' stop-opacity='.55'/><stop offset='1' stop-color='#ffd79a' stop-opacity='0'/></radialGradient></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>
+    <path d='${ridge(470, 170, 211)}' fill='#5d6a77' opacity='.7'/>
+    <rect y='390' width='1600' height='160' fill='url(#m)'/>
+    <path d='${ridge(565, 100, 223)}' fill='#46525f' opacity='.9'/>
+    <rect y='505' width='1600' height='110' fill='url(#m)'/>
+    <rect y='608' width='1600' height='392' fill='url(#w)'/>
+    <path d='M0 612 C200 600 420 606 640 604 S1100 598 1600 610 L1600 624 L0 624Z' fill='#2c3640'/>
+    <circle cx='350' cy='588' r='70' fill='url(#l)'/><rect x='336' y='580' width='28' height='18' rx='3' fill='#ffd79a' opacity='.8'/>
+    <g fill='#222b34'>${house}</g>
+    <g fill='#222b34' opacity='.32' transform='translate(0 1240) scale(1 -1)'>${house}</g>
+    <ellipse cx='350' cy='660' rx='18' ry='46' fill='#ffd79a' opacity='.16'/>
+    ${Array.from({ length: 8 }, (_, i) => `<rect x='${(90 + i * 190) % 1500}' y='${660 + i * 38}' width='${120 + (i % 3) * 70}' height='2' rx='1' fill='#c7d3dc' opacity='.22'/>`).join('')}
+    <g fill='#3a5547' opacity='.95'>${pads}</g>
+    <circle cx='1196' cy='884' r='9' fill='#e7a7b4'/><circle cx='1192' cy='880' r='4' fill='#f6d5dc'/>
+    ${reeds}`);
+})();
+
+// snow on a temple hill: a pagoda among pines, the far range white under a grey-blue sky;
+// the falling flakes are the motion ('snow')
+const snowfall = (() => {
+  const pine = (x, base, h) => [0, 1, 2].map((k) => {
+    const w = (h * (0.34 - k * 0.07)).toFixed(1), top = base - h * (0.42 + k * 0.29), bot = base - h * (k * 0.27);
+    return `<path d='M${x} ${top.toFixed(1)} L${(x + +w).toFixed(1)} ${bot.toFixed(1)} L${(x - +w).toFixed(1)} ${bot.toFixed(1)}Z' fill='#2d4646'/>`
+      + `<path d='M${(x - w * 0.55).toFixed(1)} ${(top + (bot - top) * 0.62).toFixed(1)} L${x} ${top.toFixed(1)} L${(x + w * 0.55).toFixed(1)} ${(top + (bot - top) * 0.62).toFixed(1)}' stroke='#f4f7fa' stroke-width='5' fill='none' stroke-linejoin='round' opacity='.9'/>`;
+  }).join('') + `<rect x='${x - 4}' y='${base}' width='8' height='${(h * 0.12).toFixed(0)}' fill='#3c3230'/>`;
+  const pagoda = (() => {
+    let g = `<rect x='1062' y='596' width='76' height='54' fill='#6a4238'/><rect x='1088' y='614' width='24' height='36' fill='#2b1f1d'/>`;
+    for (let k = 0; k < 4; k++) {
+      const w = 190 - k * 34, y = 598 - k * 54, x0 = 1100 - w / 2, x1 = 1100 + w / 2;
+      if (k) g += `<rect x='${1100 - w * 0.28}' y='${y}' width='${w * 0.56}' height='36' fill='#6a4238'/>`;
+      g += `<path d='M${x0} ${y} Q1100 ${y - 26} ${x1} ${y} L${x1 + 12} ${y + 9} Q1100 ${y - 12} ${x0 - 12} ${y + 9}Z' fill='#2f2a34'/>`
+        + `<path d='M${x0 + 4} ${y - 2} Q1100 ${y - 27} ${x1 - 4} ${y - 2}' stroke='#f6f8fb' stroke-width='6' fill='none' stroke-linecap='round'/>`;
+    }
+    return g + `<path d='M1100 438 L1100 380' stroke='#2f2a34' stroke-width='4'/>${[396, 408, 420].map((y) => `<ellipse cx='1100' cy='${y}' rx='9' ry='3' fill='#2f2a34'/>`).join('')}`;
+  })();
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#9fb0c5'/><stop offset='.5' stop-color='#cdd8e3'/><stop offset='.7' stop-color='#e9eef3'/></linearGradient>
+    <linearGradient id='h' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#dfe6ee'/><stop offset='1' stop-color='#c5d0dd'/></linearGradient></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>
+    <circle cx='420' cy='250' r='44' fill='#f4f6f8' opacity='.7'/>
+    <path d='${ridge(560, 220, 307)}' fill='url(#h)'/>
+    <path d='${ridge(610, 120, 311)}' fill='#d3dce6' opacity='.9'/>
+    <path d='M0 700 C260 660 520 640 760 650 S1200 620 1600 660 L1600 1000 L0 1000Z' fill='#eef2f6'/>
+    ${pagoda}
+    ${[[900, 668, 120], [960, 676, 150], [1262, 664, 140], [1330, 676, 110], [1400, 690, 160], [190, 720, 170], [270, 712, 130], [120, 736, 120]].map((p) => pine(...p)).join('')}
+    <path d='M0 800 C320 770 640 790 900 780 S1350 760 1600 790 L1600 1000 L0 1000Z' fill='#f8fafc'/>
+    ${[[600, 830, 190], [700, 846, 140], [1500, 840, 200]].map((p) => pine(...p)).join('')}
+    <path d='M0 900 C400 880 800 900 1200 885 S1500 890 1600 900 L1600 1000 L0 1000Z' fill='#fdfefe'/>`);
+})();
+
+// a sea of cloud at sunrise, seen from high up: peaks standing out of it, the sun just up;
+// the banks of cloud drift and a few birds cross ('clouds')
+const cloudsea = (() => {
+  const r = rng(419);
+  const puffs = (y0, n, fill, o) => Array.from({ length: n }, () => {
+    const x = (r() * 1700 - 50).toFixed(0), y = (y0 + r() * 60).toFixed(0), rx = (120 + r() * 160).toFixed(0), ry = (34 + r() * 30).toFixed(0);
+    return `<ellipse cx='${x}' cy='${y}' rx='${rx}' ry='${ry}' fill='${fill}' opacity='${o}'/>`;
+  }).join('');
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#8ea3c4'/><stop offset='.42' stop-color='#d9c2cc'/><stop offset='.62' stop-color='#f3d6c3'/><stop offset='1' stop-color='#f8e6d6'/></linearGradient>
+    <radialGradient id='g' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#fff3df' stop-opacity='.95'/><stop offset='1' stop-color='#fff3df' stop-opacity='0'/></radialGradient>
+    <linearGradient id='c' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fdf6ef'/><stop offset='1' stop-color='#efdfd6'/></linearGradient></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>
+    <circle cx='520' cy='520' r='300' fill='url(#g)'/><circle cx='520' cy='520' r='62' fill='#fff6e8'/>
+    <path d='M0 650 L90 600 L170 628 L300 520 L380 590 L470 560 L560 618 L700 610 L800 540 L860 500 L930 560 L1010 530 L1120 600 L1230 470 L1300 520 L1390 500 L1480 580 L1600 560 L1600 1000 L0 1000Z' fill='#8d8fae' opacity='.75'/>
+    <path d='M760 700 L860 560 L905 590 L980 470 L1040 540 L1080 520 L1180 700Z' fill='#6c6f91'/>
+    <path d='M980 470 L955 510 L965 503 L972 515 L983 502 L993 511 L1006 500Z' fill='#f6efe9' opacity='.7'/>
+    <path d='M1180 720 L1300 580 L1350 620 L1420 520 L1520 640 L1600 610 L1600 760Z' fill='#5c5f80'/>
+    <path d='M0 740 L80 640 L150 690 L220 610 L330 740Z' fill='#64678a'/>
+    ${puffs(600, 14, '#fbf2ea', 0.75)}
+    <rect y='640' width='1600' height='360' fill='url(#c)'/>
+    ${puffs(640, 18, '#fffaf5', 0.9)}${puffs(760, 16, '#f3e4da', 0.8)}${puffs(880, 14, '#fff8f2', 0.95)}`);
+})();
+
+// lanterns on a river at night: dark hills and an arched bridge against a deep blue sky, the
+// water holding their light; lanterns rising off the water are the motion ('lanterns')
+const lanterns = (() => {
+  const r = rng(503);
+  let stars = '';
+  for (let i = 0; i < 70; i++) stars += `<circle cx='${(r() * 1600).toFixed(0)}' cy='${(r() * 460).toFixed(0)}' r='${(0.6 + r() * 1.2).toFixed(2)}' fill='#fff' opacity='${(0.2 + r() * 0.5).toFixed(2)}'/>`;
+  const lantern = (x, y, s, glow = true) => `${glow ? `<circle cx='${x}' cy='${y}' r='${(s * 3.4).toFixed(1)}' fill='url(#lg)'/>` : ''}`
+    + `<rect x='${(x - s * 0.7).toFixed(1)}' y='${(y - s).toFixed(1)}' width='${(s * 1.4).toFixed(1)}' height='${(s * 1.9).toFixed(1)}' rx='${(s * 0.42).toFixed(1)}' fill='url(#lf)'/>`;
+  const floating = [[240, 760, 13], [430, 820, 16], [610, 744, 10], [760, 870, 18], [980, 790, 14], [1140, 900, 19], [1290, 760, 11], [1450, 840, 15], [860, 720, 8], [1360, 700, 8]];
+  const rising = [[300, 420, 9], [520, 300, 7], [700, 470, 8], [930, 260, 6], [1180, 380, 8], [1400, 240, 6], [1080, 520, 9], [180, 230, 5]];
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#090f2a'/><stop offset='.5' stop-color='#1b2150'/><stop offset='.64' stop-color='#3a2c58'/></linearGradient>
+    <linearGradient id='w' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#1a1d42'/><stop offset='1' stop-color='#080b1e'/></linearGradient>
+    <radialGradient id='lg' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#ffb860' stop-opacity='.55'/><stop offset='1' stop-color='#ffb860' stop-opacity='0'/></radialGradient>
+    <radialGradient id='lf' cx='.5' cy='.62' r='.62'><stop offset='0' stop-color='#fff4c8'/><stop offset='.5' stop-color='#ffbd5a'/><stop offset='1' stop-color='#e2702a'/></radialGradient></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>${stars}
+    <path d='${ridge(600, 130, 509)}' fill='#141838'/>
+    <path d='${ridge(640, 70, 521)}' fill='#0d1029'/>
+    <path d='M560 646 Q800 520 1040 646 L1040 660 L1010 660 Q800 556 590 660 L560 660Z' fill='#0b0e24'/>
+    <rect x='540' y='640' width='520' height='8' fill='#0b0e24'/>
+    <rect y='652' width='1600' height='348' fill='url(#w)'/>
+    <path d='M560 664 Q800 790 1040 664' stroke='#0f1330' stroke-width='14' fill='none' opacity='.6'/>
+    ${floating.map(([x, y, s]) => `<ellipse cx='${x}' cy='${y + s * 3.2}' rx='${(s * 0.9).toFixed(1)}' ry='${(s * 4).toFixed(1)}' fill='#ffb05a' opacity='.18'/>`).join('')}
+    ${floating.map(([x, y, s]) => lantern(x, y, s)).join('')}
+    ${rising.map(([x, y, s]) => lantern(x, y, s)).join('')}`);
+})();
+
+/* ————— storms far off and quiet snow (2026-11-18): thunder over a sea at dusk, a storm round a
+   cabin at night, a frozen lake at dawn, a cabin under a winter moon. The lightning is soft and
+   seldom (a glow inside the cloud, now and then a far bolt), never a flash across the screen;
+   the snow falls slowly. Motion anchored like the four weathers (see newtab.css). ————— */
+
+// a pine in the snow: three tiers, their upper edges white (fill and snow colours per scene)
+const snowyPine = (x, base, h, fill, snow) => [0, 1, 2].map((k) => {
+  const w = h * (0.34 - k * 0.07), top = base - h * (0.42 + k * 0.29), bot = base - h * (k * 0.27);
+  return `<path d='M${x} ${top.toFixed(1)} L${(x + w).toFixed(1)} ${bot.toFixed(1)} L${(x - w).toFixed(1)} ${bot.toFixed(1)}Z' fill='${fill}'/>`
+    + `<path d='M${(x - w * 0.55).toFixed(1)} ${(top + (bot - top) * 0.62).toFixed(1)} L${x} ${top.toFixed(1)} L${(x + w * 0.55).toFixed(1)} ${(top + (bot - top) * 0.62).toFixed(1)}' stroke='${snow}' stroke-width='${Math.max(2, h / 36).toFixed(1)}' fill='none' stroke-linejoin='round' opacity='.9'/>`;
+}).join('') + `<rect x='${x - 3}' y='${base}' width='6' height='${(h * 0.1).toFixed(0)}' fill='#2a2426'/>`;
+// a plain dark pine, for silhouettes
+const darkPine = (x, base, h, fill) => [0, 1, 2].map((k) => {
+  const w = h * (0.3 - k * 0.07), top = base - h * (0.4 + k * 0.3), bot = base - h * (k * 0.28);
+  return `<path d='M${x} ${top.toFixed(1)} L${(x + w).toFixed(1)} ${bot.toFixed(1)} L${(x - w).toFixed(1)} ${bot.toFixed(1)}Z' fill='${fill}'/>`;
+}).join('');
+
+// a storm far out over a calm sea at dusk: the tall cloud, a rain curtain under it, the afterglow
+// low on the left, a lighthouse on the rocks; the cloud lit from inside now and then, once in a
+// while a far bolt to the water, glints on the sea ('thunder')
+const farstorm = (() => {
+  const r = rng(601);
+  let stars = '';
+  for (let i = 0; i < 34; i++) stars += `<circle cx='${(r() * 820).toFixed(0)}' cy='${(r() * 280).toFixed(0)}' r='${(0.6 + r() * 1).toFixed(2)}' fill='#fff' opacity='${(0.15 + r() * 0.4).toFixed(2)}'/>`;
+  const puffs = [[1080, 196, 340, 52], [930, 214, 210, 40], [1236, 206, 236, 44], [1080, 300, 172, 110], [1008, 374, 192, 112],
+    [1152, 392, 186, 108], [1080, 462, 252, 104], [948, 502, 172, 72], [1226, 506, 196, 72], [1086, 538, 300, 40],
+    [1182, 330, 112, 72], [978, 304, 104, 62], [1252, 444, 124, 62], [904, 446, 112, 58], [1110, 250, 120, 60]];
+  const rims = [[1040, 276, 120, 60], [968, 352, 130, 62], [1020, 440, 160, 56], [900, 488, 110, 40], [880, 200, 150, 26]];
+  const glints = Array.from({ length: 16 }, (_, i) => `<rect x='${(120 + r() * 560).toFixed(0)}' y='${(632 + i * 9 + r() * 6).toFixed(0)}' width='${(40 + r() * 120).toFixed(0)}' height='2' rx='1' fill='#efb79c' opacity='${(0.12 + r() * 0.22).toFixed(2)}'/>`).join('');
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#1b2233'/><stop offset='.38' stop-color='#343a52'/><stop offset='.55' stop-color='#685c75'/><stop offset='.62' stop-color='#c39286'/></linearGradient>
+    <linearGradient id='w' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#4c4a62'/><stop offset='.3' stop-color='#302f45'/><stop offset='1' stop-color='#161827'/></linearGradient>
+    <linearGradient id='cl' gradientUnits='userSpaceOnUse' x1='0' y1='140' x2='0' y2='560'><stop offset='0' stop-color='#6d6c88'/><stop offset='.55' stop-color='#45465f'/><stop offset='1' stop-color='#2b2d42'/></linearGradient>
+    <linearGradient id='rc' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#33354b' stop-opacity='.85'/><stop offset='1' stop-color='#33354b' stop-opacity='.1'/></linearGradient>
+    <radialGradient id='g' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#f2b392' stop-opacity='.6'/><stop offset='1' stop-color='#f2b392' stop-opacity='0'/></radialGradient>
+    <radialGradient id='lg' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#ffd88f' stop-opacity='.55'/><stop offset='1' stop-color='#ffd88f' stop-opacity='0'/></radialGradient>
+    <linearGradient id='bm' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='#ffe2a8' stop-opacity='.1'/><stop offset='1' stop-color='#ffe2a8' stop-opacity='0'/></linearGradient>
+    <filter id='soft' x='-10%' y='-20%' width='120%' height='140%'><feGaussianBlur stdDeviation='5'/></filter>
+    <filter id='haze' x='-20%' y='-40%' width='140%' height='180%'><feGaussianBlur stdDeviation='12'/></filter></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>${stars}
+    <ellipse cx='330' cy='620' rx='520' ry='170' fill='url(#g)'/>
+    <path d='M902 546 L1268 546 L1236 626 L872 626Z' fill='url(#rc)' filter='url(#haze)'/>
+    <g fill='url(#cl)' filter='url(#soft)'>${puffs.map(([x, y, rx, ry]) => `<ellipse cx='${x}' cy='${y}' rx='${rx}' ry='${ry}'/>`).join('')}</g>
+    <g fill='#a08a98' opacity='.26' filter='url(#haze)'>${rims.map(([x, y, rx, ry]) => `<ellipse cx='${x}' cy='${y}' rx='${rx}' ry='${ry}'/>`).join('')}</g>
+    <path d='M0 622 L0 602 C60 596 120 588 180 596 C240 604 300 612 360 622Z' fill='#2a2a3c'/>
+    <rect y='620' width='1600' height='380' fill='url(#w)'/>
+    ${glints}
+    <ellipse cx='1080' cy='650' rx='280' ry='14' fill='#262839' opacity='.32' filter='url(#haze)'/>
+    <path d='M246 620 L780 556 L780 700Z' fill='url(#bm)'/>
+    <path d='M0 1000 L0 818 C60 798 120 804 170 790 C220 776 282 786 332 812 C384 838 424 862 472 902 C512 934 542 968 560 1000Z' fill='#11131b'/>
+    <path d='M0 818 C60 798 120 804 170 790 C220 776 282 786 332 812' stroke='#2a2b3a' stroke-width='3' fill='none'/>
+    <circle cx='230' cy='626' r='76' fill='url(#lg)'/>
+    <path d='M203 800 L257 800 L248 652 L212 652Z' fill='#d6d0d2'/>
+    <path d='M206.5 752 L253.5 752 L252.4 736 L207.6 736Z' fill='#6c5564'/><path d='M209.5 704 L250.5 704 L249.5 690 L210.5 690Z' fill='#6c5564'/>
+    <rect x='224' y='716' width='12' height='14' rx='2' fill='#2a2730'/>
+    <rect x='206' y='640' width='48' height='12' fill='#2a2730'/>
+    <rect x='214' y='612' width='32' height='28' fill='#ffd88f'/>
+    <path d='M207 613 L230 590 L253 613Z' fill='#2a2730'/>`);
+})();
+
+// a storm at night round a cabin: heavy cloud low over the hills, a meadow, the cabin's windows
+// warm on the wet path, pines; rain over everything and the cloud lit from behind now and then ('storm')
+const stormnight = (() => {
+  const r = rng(613);
+  const cloud = Array.from({ length: 30 }, () => `<ellipse cx='${(r() * 1800 - 100).toFixed(0)}' cy='${(30 + r() * 360).toFixed(0)}' rx='${(170 + r() * 220).toFixed(0)}' ry='${(46 + r() * 54).toFixed(0)}' fill='${['#2c3447', '#242b3c', '#323b50'][Math.floor(r() * 3)]}' opacity='.92'/>`).join('');
+  const streaks = Array.from({ length: 70 }, () => { const x = r() * 1700, y = r() * 900; return `<path d='M${x.toFixed(0)} ${y.toFixed(0)} l-${(18 + r() * 8).toFixed(0)} ${(80 + r() * 40).toFixed(0)}'/>`; }).join('');
+  const pines = [[880, 712, 150], [940, 706, 110], [1290, 712, 170], [1350, 716, 120], [140, 760, 230], [230, 752, 160], [1500, 780, 250], [60, 790, 170]];
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#121825'/><stop offset='.45' stop-color='#263045'/><stop offset='.6' stop-color='#39435b'/></linearGradient>
+    <radialGradient id='wg' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#ffcf7f' stop-opacity='.5'/><stop offset='1' stop-color='#ffcf7f' stop-opacity='0'/></radialGradient>
+    <linearGradient id='m' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#4a5468' stop-opacity='0'/><stop offset='.5' stop-color='#4a5468' stop-opacity='.55'/><stop offset='1' stop-color='#4a5468' stop-opacity='0'/></linearGradient></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>
+    ${cloud}
+    <path d='${ridge(560, 110, 617)}' fill='#1d2331'/>
+    <rect y='500' width='1600' height='120' fill='url(#m)'/>
+    <path d='${ridge(640, 70, 619)}' fill='#161b27'/>
+    <path d='M0 1000 L0 700 C300 682 600 692 900 702 S1400 690 1600 704 L1600 1000Z' fill='#121821'/>
+    <path d='M1124 760 C1110 820 1000 900 890 1000 L1020 1000 C1090 900 1142 820 1142 760Z' fill='#1d242f'/>
+    ${[[1112, 800, 6, 22], [1080, 850, 8, 26], [1040, 905, 10, 30], [990, 960, 12, 30]].map(([x, y, rx, ry]) => `<ellipse cx='${x}' cy='${y}' rx='${rx}' ry='${ry}' fill='#ffcf7f' opacity='.13'/>`).join('')}
+    <circle cx='1097' cy='717' r='66' fill='url(#wg)'/><circle cx='1161' cy='717' r='66' fill='url(#wg)'/>
+    <rect x='1166' y='648' width='14' height='34' fill='#1c191d'/>
+    <rect x='1070' y='690' width='120' height='70' fill='#262327'/>
+    <path d='M1054 694 L1130 638 L1206 694Z' fill='#17151a'/>
+    <rect x='1086' y='708' width='22' height='18' fill='#ffcf7f'/><rect x='1150' y='708' width='22' height='18' fill='#ffcf7f'/>
+    <rect x='1121' y='720' width='18' height='40' fill='#1c1a1e'/>
+    <g>${pines.map(([x, b, h]) => darkPine(x, b, h, '#0c1118')).join('')}</g>
+    <g stroke='#aab6c8' stroke-width='1.2' opacity='.1'>${streaks}</g>`);
+})();
+
+// a frozen lake at dawn: a soft pink sky, snowy peaks, a far line of pines, the ice pale blue,
+// birches on the near bank and snowy pines; a few flakes falling slowly, mist on the ice ('snowlight')
+const snowlake = (() => {
+  const r = rng(631);
+  const treeline = Array.from({ length: 70 }, (_, i) => {
+    const x = (i / 70) * 1640 - 20 + r() * 12, h = 14 + r() * 18, b = 662 - r() * 4;
+    return `<path d='M${x.toFixed(1)} ${(b - h).toFixed(1)} L${(x + h * 0.28).toFixed(1)} ${b.toFixed(1)} L${(x - h * 0.28).toFixed(1)} ${b.toFixed(1)}Z'/>`;
+  }).join('');
+  const birch = (x, top, w, lean) => {
+    let g = `<path d='M${x - w / 2} 1000 L${x + lean - w / 3} ${top} L${x + lean + w / 3} ${top} L${x + w / 2} 1000Z' fill='#f2f1ee'/>`;
+    for (let y = top + 20; y < 990; y += 26 + r() * 30) {
+      const t = (y - top) / (1000 - top), cx = x + lean * (1 - t);
+      g += `<rect x='${(cx - w * (0.1 + r() * 0.35)).toFixed(1)}' y='${y.toFixed(0)}' width='${(w * (0.25 + r() * 0.4)).toFixed(1)}' height='${(2 + r() * 3).toFixed(1)}' rx='1' fill='#3c3a40' opacity='.8'/>`;
+    }
+    for (let k = 0; k < 6; k++) {
+      const y = top + 30 + k * 60 + r() * 30, t = (y - top) / (1000 - top), cx = x + lean * (1 - t), d = k % 2 ? 1 : -1, len = 30 + r() * 40;
+      const ex = cx + d * len * 0.8, ey = y - len * 0.7;
+      g += `<path d='M${cx.toFixed(1)} ${y.toFixed(0)} q${(d * len * 0.45).toFixed(0)} ${(-len * 0.18).toFixed(0)} ${(d * len * 0.8).toFixed(0)} ${(-len * 0.7).toFixed(0)}`
+        + ` M${(cx + d * len * 0.45).toFixed(1)} ${(y - len * 0.3).toFixed(1)} l${(d * len * 0.3).toFixed(1)} ${(-len * 0.08).toFixed(1)}`
+        + ` M${ex.toFixed(1)} ${ey.toFixed(1)} l${(d * 6).toFixed(0)} -10 M${ex.toFixed(1)} ${ey.toFixed(1)} l${(-d * 3).toFixed(0)} -12' stroke='#7a7680' stroke-width='1.2' fill='none' stroke-linecap='round' opacity='.75'/>`;
+    }
+    return g;
+  };
+  const streaks = Array.from({ length: 12 }, (_, i) => `<rect x='${(r() * 1400).toFixed(0)}' y='${(680 + i * 14).toFixed(0)}' width='${(140 + r() * 260).toFixed(0)}' height='2' rx='1' fill='#fff' opacity='${(0.3 + r() * 0.3).toFixed(2)}'/>`).join('');
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#aab6cf'/><stop offset='.4' stop-color='#d6cddf'/><stop offset='.58' stop-color='#f1dfdb'/><stop offset='.66' stop-color='#f7e9e2'/></linearGradient>
+    <radialGradient id='g' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#fff2e4' stop-opacity='.85'/><stop offset='1' stop-color='#fff2e4' stop-opacity='0'/></radialGradient>
+    <linearGradient id='ice' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#e6ecf4'/><stop offset='1' stop-color='#c7d4e3'/></linearGradient>
+    <filter id='soft' x='-60%' y='-30%' width='220%' height='160%'><feGaussianBlur stdDeviation='9'/></filter></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>
+    <circle cx='1120' cy='560' r='260' fill='url(#g)'/><circle cx='1120' cy='560' r='44' fill='#fff6ec' opacity='.9'/>
+    <path d='M0 620 L120 560 L210 590 L330 470 L430 560 L520 522 L640 600 L760 540 L860 450 L960 540 L1080 500 L1200 580 L1320 490 L1440 560 L1600 520 L1600 662 L0 662Z' fill='#c2c8dc'/>
+    <path d='M330 470 L300 505 L318 500 L330 512 L344 498 L362 506Z M860 450 L828 488 L846 482 L860 494 L874 480 L894 488Z M1320 490 L1294 520 L1310 516 L1322 526 L1334 514 L1350 520Z' fill='#f7f8fc'/>
+    <path d='${ridge(648, 56, 637)}' fill='#a9b2c8'/>
+    <g fill='#7b879d'>${treeline}</g>
+    <rect y='660' width='1600' height='200' fill='url(#ice)'/>
+    <ellipse cx='1120' cy='706' rx='22' ry='48' fill='#fff3e7' opacity='.45' filter='url(#soft)'/>
+    ${streaks}
+    <path d='M0 1000 L0 852 C260 832 520 848 800 854 S1300 838 1600 858 L1600 1000Z' fill='#f6f8fb'/>
+    <path d='M0 900 C300 884 640 902 980 892 S1400 896 1600 906' stroke='#e2e8f1' stroke-width='10' fill='none'/>
+    ${birch(150, 300, 16, -18)}${birch(222, 380, 13, 10)}${birch(296, 470, 11, -8)}
+    ${[[1310, 900, 200], [1410, 930, 280], [1520, 950, 330]].map(([x, b, h]) => snowyPine(x, b, h, '#3a5252', '#f6f8fb')).join('')}`);
+})();
+
+// a cabin under a winter moon: stars, moonlit hills, the cabin's windows warm on the snow, snowy
+// pines; flakes catching the light as they fall, smoke from the chimney ('snownight')
+const winternight = (() => {
+  const r = rng(641);
+  let stars = '';
+  for (let i = 0; i < 90; i++) stars += `<circle cx='${(r() * 1600).toFixed(0)}' cy='${(r() * 520).toFixed(0)}' r='${(0.6 + r() * 1.2).toFixed(2)}' fill='#fff' opacity='${(0.2 + r() * 0.55).toFixed(2)}'/>`;
+  const forest = Array.from({ length: 60 }, (_, i) => {
+    const x = (i / 60) * 1640 - 20 + r() * 14, h = 18 + r() * 22, b = 668 - r() * 10;
+    return `<path d='M${x.toFixed(1)} ${(b - h).toFixed(1)} L${(x + h * 0.3).toFixed(1)} ${b.toFixed(1)} L${(x - h * 0.3).toFixed(1)} ${b.toFixed(1)}Z'/>`;
+  }).join('');
+  const pines = [[820, 742, 170], [880, 732, 120], [1180, 736, 190], [1250, 744, 140], [200, 810, 240], [300, 800, 170], [1470, 830, 270], [90, 840, 180]];
+  return svg(`
+    <defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#0a1430'/><stop offset='.45' stop-color='#1a2b52'/><stop offset='.62' stop-color='#34497a'/></linearGradient>
+    <radialGradient id='h' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#d4dcf2' stop-opacity='.4'/><stop offset='1' stop-color='#d4dcf2' stop-opacity='0'/></radialGradient>
+    <radialGradient id='wg' cx='.5' cy='.5' r='.5'><stop offset='0' stop-color='#ffc66e' stop-opacity='.55'/><stop offset='1' stop-color='#ffc66e' stop-opacity='0'/></radialGradient></defs>
+    <rect width='1600' height='1000' fill='url(#s)'/>${stars}
+    <circle cx='400' cy='210' r='200' fill='url(#h)'/><circle cx='400' cy='210' r='44' fill='#f4f1e4'/>
+    <circle cx='388' cy='200' r='9' fill='#e2ddcd' opacity='.6'/><circle cx='414' cy='226' r='6' fill='#e2ddcd' opacity='.5'/>
+    <path d='${ridge(600, 120, 643)}' fill='#6e83ad'/>
+    <path d='${ridge(664, 70, 647)}' fill='#8ea2c7'/>
+    <g fill='#1c2b47'>${forest}</g>
+    <path d='M0 1000 L0 722 C300 702 640 718 900 714 S1350 702 1600 728 L1600 1000Z' fill='#c3d1e9'/>
+    <path d='M0 1000 L0 862 C400 842 800 872 1200 852 S1500 862 1600 872 L1600 1000Z' fill='#dae4f3'/>
+    <ellipse cx='978' cy='760' rx='64' ry='13' fill='#ffc66e' opacity='.2'/><ellipse cx='1062' cy='760' rx='64' ry='13' fill='#ffc66e' opacity='.2'/>
+    <circle cx='978' cy='698' r='70' fill='url(#wg)'/><circle cx='1062' cy='698' r='70' fill='url(#wg)'/>
+    <rect x='1060' y='622' width='14' height='34' fill='#3a2d2a'/><rect x='1057' y='617' width='20' height='6' rx='2' fill='#eef3fb'/>
+    <rect x='950' y='670' width='140' height='64' fill='#3a2d2a'/>
+    <path d='M934 674 L1020 618 L1106 674Z' fill='#2a2024'/>
+    <path d='M930 672 L1020 612 L1110 672 L1104 679 L1020 623 L936 679Z' fill='#eef3fb'/>
+    <rect x='966' y='688' width='24' height='20' fill='#ffc66e'/><rect x='1050' y='688' width='24' height='20' fill='#ffc66e'/>
+    <rect x='1008' y='694' width='22' height='40' fill='#2a2024'/>
+    ${Array.from({ length: 7 }, (_, i) => `<ellipse cx='${1012 - i * 34 + (i % 2) * 10}' cy='${752 + i * 22}' rx='5' ry='3' fill='#9fb0d0'/>`).join('')}
+    ${pines.map(([x, b, h]) => snowyPine(x, b, h, '#1b2a3e', '#e8eef8')).join('')}`);
+})();
+
 export const WALLPAPERS = [
   { id: 'mist', label: 'Mist', tone: 'light', css: mist, motion: 'mist' },
   { id: 'lake', label: 'Lake', tone: 'light', css: lake, motion: 'mist' },
@@ -556,6 +847,16 @@ export const WALLPAPERS = [
   { id: 'serenade', label: 'Serenade', tone: 'light', css: serenade, motion: 'notes' },
   { id: 'lotus', label: 'Lotus', tone: 'dark', css: lotus, motion: 'ripples' },
   { id: 'shrine', label: 'Shrine', tone: 'light', css: shrine, motion: 'incense' },
+  // four quiet weathers: rain on a pond, snow on a temple hill, a sea of cloud, lanterns at night
+  { id: 'rain', label: 'Rain', tone: 'dark', css: rain, motion: 'rain' },
+  { id: 'snowfall', label: 'Snowfall', tone: 'light', css: snowfall, motion: 'snow' },
+  { id: 'cloudsea', label: 'Cloud sea', tone: 'light', css: cloudsea, motion: 'clouds' },
+  { id: 'lanterns', label: 'Lanterns', tone: 'dark', css: lanterns, motion: 'lanterns' },
+  // storms far off and quiet snow: thunder over a dusk sea, a storm round a cabin, a frozen lake, a winter moon
+  { id: 'farstorm', label: 'Far storm', tone: 'dark', css: farstorm, motion: 'thunder' },
+  { id: 'stormnight', label: 'Storm night', tone: 'dark', css: stormnight, motion: 'storm' },
+  { id: 'snowlake', label: 'Snow lake', tone: 'light', css: snowlake, motion: 'snowlight' },
+  { id: 'winternight', label: 'Winter night', tone: 'dark', css: winternight, motion: 'snownight' },
 ];
 
 // every id a setting may hold: the drawn ones, the theme's plain ground, the person's own image

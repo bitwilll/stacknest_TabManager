@@ -381,6 +381,293 @@ a variation that moves no ratio past a rounding place.
 Final: every text token ≥ **4.82:1** (4.5 bar) and every non-text token ≥ **3.01:1** (3.0 bar),
 across both themes and all four surfaces.
 
+## The switch moves to the bottom centre; thunder and quiet snow (2026-11-18)
+
+**Asked for.** "Align the navigation bar in middle and set the margin of notes and other
+elements accordingly." Then: "also add thunder wallpapers, and snow wallpapers which are calm."
+
+**The switch, centred** (`css/newtab.css`, "Zen's pages").
+- `.zen-pager` is centred at the bottom: fixed, `left: 0; right: 0; width: max-content;
+  margin-inline: auto`. It is no longer in the bottom-left corner.
+- `--zen-dock` (72 px) is the strip it keeps clear: 18 px below it, its 38 px, and 16 px above.
+  Each page now stops at that strip:
+  - **Bottom padding:** Zen's home stage, the Notes page and the arcade page all end with
+    `var(--zen-dock)` (they had 80, 84 and 84 px).
+  - **Home panes:** their height cap is `100vh - 110px - var(--zen-dock)`.
+  - **Arcade frame:** the square is `100vh - 90px - var(--zen-dock)`, so a game ends above the
+    switch.
+  - **Quick note:** its card is capped the same way.
+- **Toasts** in Zen sit just above the switch (`bottom: calc(var(--zen-dock) - 6px)`), where
+  they used to sit on it.
+- **Narrow windows:** under 560 px the switch shows icons only. The names stay for screen
+  readers through a clipped span, and the switch never meets the peek button in the corner.
+- **Measured** in headless Chrome at 1440×900, 1280×720, 760×900 and 400×820 on all four
+  pages:
+  - The switch is centred to the pixel.
+  - Scrolled to the end, no pane, card, calendar, game frame or shelf is under it.
+  - The peek button is never touched.
+  - At 1440×900, Zen, Arcade and Lounge now fit without scrolling (they scrolled 31–47 px).
+
+**Thunder and quiet snow** (`js/wallpapers.js`, after the four weathers; motion in
+`css/newtab.css`, "storms far off and quiet snow"). Four more scenes, 24 in all:
+- **Far storm** (dark, motion `thunder`): a tall storm cloud far out over a calm sea at dusk,
+  softened with a blur, with a rain curtain under it. There are the afterglow and its glints on
+  the left, and a lighthouse with a lit lamp on the rocks.
+  - In motion: a glow inside the cloud now and then, and once a cycle a far bolt down to the
+    water (`--zen-bolt`, a small blurred SVG). Glints of the afterglow come and go on the sea.
+- **Storm night** (dark, motion `storm`): low heavy cloud over the hills, a meadow, and a cabin
+  whose lit windows shine on the wet path among pines.
+  - In motion: rain over everything (the Rain wallpaper's streaks), the upper sky lit softly from
+    behind now and then, and mist easing along the hills.
+- **Snow lake** (light, motion `snowlight`): a frozen lake at dawn under a pink sky, with snowy
+  peaks, a far line of pines, birches on the near bank and snowy pines.
+  - In motion: eleven small flakes falling slowly, and mist breathing over the ice.
+- **Winter night** (dark, motion `snownight`): a cabin under the moon with warm windows and
+  footprints in the snow, among moonlit hills and snowy pines.
+  - In motion: flakes catching the moonlight as they fall, and smoke rising from the chimney
+    (the Shrine's thread of smoke, wider and slower).
+
+**The lightning is calm on purpose.**
+- It is a radial glow over part of the sky, never a full-screen flash, and never full white
+  (glow at most 0.85 opacity of a soft gradient).
+- It is seldom: one cycle every 13 s or 17 s, with two pulses close together at most. That is
+  well under the three flashes in any second where photosensitivity guidance draws its line.
+- It exists only while animating (base opacity 0), so under reduced motion, or with Animate the
+  wallpaper off, there is none.
+
+**Verified.**
+- **Wallpaper test (35 checks), all pass with no exceptions or console errors:**
+  - All 24 wallpapers draw as images.
+  - Each new scene has its tone and motion, and every visible speck runs and moves.
+  - The lightning's keyframes have at most two pulses in any second, at most 0.9 opacity, and
+    cycles of 12 s or more.
+  - Under reduced motion, neither storm has any lightning.
+  - Settings › Zen lists all eight of the newest, each with its own thumbnail.
+- **Screenshots:** each scene, and both storms mid-flash.
+
+## The two-finger swipe follows the fingers (2026-11-18)
+
+**Asked for.** Make the two-finger scrolling experience seamless.
+
+**What was wrong with the first version** (the entry below). Nothing moved until 80 px of
+deltas had added up, then the page swapped all at once. And the next swipe only counted after
+280 ms of stillness, which a trackpad's momentum often never gave: a quick second swipe was lost.
+
+**Now** (`js/zen.js`, "the page in motion" and "two-finger sideways swipe").
+- **The page follows the fingers** from the first delta: nearly 1:1, easing off towards about
+  16 % of the screen width, and fading a little. Only the page's own content moves; the
+  wallpaper, the switch and the corner button stay put.
+- **The switch lights the page that is coming**, more as the swipe nears its turn
+  (`data-swipe-to`, `--swipe-p`).
+- **Lifting decides.** A wheel event has no "fingers up", so a lift is read from the deltas.
+  Three falling deltas under 70 % of the peak mean momentum has begun; 110 ms with none means
+  the fingers lifted, or rest. The page then goes if the swipe's own travel plus about 100 ms of
+  its speed reaches 6 % of the screen width (64–110 px), or springs back. So a quick flick turns
+  a page that a slow drag of the same length doesn't. Drawn 2.4 times that far, it goes at once.
+- **Going and coming.** The page that goes carries on at the fingers' pace (0.9–2.6 px/ms) while
+  it fades, for 110 ms. Then the next comes in from its side, handed that speed, on a critically
+  damped spring (k 290: at rest in about 0.4 s, no wobble). A click on the switch, and Esc from
+  Notes, bring the page in the same way from 44 px off.
+- **At either end** the page gives a short rubber band (at most 56 px) and holds.
+- **One swipe, one page, with no wait between swipes.** A decided swipe's momentum is
+  swallowed. Fingers that go again count as a new swipe at once: deltas speeding up twice
+  running, measured per ms so events Chrome merges under load aren't mistaken for that, and
+  only after the momentum has eased to 60 % of its peak. Turning the other way counts too.
+- **Taking hold of a page in motion.** One requestAnimationFrame loop drives following, going,
+  coming in and springing back. A new swipe takes hold of the page wherever it is (the position
+  is mapped back to finger travel exactly, so nothing jumps). It is judged by its own travel, so
+  a swipe that catches a page still coming in turns the next page, like one from rest. A swipe
+  that starts while a page is still going lets it go and catches the next.
+- **The first delta decides** between a swipe and a scroll. Mostly up and down, and the whole
+  gesture is left to scroll. Only a gesture that started sideways is kept, and only if its first
+  event can still be cancelled.
+- **No sideways scroll or focus ring.** Zen clips sideways overflow, so a page drawn aside never
+  scrolls the screen. A swipe moves no focus (a button click still does), and focus left on the
+  page that went is let go.
+- **Notes arrive full.** Entering the Notes page paints it at once from the last render's notes,
+  then refreshes, so it never slides in empty.
+- **Reduced motion:** nothing moves under the fingers. The switch still lights, and the page
+  changes once the swipe is decided.
+
+**Verified.** In headless Chrome with real wheel input, 56 checks pass on the store build:
+- Following the fingers: the page drawn left and fading, the switch half lit.
+- Springing back short of the turn; the rubber band at both ends.
+- A flick turns a page where a slow drag of the same length doesn't.
+- One long swipe turns one page.
+- A swipe, its momentum and a second swipe with no pause turn exactly two pages, as do two
+  quick swipes back to back.
+- Catching the arriving Notes page with no jump, holding it, and sending it back.
+- The click and Esc slide-ins.
+- Reduced motion.
+- No focus moved by a swipe.
+- Notes full on arrival.
+- The game, nudge, vertical-scroll and blank-card checks from before.
+
+Not tried on a real trackpad: the deltas are simulated, including the momentum curve.
+
+## Four quiet weathers: Rain, Snowfall, Cloud sea, Lanterns (2026-11-18)
+
+**Asked for.** More wallpapers, Zen, animated and peaceful.
+
+**What they are** (`js/wallpapers.js`, drawn as SVG like the rest; 8 to 14 KB each):
+- **Rain** (dark, motion `rain`): a pond at dusk.
+  - In the picture: hills going into cloud, a tea house on the far bank with a lamp lit and its
+    reflection, lily pads, reeds with cattails.
+  - In motion: fine slanted streaks falling over everything, rings opening on the pond, a bank of
+    cloud easing along the hills.
+- **Snowfall** (light, motion `snow`): a five-roofed pagoda among snowy pines on a white hill,
+  under a grey-blue sky.
+  - In motion: flakes drifting down over 16–32 s, swaying, every third one out of focus, and a
+    breath of mist low over the slope.
+- **Cloud sea** (light, motion `clouds`): peaks standing out of a sea of cloud, the sun just up.
+  - In motion: two cloud banks drifting at different speeds, and four gulls crossing high up,
+    their wings slowly beating (two arcs on `i::before` / `::after`).
+- **Lanterns** (dark, motion `lanterns`): a river at night with dark hills, an arched bridge,
+  stars, and lanterns floating with their reflections.
+  - In motion: fourteen lanterns lifting off the water, swaying, glowing and fading high up, and
+    their light trembling on the water.
+
+**Motion** (`css/newtab.css`, after round five). Anchored the way round five's scenes are:
+`.zen-fx` is a size container with `--k` mapping picture units to the screen and breathing in
+step with the wall. So rings land on the pond and lanterns rise from the river at any
+interface size. Under reduced motion nothing animates, and the rings and the rising lanterns
+are left out.
+
+**Verified** in headless Chrome, 17 checks, no exceptions or console errors:
+- All 20 wallpapers load as images.
+- Each new scene sets its tone and motion, and every visible speck is running and moves within
+  0.7 s.
+- Settings › Zen lists all four, each with its own thumbnail.
+- Reduced motion hides the rising lanterns.
+
+## Zen's pages turn with a two-finger swipe, and New never stacks blank cards (2026-11-18)
+
+**Asked for.** A two-finger sideways scroll that moves through the pages "from lounge to arcade
+to zen to notes". And New note / list / reminder must not keep adding cards: if a blank one is
+there, go to it.
+
+**The swipe** (`js/zen.js` › `onSwipeWheel`).
+- The order is the one asked for: Lounge, Arcade, Zen, Notes. The switch at the bottom left was
+  reordered to match (it read Zen · Arcade · Lounge · Notes), so a swipe always lands on the next
+  button along. Lounge and Arcade are the arcade page on its lounge or games shelf.
+- A trackpad's sideways scroll arrives as `wheel` events with `deltaX`. Mostly-sideways deltas
+  (|dx| > |dy|) add up to 80 px, which turns one page; the rest of that gesture, momentum
+  included, is spent until 280 ms of stillness. Positive dx (fingers moving left, natural
+  scrolling) goes right along the switch, towards Notes. At either end nothing turns.
+- The listener is on the Zen root and not passive. Handled swipes call `preventDefault()`, so
+  Chrome's own back / forward swipe gesture doesn't fire in Zen.
+- Left alone: an open game or lounge (`arcade.playing`; the Temple's meditation panel lives
+  inside one), a text field, anything under the pointer that scrolls sideways itself in that
+  direction, a dialog or the reminder popover, the eye-rest pause, and pinch zoom (`ctrlKey`).
+- The page coming in slides 32 px from its side and fades in (`data-turn`, 0.32 s), for the
+  switch's buttons too. Nothing moves under reduced motion.
+
+**New reuses a blank card** (`js/notes.js` › `addNoteCard`).
+- Blank means no words (spaces don't count), no tags and no reminder time. For a list that means
+  no title and every row empty.
+- If a blank card of the asked kind exists, New hands it back (`reused: true`) instead of making
+  another, and the caret goes there. On Zen's Notes page it is also lit up, and a filter or
+  search hiding it is cleared.
+- The check runs inside the queued write, after queued typing is flushed. So a burst of clicks
+  makes one card, and a card typed into a moment ago isn't mistaken for blank.
+- The Notes view's New ▾ uses the same function, so it follows the same rule.
+
+**Verified.** In headless Chrome with real wheel, mouse and key input, 31 checks pass with no
+exceptions or console errors:
+- The new switch order.
+- Each direction, both ends, one page per long swipe. A small nudge and a mostly-vertical scroll
+  turn nothing.
+- The browser's swipe held off, and the slide-in.
+- No turn while a game is open; it turns again once back on the shelf.
+- New Note twice adds nothing and goes back to the note, and three clicks at once on New Reminder
+  make one.
+- A blank note doesn't stop New List, and New Note from the Lists filter goes back to the blank
+  note.
+- Words make the next New a new card, while spaces alone still count as blank.
+- The Notes view's New ▾ follows the same rule.
+
+## Notes inside Zen: a fourth page beside Lounge (2026-11-18)
+
+**Asked for.** A button beside Lounge to go to Notes, and when Notes is reached from Zen, a Zen
+page for it rather than the Notes view.
+
+**What it is** (`js/zen.js` › `createNotesPage`).
+- The switch at the bottom left reads **Lounge · Arcade · Zen · Notes** (reordered for the swipe,
+  in the entry above). Notes sets
+  `data-page="notes"` on the Zen root. The home page's bar and stage hide (as they do for the
+  arcade) and the Notes page shows on the wallpaper. The peek button hides there too.
+- The page has the arcade page's clock on the left and Leave zen on the right. Under them is one
+  glass pane: "Notes", a count ("5 cards · 2 open", or "1 of 5" while filtered), a filter (All ·
+  Notes · Lists · Reminders), a search box, and **Note / List / Reminder**. The cards sit in a
+  masonry (CSS columns, each card kept whole), in the Notes view's own order, done items
+  included.
+- Cards are the home page's builders with scope `np`: a list or a note as on the home page, a
+  reminder in a small "Reminder" card. They edit in place the same way, and keep the bell, the
+  delete with Undo and the row ×. An unpinned card offers **Pin to Zen** among its hover actions;
+  a pinned one shows the pin to take it off.
+- Search is the Notes view's own (`noteMatches` in `js/notes.js`): titles, bodies, reminder text,
+  checklist rows and tags.
+- New: `addNoteCard(kind)` in `js/notes.js` makes the card the way New ▾ does (a list starts with
+  one blank row); the Notes view's `newItem` now uses it too. A filter or search that would hide
+  the new card is cleared, the page is rebuilt, and the caret goes to the new card's title (or a
+  reminder's text). Enter moves on to the first row or the body.
+- The page is filled only while it is open (`render()` paints it when `data-page` is `notes`).
+  Opening it triggers a render. Typing is protected as on the home page: a render waits while a
+  field has focus.
+- Esc from a field leaves the field. Esc outside a field goes back to Zen's home page, and the
+  next Esc leaves Zen. Leaving Zen always resets to the home page.
+
+**Verified.** In headless Chrome with real clicks and keys, 32 checks pass with no exceptions or
+console errors:
+- The switch order. Notes opens the page, not the Notes view, and focus lands on the switch.
+- All cards show in order, with the right count and the clock.
+- Each filter works. Search finds tags and checklist rows, and "Nothing matches" shows when
+  nothing does.
+- Editing a row in place, with Enter and Backspace.
+- New List, New Reminder and New Note each make a card at the top and put the caret in it,
+  clearing a filter and a search that would hide it. Title then row or body, all saved.
+- Pin to Zen, and delete with confirm and Undo.
+- Esc goes back to Zen's home page, which shows the newly pinned note. Leave zen works from the
+  page, and Zen opens on home again.
+
+## The open-tabs bar switches from the board, and from the bar itself (2026-11-18)
+
+**Asked for.** A horizontal / vertical selector for the open-tabs bar at the left of the board's
+"space" readout, and the same choice while the bar is vertical.
+
+**What it is.**
+- Two icon buttons in a pill well, the same `.theme-seg` the board's layout switch uses: a window
+  with a strip across the top (Horizontal) and a window with a rail down the left (Vertical).
+  The icons are `barTop` and `barSide` in `js/ui.js`. The buttons form a labelled group with
+  `aria-pressed` on each.
+- **Two places, one setting.**
+  - First in the board's head, before the space readout. `#board-state` now sits in a
+    `.board-lead` wrapper that takes the head's `state` grid area, and the switch is prepended
+    to it.
+  - At the top right of the bar's head while it is vertical (26 px buttons, so they fit beside
+    the live count in the 212 px rail). That one shows on every view, like the rail itself, so
+    the bar can be turned back from Notes or the Library. The horizontal strip doesn't carry
+    one: the board's switch sits right under it.
+- Both write `tabsBar` through `saveSettings`, the same write as Settings › Open tabs bar. So the
+  bar moves through the usual `stacknest:tabsbar` path, Settings shows the change, and a change
+  made in Settings lights the switch. In Hidden, neither button is lit and either one brings the
+  bar back. Pressing a button keeps focus on a visible twin when the pressed one moves away with
+  the bar.
+- The board is now redrawn when the bar moves. An empty board's hint ("Drop a tab here from the
+  live strip above" or "…the tab rail on the left") had kept the old wording until something
+  else redrew it, which the new switch made easy to see.
+
+**Verified.** In headless Chrome with real clicks, 23 checks pass with no exceptions or console
+errors:
+- The switch sits left of the space readout. The vertical rail has its own switch, which fits
+  beside the live count at 240 px, at 212 px (a 1100 px window) and in the stacked layout below
+  881 px.
+- Each switch moves the bar and saves the setting, both switches agree, and Settings agrees in
+  both directions, Hidden included.
+- Switching back from the rail works on the Notes view.
+- Enter on a focused button works.
+- The empty board's hint follows the bar.
+
 ## Zen edits notes in place, and a quick note waits in the top-right corner (2026-11-18)
 
 **Asked for.** Notes, to-dos and reminders editable in Zen, not only tickable. And a quick way to
